@@ -20,6 +20,10 @@ func (cpu *LC3) Execute() error {
 	// 5. EXECUTE
 	// 6. STORE RESULT
 	switch opcode {
+	case OpcodeBR:
+		nzp := Condition(cpu.IR & 0x0e00 >> 9)
+		offset := Word(cpu.IR & 0x01ff)
+		cpu.PC = cpu.Proc.BR(cpu.PC, nzp, offset)
 	case OpcodeNOT:
 		src := GPR(cpu.IR & 0x0e00 >> 9)
 		dest := GPR(cpu.IR & 0x01a0 >> 6)
@@ -65,6 +69,19 @@ func (proc *Processor) AndImm(regA GPR, lit Word, dest GPR) {
 	proc.Cond.Update(r)
 }
 
+func (proc *Processor) BR(pc ProgramCounter, nzp Condition, lit Word) ProgramCounter {
+	lit = proc.sext(lit, 9)
+	switch {
+	case
+		nzp.Negative() && proc.Cond.Negative(),
+		nzp.Zero() && proc.Cond.Zero(),
+		nzp.Positive() && proc.Cond.Positive():
+		return ProgramCounter(int16(pc) + int16(lit))
+	default:
+		return pc
+	}
+}
+
 func (proc *Processor) sext(val Word, n uint8) Word {
 	ans := int16(val)
 	ans <<= 16 - n
@@ -76,7 +93,7 @@ func (proc *Processor) sext(val Word, n uint8) Word {
 // LS-3 ISA has 15 distinct instructions (and one reserved value that is
 // undefined). The top 4 bits of an instruction define the opcode; the remaining
 // bits are used for operands.
-type Instruction Word
+type Instruction Register
 
 func (i Instruction) String() string {
 	return fmt.Sprintf("%0#4x (OP: %s)", Word(i), i.Decode())
@@ -90,6 +107,8 @@ type Opcode uint8
 
 func (o Opcode) String() string {
 	switch o {
+	case OpcodeBR:
+		return "BR"
 	case OpcodeNOT:
 		return "NOT"
 	case OpcodeAND:
@@ -101,6 +120,8 @@ func (o Opcode) String() string {
 }
 
 const (
+	// BR
+	// [15] 0000 [11] (NZP) [8] (PCOFFSET) [0]
 	OpcodeBR  Opcode = 0b0000
 	OpcodeJMP        = 0b1100
 	OpcodeJSR        = 0b0100

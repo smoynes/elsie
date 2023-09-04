@@ -8,11 +8,59 @@ import (
 func TestInstructions(t *testing.T) {
 	t.Run("Reserved", func(t *testing.T) {
 		t.Parallel()
-		var instr Instruction = 0b11010011_10100101
+		var instr Instruction = 0b11010011_10100111
 		var op Opcode = instr.Decode()
 
 		if op != OpcodeReserved {
 			t.Errorf("instr: %s, want: %b, got: %b", instr, OpcodeNOT, op)
+		}
+	})
+
+	t.Run("BR", func(t *testing.T) {
+		t.Parallel()
+		var cpu *LC3 = New()
+		cpu.Mem[cpu.PC] = 0b0000_010_0_0000_0111
+		cpu.Proc.Cond = ConditionZero
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Decode(); op != OpcodeBR {
+			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, OpcodeBR, op)
+		}
+
+		if cpu.PC != 0x3000+0x0008 {
+			t.Errorf("PC incorrect, want: %0b, got: %0b", 0x3000+0x0008, cpu.PC)
+		}
+
+		if cpu.Proc.Cond != ConditionZero {
+			t.Errorf("cond incorrect, want: %s, got: %s", ConditionZero, cpu.Proc.Cond)
+		}
+	})
+
+	t.Run("BRnzp", func(t *testing.T) {
+		t.Parallel()
+		var cpu *LC3 = New()
+		cpu.Mem[cpu.PC] = 0b0000_111_1_1111_0111
+		cpu.Proc.Cond = ConditionZero
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Decode(); op != OpcodeBR {
+			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, OpcodeBR, op)
+		}
+
+		if cpu.PC != 0x3000+1-0x0009 {
+			t.Errorf("PC incorrect, want: %0b, got: %0b", 0x3000+1-0x0009, cpu.PC)
+		}
+
+		if cpu.Proc.Cond != ConditionZero {
+			t.Errorf("cond incorrect, want: %s, got: %s", ConditionZero, cpu.Proc.Cond)
 		}
 	})
 

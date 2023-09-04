@@ -11,7 +11,7 @@ import (
 type LC3 struct {
 
 	// Program Counter. It is a pointer to the next instruction to execute.
-	PC Register
+	PC ProgramCounter
 
 	// Instruction register.
 	IR Instruction
@@ -26,6 +26,7 @@ type LC3 struct {
 func New() *LC3 {
 	cpu := LC3{}
 	cpu.PC = 0x3000
+	cpu.Proc.Cond = ConditionZero
 	return &cpu
 }
 
@@ -42,6 +43,13 @@ type Register Word
 
 func (r Register) String() string {
 	return fmt.Sprintf("%0#4x", uint16(r))
+}
+
+// ProgramCounter is a special-purpose register that points to the next instruction in memory.
+type ProgramCounter Register
+
+func (p ProgramCounter) String() string {
+	return Register(p).String()
 }
 
 // Processor is the processing unit of the CPU.
@@ -61,9 +69,9 @@ type Processor struct {
 type Condition Register
 
 const (
-	ConditionZero Condition = 1 << iota
+	ConditionPositive Condition = 1 << iota
+	ConditionZero
 	ConditionNegative
-	ConditionPositive
 )
 
 func (c Condition) String() string {
@@ -86,15 +94,15 @@ func (c *Condition) Update(a Word) {
 }
 
 func (c Condition) Positive() bool {
-	return c == ConditionPositive
+	return c&ConditionPositive > 0x0
 }
 
 func (c Condition) Negative() bool {
-	return c == ConditionNegative
+	return c&ConditionNegative > 0
 }
 
 func (c Condition) Zero() bool {
-	return c == ConditionZero
+	return c&ConditionZero > 0
 }
 
 // Set of general purpose registers.
