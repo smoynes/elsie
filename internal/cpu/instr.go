@@ -3,23 +3,22 @@ package cpu
 // Execute runs a single instruction cycle.
 func (cpu *LC3) Execute() error {
 	cpu.Fetch()
+	op := cpu.Decode()
+	cpu.EvalAddress(op)
+	cpu.FetchOperands(op)
 
-	operation := cpu.Decode()
-
-	if operation, ok := operation.(addressable); ok {
-		operation.EvalAddress(cpu)
+	if op, ok := op.(executable); ok {
+		op.Execute(cpu)
 	}
-	if operation, ok := operation.(interface{ FetchOperands(*LC3) }); ok {
-		operation.FetchOperands(cpu)
-	}
-	if operation, ok := operation.(executable); ok {
-		operation.Execute(cpu)
-	}
-	if operation, ok := operation.(interface{ StoreResult(*LC3) }); ok {
-		operation.StoreResult(cpu)
-	}
-
+	cpu.StoreResult(op)
 	return nil
+}
+
+// executable operations use operands for computation may update CPU state.
+// Nearly all operations are executable.
+type executable interface {
+	Operation
+	Execute(cpu *LC3)
 }
 
 // Fetch loads the value addressed by PC into IR and increments PC.
@@ -29,7 +28,7 @@ func (cpu *LC3) Fetch() {
 	cpu.PC++
 }
 
-// Decodes returns an operation from the instruction register.
+// Decode returns an operation from the instruction register.
 func (cpu *LC3) Decode() Operation {
 	var op Operation
 
@@ -72,21 +71,40 @@ type decodable interface {
 	Decode(ir Instruction)
 }
 
-// executable operations use operands for computation may update CPU state. Nearly
-// all operations are executable.
-type executable interface {
-	Operation
-	Execute(cpu *LC3)
+// EvalAddress computes a memory address if the operation is addressable.
+func (cpu *LC3) EvalAddress(op Operation) {
+	if op, ok := op.(addressable); ok {
+		op.EvalAddress(cpu)
+	}
 }
 
-// fetchable operations use operands to load words from memory into registers.
+type addressable interface {
+	Operation
+	EvalAddress(cpu *LC3)
+}
+
+// FetchOperands loads registers from memory if the operation is fetchable.
+func (cpu *LC3) FetchOperands(op Operation) {
+	if op, ok := op.(fetchable); ok {
+		op.FetchOperands(cpu)
+	}
+}
+
 type fetchable interface {
 	Operation
 	EvalAddress(cpu *LC3)
 	FetchOperands(cpu *LC3)
 }
 
-type addressable interface {
+// StoreResult writes registers to memory if the operation is storable.
+func (cpu *LC3) StoreResult(op Operation) {
+	if op, ok := op.(storable); ok {
+		op.StoreResult(cpu)
+	}
+}
+
+type storable interface {
 	Operation
 	EvalAddress(cpu *LC3)
+	StoreResult(cpu *LC3)
 }
