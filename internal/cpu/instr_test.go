@@ -9,16 +9,18 @@ func TestInstructions(t *testing.T) {
 	t.Run("Reserved", func(t *testing.T) {
 		t.Parallel()
 		var instr Instruction = 0b11010011_10100111
-		var op Opcode = instr.Decode()
+		cpu := New()
+		cpu.IR = instr
 
-		if op != OpcodeReserved {
-			t.Errorf("instr: %s, want: %b, got: %b", instr, OpcodeNOT, op)
+		var op Operation = cpu.Decode()
+		if op.opcode() != OpcodeReserved {
+			t.Errorf("instr: %s, want: %b, got: %b", instr, OpcodeReserved, op)
 		}
 	})
 
 	t.Run("BR", func(t *testing.T) {
 		t.Parallel()
-		var cpu *LC3 = New()
+		cpu := New()
 		cpu.Mem[cpu.PC] = 0b0000_010_0_0000_0111
 		cpu.Proc.Cond = ConditionZero
 
@@ -27,7 +29,7 @@ func TestInstructions(t *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Decode(); op != OpcodeBR {
+		if op := cpu.IR.Opcode(); op != OpcodeBR {
 			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, OpcodeBR, op)
 		}
 
@@ -51,7 +53,7 @@ func TestInstructions(t *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Decode(); op != OpcodeBR {
+		if op := cpu.IR.Opcode(); op != OpcodeBR {
 			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, OpcodeBR, op)
 		}
 
@@ -75,7 +77,7 @@ func TestInstructions(t *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Decode(); op != OpcodeNOT {
+		if op := cpu.IR.Opcode(); op != OpcodeNOT {
 			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, OpcodeNOT, op)
 		}
 
@@ -92,24 +94,20 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem[cpu.PC] = 0b0101_000_000_0_00_001
-		cpu.Proc.Reg[R0] = 0b0101_1010_1111_0000
-		cpu.Proc.Reg[R1] = 0x0000
+		cpu.Proc.Reg[R0] = 0b0101_1010_1111_1111
+		cpu.Proc.Reg[R1] = 0x00f0
 
 		err := cpu.Execute()
 		if err != nil {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Decode(); op != OpcodeAND {
-			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, OpcodeAND, op)
+		if cpu.Proc.Reg[R0] != 0x00f0 {
+			t.Errorf("R0 incorrect, want: %0#16b, got: %0#b", 0x0000, cpu.Proc.Reg[R0])
 		}
 
-		if cpu.Proc.Reg[R0] != 0x0000 {
-			t.Errorf("r0 incorrect, want: %0b, got: %0b", 0b1010_0101_0000_1111, cpu.Proc.Reg[R0])
-		}
-
-		if cpu.Proc.Cond != ConditionZero {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionZero, cpu.Proc.Cond)
+		if cpu.Proc.Cond != ConditionPositive {
+			t.Errorf("cond incorrect, want: %s, got: %s", ConditionPositive, cpu.Proc.Cond)
 		}
 	})
 
@@ -124,12 +122,12 @@ func TestInstructions(t *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Decode(); op != OpcodeAND {
-			t.Errorf("instr: %s, want: %04b, got: %04b", cpu.IR, OpcodeAND, op)
+		if op := cpu.IR.Opcode(); op != OpcodeAND {
+			t.Errorf("instr: %s, want: %s, got: %s", cpu.IR, OpcodeAND, op)
 		}
 
 		if cpu.Proc.Reg[R0] != 0x0005 {
-			t.Errorf("r0 incorrect, want: %016b, got: %016b", 0x0003, cpu.Proc.Reg[R0])
+			t.Errorf("r0 incorrect, want: %0#4x, got: %s", uint16(0x0005), cpu.Proc.Reg[R0])
 		}
 
 		if !cpu.Proc.Cond.Positive() {
@@ -148,7 +146,7 @@ func TestInstructions(t *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Decode(); op != OpcodeAND {
+		if op := cpu.IR.Opcode(); op != OpcodeAND {
 			t.Errorf("instr: %s, want: %04b, got: %04b", cpu.IR, OpcodeAND, op)
 		}
 
@@ -240,8 +238,8 @@ func TestSext(t *testing.T) {
 		tc := tc
 		name := fmt.Sprintf("%0#4x %d", tc.have, tc.bits)
 		t.Run(name, func(t *testing.T) {
-			p := Processor{}
-			got := p.sext(Word(tc.have), tc.bits)
+			got := Word(tc.have)
+			got.Sext(tc.bits)
 
 			if got != Word(tc.want) {
 				t.Errorf("got: %016b want: %016b", got, tc.want)

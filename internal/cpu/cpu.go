@@ -38,6 +38,19 @@ func (cpu *LC3) String() string {
 // cells, I/O and instructions all work on 16-bit values.
 type Word uint16
 
+func (w Word) String() string {
+	return fmt.Sprintf("%0#x", uint16(w))
+}
+
+// Sext sign-extends the lower n bits in place.
+func (w *Word) Sext(n uint8) {
+	if n > 15 {
+		panic("n >= 16")
+	}
+	ans := int16(*w) << (16 - n) >> (16 - n)
+	*w = Word(uint16(ans))
+}
+
 // Registers are used by the CPU to store values for an operation.
 type Register Word
 
@@ -80,16 +93,16 @@ func (c Condition) String() string {
 		i, c.Positive(), c.Negative(), c.Zero())
 }
 
-func (c *Condition) Update(a Word) {
+func (c *Condition) Update(reg Register) {
 	switch {
-	case a == 0:
+	case reg == 0:
 		*c = ConditionZero
-	case a&0x8000 == 0:
+	case reg&0x8000 == 0:
 		*c = ConditionPositive
-	case a&0x8000 != 0:
+	case reg&0x8000 != 0:
 		*c = ConditionNegative
 	default:
-		panic("no")
+		panic("unreachable")
 	}
 }
 
@@ -111,9 +124,9 @@ type RegisterFile [NumRegisters]Register
 func (rf *RegisterFile) String() string {
 	b := strings.Builder{}
 	for i := 0; i < len(rf)/2; i++ {
-		fmt.Fprintf(&b, "R%d: %s\tR%d: %s\n", i, rf[i], i+len(rf)/2, rf[i+len(rf)/2])
+		fmt.Fprintf(&b, "R%d: %s\tR%d: %s\n",
+			i, rf[i], i+len(rf)/2, rf[i+len(rf)/2])
 	}
-
 	return b.String()
 }
 
