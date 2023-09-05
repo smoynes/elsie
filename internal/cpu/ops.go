@@ -2,17 +2,34 @@ package cpu
 
 type Opcode uint8
 
+func (o Opcode) String() string {
+	switch o {
+	case OpcodeBR:
+		return "BR"
+	case OpcodeNOT:
+		return "NOT"
+	case OpcodeAND:
+		return "AND"
+	case OpcodeADD:
+		return "ADD"
+	case OpcodeLD:
+		return "LD"
+	case OpcodeReserved:
+		return "RESERVED"
+	}
+	return "UKNWN"
+}
+
 type Operation interface {
 	opcode() Opcode
 }
 
 var _ Operation = &br{}
 
-// BR: Conditional branch
-// [15] 0000 [11] (NZP) [8] (PCOFFSET9) [0]
-
 const OpcodeBR = Opcode(0b0000)
 
+// BR: Conditional branch
+// [15] 0000 [11] (NZP) [8] (PCOFFSET9) [0]
 type br struct {
 	nzp    Condition
 	offset Word
@@ -29,7 +46,7 @@ func (br *br) Decode(ins Instruction) {
 }
 
 func (br *br) Execute(cpu *LC3) {
-	if br.nzp&cpu.Proc.Cond != 0x0 {
+	if br.nzp&cpu.Cond != 0x0 {
 		cpu.PC = ProgramCounter(int16(cpu.PC) + int16(br.offset))
 	}
 }
@@ -55,9 +72,9 @@ func (n *not) Decode(ins Instruction) {
 }
 
 func (n *not) Execute(cpu *LC3) {
-	r := cpu.Proc.Reg[n.src] ^ 0xffff
-	cpu.Proc.Reg[n.dest] = r
-	cpu.Proc.Cond.Update(r)
+	r := cpu.Reg[n.src] ^ 0xffff
+	cpu.Reg[n.dest] = r
+	cpu.Cond.Update(r)
 }
 
 // AND: Bitwise AND binary operator (register mode)
@@ -83,10 +100,10 @@ func (a *and) Decode(ins Instruction) {
 }
 
 func (a *and) Execute(cpu *LC3) {
-	r := cpu.Proc.Reg[a.sr1]
-	r = r & cpu.Proc.Reg[a.sr2]
-	cpu.Proc.Reg[a.dest] = r
-	cpu.Proc.Cond.Update(r)
+	r := cpu.Reg[a.sr1]
+	r = r & cpu.Reg[a.sr2]
+	cpu.Reg[a.dest] = r
+	cpu.Cond.Update(r)
 }
 
 // AND: Bitwise AND binary operator (immediate mode)
@@ -113,10 +130,10 @@ func (a *andImm) Decode(ins Instruction) {
 }
 
 func (a *andImm) Execute(cpu *LC3) {
-	r := cpu.Proc.Reg[a.sr]
+	r := cpu.Reg[a.sr]
 	r = r & Register(a.lit)
-	cpu.Proc.Reg[a.dr] = r
-	cpu.Proc.Cond.Update(r)
+	cpu.Reg[a.dr] = r
+	cpu.Cond.Update(r)
 }
 
 // RES: Reserved operator
@@ -127,25 +144,116 @@ func (r *reserved) opcode() Opcode {
 	return OpcodeReserved
 }
 
-func (o Opcode) String() string {
-	switch o {
-	case OpcodeBR:
-		return "BR"
-	case OpcodeNOT:
-		return "NOT"
-	case OpcodeAND:
-		return "AND"
-	case OpcodeReserved:
-		return "RESERVED"
+const OpcodeADD = Opcode(0b0001)
+
+// ADD: Arithmetic addition operator (register mode)
+// [15] 0001 [11] (DR) [7] (SR1) [5] 0 [5] 00 [2] (SR2) [0]
+type add struct {
+	dr  GPR
+	sr1 GPR
+	sr2 GPR
+}
+
+func (a *add) opcode() Opcode {
+	return OpcodeADD
+}
+
+var (
+	_ decodable  = &add{}
+	_ executable = &add{}
+)
+
+func (a *add) Decode(ins Instruction) {
+	*a = add{
+		dr:  GPR(ins & 0x0e00 >> 9),
+		sr1: GPR(ins & 0x1d0 >> 6),
+		sr2: GPR(ins & 0x007),
 	}
-	return "UKNWN"
+}
+
+func (a *add) Execute(cpu *LC3) {
+	r := Register(int16(cpu.Reg[a.sr1]) + int16(cpu.Reg[a.sr2]))
+	cpu.Reg[a.dr] = r
+	cpu.Cond.Update(r)
+}
+
+// ADD: Arithmetic addition operator (immediate mode)
+// [15] 0001 [11] (DR) [7] (SR1) [5] 1 [5] IMM5 [0]
+type addImm struct {
+	dr  GPR
+	sr  GPR
+	lit Word
+}
+
+func (a *addImm) opcode() Opcode {
+	return OpcodeADD
+}
+
+var (
+	_ decodable  = &addImm{}
+	_ executable = &addImm{}
+)
+
+func (a *addImm) Decode(ins Instruction) {
+	*a = addImm{
+		dr:  GPR(ins & 0x0e00 >> 9),
+		sr:  GPR(ins & 0x1d0 >> 6),
+		lit: Word(ins & 0x01f),
+	}
+	a.lit.Sext(5)
+}
+
+func (a *addImm) Execute(cpu *LC3) {
+	r := Register(int16(cpu.Reg[a.sr]) + int16(a.lit))
+	cpu.Reg[a.dr] = r
+	cpu.Cond.Update(r)
+}
+
+const OpcodeLD = Opcode(0b0010)
+
+// LD: Load word from memory
+// [15] 0010 [12] (DR) [9] PCOFFSET9 [0]
+type ld struct {
+	dr     GPR
+	offset Word
+	addr   Word
+}
+
+var (
+	_ decodable   = &ld{}
+	_ addressable = &ld{}
+	_ fetchable   = &ld{}
+	_ executable  = &ld{}
+)
+
+func (ld) opcode() Opcode {
+	return OpcodeLD
+}
+
+func (op *ld) Decode(ins Instruction) {
+	*op = ld{
+		dr:     GPR(ins & 0x0e00 >> 9),
+		offset: Word(ins & 0x01ff),
+	}
+	op.offset.Sext(9)
+}
+
+func (op *ld) EvalAddress(cpu *LC3) {
+	op.addr = Word(int16(cpu.PC) + int16(op.offset))
+}
+
+func (op *ld) FetchOperands(cpu *LC3) {
+	r := Register(cpu.Mem[op.addr])
+	cpu.Reg[op.dr] = r
+}
+
+func (op *ld) Execute(cpu *LC3) {
+	cpu.Cond.Update(cpu.Reg[op.dr])
 }
 
 const (
 	OpcodeJMP      = Opcode(0b1100)
 	OpcodeJSR      = Opcode(0b0100)
-	OpcodeADD      = Opcode(0b0001)
-	OpcodeLD       = Opcode(0b0010)
 	OpcodeLDI      = Opcode(0b1010)
 	OpcodeLEA      = Opcode(0b1110)
 	OpcodeRET      = Opcode(0b1100)

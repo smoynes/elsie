@@ -3,7 +3,6 @@ package cpu
 
 import (
 	"fmt"
-	"math"
 	"strings"
 )
 
@@ -16,8 +15,11 @@ type LC3 struct {
 	// Instruction register.
 	IR Instruction
 
-	// Processing unit.
-	Proc Processor
+	// Condition register.
+	Cond Condition
+
+	// General purpose registers.
+	Reg RegisterFile
 
 	// Addressable memory.
 	Mem Memory
@@ -26,12 +28,12 @@ type LC3 struct {
 func New() *LC3 {
 	cpu := LC3{}
 	cpu.PC = 0x3000
-	cpu.Proc.Cond = ConditionZero
+	cpu.Cond = ConditionZero
 	return &cpu
 }
 
 func (cpu *LC3) String() string {
-	return fmt.Sprintf("PC: %s IR: %s COND: %s", cpu.PC, cpu.IR, cpu.Proc.Cond)
+	return fmt.Sprintf("PC: %s IR: %s COND: %s", cpu.PC, cpu.IR, cpu.Cond)
 }
 
 // Words are the base size of data at which the CPU operates. Registers, memory
@@ -39,7 +41,7 @@ func (cpu *LC3) String() string {
 type Word uint16
 
 func (w Word) String() string {
-	return fmt.Sprintf("%0#x", uint16(w))
+	return fmt.Sprintf("%0#4x", uint16(w))
 }
 
 // Sext sign-extends the lower n bits in place.
@@ -55,30 +57,20 @@ func (w *Word) Sext(n uint8) {
 type Register Word
 
 func (r Register) String() string {
-	return fmt.Sprintf("%0#4x", uint16(r))
+	return Word(r).String()
 }
 
 // ProgramCounter is a special-purpose register that points to the next instruction in memory.
 type ProgramCounter Register
 
 func (p ProgramCounter) String() string {
-	return Register(p).String()
-}
-
-// Processor is the processing unit of the CPU.
-type Processor struct {
-	// Condition register.
-	Cond Condition
-
-	// General purpose registers.
-	Reg RegisterFile
+	return Word(p).String()
 }
 
 // Condition is a special-purpose register that it not directly usable by
-// programs. It stores the positive, negative, and zero properties of computed
-// values, only one of which may be true. The Condition register represents the
-// value as 3-bit vector of {P, N, Z}; only the bottom three bits of the
-// register are used.
+// programs. It is a 3-bit vector {Z, N, P} that stores the zero, negative and
+// positive properties, respectively; only the bottom bits of the register are
+// used.
 type Condition Register
 
 const (
@@ -107,15 +99,29 @@ func (c *Condition) Update(reg Register) {
 }
 
 func (c Condition) Positive() bool {
-	return c&ConditionPositive > 0x0
+	return c&ConditionPositive != 0
 }
 
 func (c Condition) Negative() bool {
-	return c&ConditionNegative > 0
+	return c&ConditionNegative != 0
 }
 
 func (c Condition) Zero() bool {
-	return c&ConditionZero > 0
+	return c&ConditionZero != 0
+}
+
+// Instruction is a 16-bit value that encodes a single CPU operation. The LS-3
+// ISA has 15 distinct instructions (and one reserved value that is undefined).
+// The top 4 bits of an instruction define the opcode; the remaining bits are
+// used for operands and flags.
+type Instruction Register
+
+func (i Instruction) String() string {
+	return fmt.Sprintf("%0#4x (OP: %s)", Word(i), i.Opcode())
+}
+
+func (i Instruction) Opcode() Opcode {
+	return Opcode(i >> 12)
 }
 
 // Set of general purpose registers.
@@ -150,14 +156,4 @@ const (
 
 func (r GPR) String() string {
 	return Register(r).String()
-}
-
-// Number of memory addresses: 2^16 values, i.e. {0x0000, ..., 0xFFFF}
-const AddressSpace = math.MaxUint16
-
-// Addressable Memory: 16-bit words with an address space of 16 bits.
-type Memory [AddressSpace]Word
-
-func (mem *Memory) Load(addr Word) Word {
-	return mem[addr]
 }

@@ -22,7 +22,7 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		cpu := New()
 		cpu.Mem[cpu.PC] = 0b0000_010_0_0000_0111
-		cpu.Proc.Cond = ConditionZero
+		cpu.Cond = ConditionZero
 
 		err := cpu.Execute()
 		if err != nil {
@@ -37,8 +37,8 @@ func TestInstructions(t *testing.T) {
 			t.Errorf("PC incorrect, want: %0b, got: %0b", 0x3000+0x0008, cpu.PC)
 		}
 
-		if cpu.Proc.Cond != ConditionZero {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionZero, cpu.Proc.Cond)
+		if cpu.Cond != ConditionZero {
+			t.Errorf("cond incorrect, want: %s, got: %s", ConditionZero, cpu.Cond)
 		}
 	})
 
@@ -46,7 +46,7 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem[cpu.PC] = 0b0000_111_1_1111_0111
-		cpu.Proc.Cond = ConditionZero
+		cpu.Cond = ConditionZero
 
 		err := cpu.Execute()
 		if err != nil {
@@ -61,15 +61,15 @@ func TestInstructions(t *testing.T) {
 			t.Errorf("PC incorrect, want: %0b, got: %0b", 0x3000+1-0x0009, cpu.PC)
 		}
 
-		if cpu.Proc.Cond != ConditionZero {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionZero, cpu.Proc.Cond)
+		if cpu.Cond != ConditionZero {
+			t.Errorf("cond incorrect, want: %s, got: %s", ConditionZero, cpu.Cond)
 		}
 	})
 
 	t.Run("NOT", func(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
-		cpu.Proc.Reg[R0] = 0b0101_1010_1111_0000
+		cpu.Reg[R0] = 0b0101_1010_1111_0000
 		cpu.Mem[cpu.PC] = 0b1001_000_000_111111
 
 		err := cpu.Execute()
@@ -81,12 +81,12 @@ func TestInstructions(t *testing.T) {
 			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, OpcodeNOT, op)
 		}
 
-		if cpu.Proc.Reg[R0] != 0b1010_0101_0000_1111 {
-			t.Errorf("r0 incorrect, want: %0b, got: %0b", 0b1010_0101_0000_1111, cpu.Proc.Reg[R0])
+		if cpu.Reg[R0] != 0b1010_0101_0000_1111 {
+			t.Errorf("r0 incorrect, want: %0b, got: %0b", 0b1010_0101_0000_1111, cpu.Reg[R0])
 		}
 
-		if cpu.Proc.Cond != ConditionNegative {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionNegative, cpu.Proc.Cond)
+		if cpu.Cond != ConditionNegative {
+			t.Errorf("cond incorrect, want: %s, got: %s", ConditionNegative, cpu.Cond)
 		}
 	})
 
@@ -94,52 +94,28 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem[cpu.PC] = 0b0101_000_000_0_00_001
-		cpu.Proc.Reg[R0] = 0b0101_1010_1111_1111
-		cpu.Proc.Reg[R1] = 0x00f0
+		cpu.Reg[R0] = 0b0101_1010_1111_1111
+		cpu.Reg[R1] = 0x00f0
 
 		err := cpu.Execute()
 		if err != nil {
 			t.Error(err)
 		}
 
-		if cpu.Proc.Reg[R0] != 0x00f0 {
-			t.Errorf("R0 incorrect, want: %0#16b, got: %0#b", 0x0000, cpu.Proc.Reg[R0])
+		if cpu.Reg[R0] != 0x00f0 {
+			t.Errorf("R0 incorrect, want: %0#16b, got: %0#b", 0x0000, cpu.Reg[R0])
 		}
 
-		if cpu.Proc.Cond != ConditionPositive {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionPositive, cpu.Proc.Cond)
+		if cpu.Cond != ConditionPositive {
+			t.Errorf("cond incorrect, want: %s, got: %s", ConditionPositive, cpu.Cond)
 		}
 	})
 
 	t.Run("ANDIMM", func(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
-		cpu.Mem[cpu.PC] = 0b0101_000_000_1_00101
-		cpu.Proc.Reg[R0] = 0b0101_1010_1111_1111
-
-		err := cpu.Execute()
-		if err != nil {
-			t.Error(err)
-		}
-
-		if op := cpu.IR.Opcode(); op != OpcodeAND {
-			t.Errorf("instr: %s, want: %s, got: %s", cpu.IR, OpcodeAND, op)
-		}
-
-		if cpu.Proc.Reg[R0] != 0x0005 {
-			t.Errorf("r0 incorrect, want: %0#4x, got: %s", uint16(0x0005), cpu.Proc.Reg[R0])
-		}
-
-		if !cpu.Proc.Cond.Positive() {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionPositive, cpu.Proc.Cond)
-		}
-	})
-
-	t.Run("ANDIMM SEXT", func(t *testing.T) {
-		t.Parallel()
-		var cpu *LC3 = New()
 		cpu.Mem[cpu.PC] = 0b0101_000_000_1_10101
-		cpu.Proc.Reg[R0] = 0b0101_1010_1111_1111
+		cpu.Reg[R0] = 0b0101_1010_1111_1111
 
 		err := cpu.Execute()
 		if err != nil {
@@ -150,15 +126,108 @@ func TestInstructions(t *testing.T) {
 			t.Errorf("instr: %s, want: %04b, got: %04b", cpu.IR, OpcodeAND, op)
 		}
 
-		if cpu.Proc.Reg[R0] != 0x5af5 {
-			t.Errorf("r0 incorrect, want: %016b, got: %016b", 0x5af5, cpu.Proc.Reg[R0])
+		if cpu.Reg[R0] != 0x5af5 {
+			t.Errorf("r0 incorrect, want: %016b, got: %016b", 0x5af5, cpu.Reg[R0])
 		}
 
-		if !cpu.Proc.Cond.Positive() {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionPositive, cpu.Proc.Cond)
+		if !cpu.Cond.Positive() {
+			t.Errorf("cond incorrect, want: %s, got: %s", ConditionPositive, cpu.Cond)
 		}
 	})
 
+	t.Run("ADD", func(t *testing.T) {
+		t.Parallel()
+		var cpu *LC3 = New()
+		cpu.Mem[cpu.PC] = 0b0001_000_000_0_00001
+		cpu.Reg[R0] = 0
+		cpu.Reg[R1] = 1
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeADD {
+			t.Errorf("instr: %s, want: %04b, got: %04b", cpu.IR, OpcodeAND, op)
+		}
+
+		oper := cpu.Decode()
+		t.Logf("oper: %#+v", oper)
+
+		if cpu.Reg[R0] != 1 {
+			t.Errorf("r0 incorrect, want: %016b, got: %016b", 1, cpu.Reg[R0])
+		}
+
+		if !cpu.Cond.Positive() {
+			t.Errorf("cond incorrect, want: %s, got: %s", ConditionPositive, cpu.Cond)
+		}
+	})
+
+	t.Run("ADDIMM", func(t *testing.T) {
+		t.Parallel()
+		var cpu *LC3 = New()
+		cpu.Mem[cpu.PC] = 0b0001_000_000_1_10000
+		cpu.Reg[R0] = 0
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeADD {
+			t.Errorf("instr: %s, want: %04b, got: %04b",
+				cpu.IR, OpcodeAND, op)
+		}
+
+		oper := cpu.Decode()
+		t.Logf("oper: %#+v", oper)
+
+		if cpu.Reg[R0] != 0xfff0 {
+			t.Errorf("r0 incorrect, want: %d (%s), got: %d (%s)",
+				Register(0xfff0), Register(0xfff0),
+				cpu.Reg[R0], cpu.Reg[R0])
+		}
+
+		if !cpu.Cond.Negative() {
+			t.Errorf("cond incorrect, want: %s, got: %s",
+				ConditionNegative, cpu.Cond)
+		}
+	})
+
+	t.Run("LD", func(t *testing.T) {
+		t.Parallel()
+		var cpu *LC3 = New()
+		cpu.PC = 0x00ff
+		cpu.Reg[R2] = 0xcafe
+		cpu.Mem[cpu.PC] = 0b0010_010_011000110
+		cpu.Mem[0x0100+0x00c6] = 0x0f00
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeLD {
+			t.Errorf("instr: %s, want: %04b, got: %04b",
+				cpu.IR, OpcodeLD, op)
+		}
+
+		if cpu.Reg[R2] != 0x0f00 {
+			t.Errorf("R2 incorrect, want: %d (%s), got: %d (%s)",
+				Register(0x0f00), Register(0x0f00),
+				cpu.Reg[R2], cpu.Reg[R2])
+		}
+
+		if !cpu.Cond.Positive() {
+			t.Errorf("cond incorrect, want: %s, got: %s",
+				ConditionPositive, cpu.Cond)
+		}
+
+		oper := cpu.Decode().(*ld)
+		oper.EvalAddress(cpu)
+		oper.FetchOperands(cpu)
+		t.Logf("oper: %#+v", oper)
+	})
 }
 
 func TestSext(t *testing.T) {
