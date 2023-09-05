@@ -29,9 +29,7 @@ func (br *br) Decode(ins Instruction) {
 }
 
 func (br *br) Execute(cpu *LC3) {
-	if br.nzp.Negative() && cpu.Proc.Cond.Negative() ||
-		br.nzp.Zero() && cpu.Proc.Cond.Zero() ||
-		br.nzp.Positive() && cpu.Proc.Cond.Positive() {
+	if br.nzp&cpu.Proc.Cond != 0x0 {
 		cpu.PC = ProgramCounter(int16(cpu.PC) + int16(br.offset))
 	}
 }
