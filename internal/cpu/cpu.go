@@ -117,7 +117,7 @@ func (c Condition) Zero() bool {
 type Instruction Register
 
 func (i Instruction) String() string {
-	return fmt.Sprintf("%0#4x (OP: %s)", Word(i), i.Opcode())
+	return fmt.Sprintf("%s (OP: %s)", Word(i), i.Opcode())
 }
 
 func (i Instruction) Opcode() Opcode {

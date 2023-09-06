@@ -7,7 +7,6 @@ import (
 
 func TestInstructions(t *testing.T) {
 	t.Run("Reserved", func(t *testing.T) {
-		t.Parallel()
 		var instr Instruction = 0b11010011_10100111
 		cpu := New()
 		cpu.IR = instr
@@ -19,7 +18,6 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("BR", func(t *testing.T) {
-		t.Parallel()
 		cpu := New()
 		cpu.Mem[cpu.PC] = 0b0000_010_0_0000_0111
 		cpu.Cond = ConditionZero
@@ -43,7 +41,6 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("BRnzp", func(t *testing.T) {
-		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem[cpu.PC] = 0b0000_111_1_1111_0111
 		cpu.Cond = ConditionZero
@@ -67,7 +64,6 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("NOT", func(t *testing.T) {
-		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Reg[R0] = 0b0101_1010_1111_0000
 		cpu.Mem[cpu.PC] = 0b1001_000_000_111111
@@ -91,7 +87,6 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("AND", func(t *testing.T) {
-		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem[cpu.PC] = 0b0101_000_000_0_00_001
 		cpu.Reg[R0] = 0b0101_1010_1111_1111
@@ -112,7 +107,6 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("ANDIMM", func(t *testing.T) {
-		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem[cpu.PC] = 0b0101_000_000_1_10101
 		cpu.Reg[R0] = 0b0101_1010_1111_1111
@@ -136,7 +130,6 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("ADD", func(t *testing.T) {
-		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem[cpu.PC] = 0b0001_000_000_0_00001
 		cpu.Reg[R0] = 0
@@ -164,7 +157,6 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("ADDIMM", func(t *testing.T) {
-		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem[cpu.PC] = 0b0001_000_000_1_10000
 		cpu.Reg[R0] = 0
@@ -195,7 +187,6 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("LD", func(t *testing.T) {
-		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
 		cpu.Reg[R2] = 0xcafe
@@ -228,6 +219,105 @@ func TestInstructions(t *testing.T) {
 		oper.FetchOperands(cpu)
 		t.Logf("oper: %#+v", oper)
 	})
+
+	t.Run("JMP", func(t *testing.T) {
+		var cpu *LC3 = New()
+		cpu.PC = 0x00ff
+		cpu.Mem[cpu.PC] = 0b1100_000_111_000000
+		cpu.Reg[R7] = 0x0010
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeJMP {
+			t.Errorf("instr: %s, want: %s, got: %s",
+				cpu.IR, OpcodeJMP, op)
+		}
+
+		if cpu.PC != 0x0010 {
+			t.Errorf("PC incorrect, want: %d (%s), got: %d (%s)",
+				Register(0x0010), Register(0x0010),
+				cpu.PC, cpu.PC)
+		}
+
+		oper := cpu.Decode().(*jmp)
+		oper.Execute(cpu)
+		t.Logf("oper: %#+v", oper)
+	})
+
+	t.Run("JSRR", func(t *testing.T) {
+		var cpu *LC3 = New()
+		cpu.PC = 0x0400
+		cpu.Mem[cpu.PC] = 0b0100_0_00_100_000000
+		cpu.Reg[R4] = 0x0300
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeJSR {
+			t.Errorf("instr: %s, want: %s, got: %s",
+				cpu.IR, OpcodeJSR, op)
+		}
+
+		if cpu.PC != 0x0300 {
+			t.Errorf("PC incorrect, want: %d (%s), got: %d (%s)",
+				Register(0x0300), Register(0x0300),
+				cpu.PC, cpu.PC)
+		}
+
+		if cpu.Reg[R7] != 0x0401 {
+			t.Errorf("R7 incorrect, want: %d (%s), got: %d (%s)",
+				Register(0x0401), Register(0x0401),
+				cpu.PC, cpu.PC)
+		}
+
+		oper := cpu.Decode().(*jsrr)
+		t.Logf("oper: %#+v", oper)
+	})
+
+	t.Run("LDI", func(t *testing.T) {
+		var cpu *LC3 = New()
+		cpu.PC = 0x0400
+		cpu.Mem[cpu.PC] = 0xa001
+		addr := Word(0x0402)
+		cpu.Mem[addr] = 0xdad0
+		cpu.Reg[R0] = 0xffff
+		cpu.Mem[0xdad0] = 0xcafe
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Logf("mem: %0#v", cpu.Mem[0x0402])
+
+		if op := cpu.IR.Opcode(); op != OpcodeLDI {
+			t.Errorf("IR: %s, want: %s, got: %s",
+				cpu.IR.String(), OpcodeLDI, op)
+		}
+
+		if cpu.PC != 0x0401 {
+			t.Errorf("PC: want: %d (%s), got: %d (%s)",
+				Register(0x0401), Register(0x0401),
+				cpu.PC, cpu.PC)
+		}
+
+		if cpu.Reg[R0] != 0xcafe {
+			t.Errorf("R0 incorrect, want: %d (%s), got: %d (%s)",
+				Register(0xdad0), Register(0xdad0),
+				cpu.Reg[R0], cpu.Reg[R0])
+		}
+
+		if !cpu.Cond.Negative() {
+			t.Errorf("COND incorrect, want: %s, got: %s",
+				ConditionNegative, cpu.Cond)
+		}
+
+	})
+
 }
 
 func TestSext(t *testing.T) {

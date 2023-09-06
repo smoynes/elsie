@@ -33,26 +33,36 @@ func (cpu *LC3) Decode() Operation {
 	var op Operation
 
 	switch cpu.IR.Opcode() {
-	case OpcodeReserved:
-		op = &reserved{}
+	case OpcodeBR:
+		op = &br{}
 	case OpcodeAND:
 		if (cpu.IR & 0x0020) != 0 {
 			op = &andImm{}
 		} else {
 			op = &and{}
 		}
-	case OpcodeNOT:
-		op = &not{}
-	case OpcodeBR:
-		op = &br{}
 	case OpcodeADD:
 		if (cpu.IR & 0x0020) != 0 {
 			op = &addImm{}
 		} else {
 			op = &add{}
 		}
+	case OpcodeNOT:
+		op = &not{}
 	case OpcodeLD:
 		op = &ld{}
+	case OpcodeLDI:
+		op = &ldi{}
+	case OpcodeJMP:
+		op = &jmp{}
+	case OpcodeJSR:
+		if (cpu.IR & 0x0800) == 0 {
+			op = &jsrr{}
+		} else {
+			op = &jsr{}
+		}
+	case OpcodeReserved:
+		op = &reserved{}
 	default:
 		panic("decode error")
 	}

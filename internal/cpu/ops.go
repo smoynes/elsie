@@ -14,6 +14,10 @@ func (o Opcode) String() string {
 		return "ADD"
 	case OpcodeLD:
 		return "LD"
+	case OpcodeLDI:
+		return "LDI"
+	case OpcodeJMP:
+		return "JMP"
 	case OpcodeReserved:
 		return "RESERVED"
 	}
@@ -211,7 +215,7 @@ func (a *addImm) Execute(cpu *LC3) {
 
 const OpcodeLD = Opcode(0b0010)
 
-// LD: Load word from memory
+// LD: Load word from memory.
 // [15] 0010 [12] (DR) [9] PCOFFSET9 [0]
 type ld struct {
 	dr     GPR
@@ -251,10 +255,134 @@ func (op *ld) Execute(cpu *LC3) {
 	cpu.Cond.Update(cpu.Reg[op.dr])
 }
 
+// LDI: Load indirect
+//
+// |  1010 |  DR  | PCOFFSET9 |
+// |-------+------+-----------|
+// | 15 12 | 11 9 |8         0|
+const OpcodeLDI = Opcode(0b1010)
+
+type ldi struct {
+	dr     GPR
+	offset Word
+	addr   Word
+}
+
+var (
+	_ decodable   = &ldi{}
+	_ addressable = &ldi{}
+	_ fetchable   = &ldi{}
+	_ executable  = &ldi{}
+)
+
+func (op *ldi) opcode() Opcode { return OpcodeLDI }
+
+func (op *ldi) Decode(ins Instruction) {
+	*op = ldi{
+		dr:     GPR(ins & 0x01d0 >> 9),
+		offset: Word(ins & 0x001ff),
+	}
+	op.offset.Sext(9)
+}
+func (op *ldi) EvalAddress(cpu *LC3) {
+	op.addr = Word(int16(cpu.PC) + int16(op.offset))
+}
+
+func (op *ldi) FetchOperands(cpu *LC3) {
+	a := cpu.Mem[op.addr]
+	op.addr = cpu.Mem[a]
+}
+
+func (op *ldi) Execute(cpu *LC3) {
+	r := Register(op.addr)
+	cpu.Reg[op.dr] = r
+	cpu.Cond.Update(r)
+}
+
+// JMP: Unconditional branch
+// [15] 1100 [12] 000 [9] SR [6] 000000 [0]
+type jmp struct {
+	sr GPR
+}
+
+const OpcodeJMP = Opcode(0b1100)
+
+var (
+	_ decodable  = &jmp{}
+	_ executable = &jmp{}
+)
+
+func (jmp) opcode() Opcode {
+	return OpcodeJMP
+}
+
+func (op *jmp) Decode(ins Instruction) {
+	*op = jmp{
+		sr: GPR(ins & 0x01e0 >> 6),
+	}
+}
+
+func (op *jmp) Execute(cpu *LC3) {
+	pc := ProgramCounter(cpu.Reg[op.sr])
+	cpu.PC = pc
+}
+
+// JSR: Jump to subroutine (relative mode)
+// [15] 0100 [12] 1 [11] PCOFFSET11 [0]
+type jsr struct {
+	offset Word
+}
+
+const OpcodeJSR = Opcode(0b0100)
+
+var (
+	_ decodable  = &jsr{}
+	_ executable = &jsr{}
+)
+
+func (op *jsr) opcode() Opcode { return OpcodeJSR }
+
+func (op *jsr) Decode(ins Instruction) {
+	*op = jsr{
+		offset: Word(ins & 0x07ff),
+	}
+	op.offset.Sext(11)
+}
+
+func (op *jsr) Execute(cpu *LC3) {
+	ret := Word(cpu.PC)
+	pc := ProgramCounter(int16(cpu.PC) + int16(op.offset))
+	cpu.PC = pc
+	cpu.Reg[R7] = Register(ret)
+}
+
+// JSRR: Jump to subroutine (register mode)
+// [15] 0100 [12] 0 [11] (SR) [7] 000000 [0]
+type jsrr struct {
+	sr GPR
+}
+
+var (
+	_ decodable  = &jsrr{}
+	_ executable = &jsrr{}
+)
+
+func (op *jsrr) opcode() Opcode { return OpcodeJSR }
+
+func (op *jsrr) Decode(ins Instruction) {
+	*op = jsrr{
+		sr: GPR(ins & 0x01d0 >> 6),
+	}
+}
+
+func (op *jsrr) Execute(cpu *LC3) {
+	ret := Word(cpu.PC)
+	pc := ProgramCounter(cpu.Reg[op.sr])
+	cpu.PC = pc
+	cpu.Reg[R7] = Register(ret)
+}
+
 const (
-	OpcodeJMP      = Opcode(0b1100)
-	OpcodeJSR      = Opcode(0b0100)
-	OpcodeLDI      = Opcode(0b1010)
 	OpcodeLEA      = Opcode(0b1110)
 	OpcodeRET      = Opcode(0b1100)
 	OpcodeRTI      = Opcode(0b1000)
