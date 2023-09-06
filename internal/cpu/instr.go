@@ -1,5 +1,71 @@
 package cpu
 
+import (
+	"fmt"
+)
+
+// Instruction is a 16-bit value that encodes a single CPU operation. The LS-3
+// ISA has 15 distinct instructions (and one reserved value that is undefined).
+// The top 4 bits of an instruction define the opcode; the remaining bits are
+// used for operands and flags.
+type Instruction Register
+
+func (i Instruction) String() string {
+	return fmt.Sprintf("%s (OP: %s)", Word(i), i.Opcode())
+}
+
+func (i Instruction) Opcode() Opcode {
+	return Opcode(i >> 12)
+}
+
+func (i Instruction) Cond() Condition {
+	return Condition(i & 0x0e00 >> 9)
+}
+
+func (i Instruction) DR() GPR {
+	return GPR(i & 0x0e00 >> 9)
+}
+
+func (i Instruction) SR1() GPR {
+	return GPR(i & 0x01a0 >> 6)
+}
+
+func (i Instruction) SR2() GPR {
+	return GPR(i & 0x0003)
+}
+
+type Offset uint8
+
+const (
+	PCOFFSET11 Offset = iota
+	PCOFFSET9
+	PCOFFSET5
+)
+
+func (i Instruction) Offset(n Offset) Word {
+	var w Word
+	switch n {
+	case PCOFFSET11:
+		w = Word(i & 0x03ff)
+		w.Sext(11)
+	case PCOFFSET9:
+		w = Word(i & 0x01ff)
+		w.Sext(9)
+	case PCOFFSET5:
+		w = Word(i & 0x001f)
+		w.Sext(5)
+	default:
+		panic("unexpected offset")
+	}
+	return w
+}
+
+func (i Instruction) Imm() Word {
+	w := Word(i & 0x001f)
+	w.Sext(5)
+	return w
+}
+
 // Execute runs a single instruction cycle.
 func (cpu *LC3) Execute() error {
 	cpu.Fetch()

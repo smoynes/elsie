@@ -28,25 +28,30 @@ type Operation interface {
 	opcode() Opcode
 }
 
-var _ Operation = &br{}
-
-const OpcodeBR = Opcode(0b0000)
-
 // BR: Conditional branch
-// [15] 0000 [11] (NZP) [8] (PCOFFSET9) [0]
+//
+// | 0000 | NZP | PCOFFSET9 |
+// |------+-----+-----------|
+// |15  12|11  9|8         0|
 type br struct {
 	nzp    Condition
 	offset Word
 }
+
+const OpcodeBR = Opcode(0b0000)
+
+var (
+	_ decodable  = &br{}
+	_ executable = &br{}
+)
 
 func (br *br) opcode() Opcode {
 	return OpcodeBR
 }
 
 func (br *br) Decode(ins Instruction) {
-	br.nzp = Condition(ins & 0x0e00 >> 9)
-	br.offset = Word(ins & 0x01ff)
-	br.offset.Sext(9)
+	br.nzp = ins.Cond()
+	br.offset = ins.Offset(PCOFFSET9)
 }
 
 func (br *br) Execute(cpu *LC3) {
@@ -56,23 +61,31 @@ func (br *br) Execute(cpu *LC3) {
 }
 
 // NOT: Bitwise complement operation
-// [15] 1001 [11] (RSRC) [7] (RDST)  [5] 111111 [0]
-const OpcodeNOT = Opcode(0b1001)
-
+//
+// | 1001 | DR | SR | 1 | 1 1111 |
+// |------+----+----+---+--------|
+// |15  12|11 9|8  6| 5 |4      0|
 type not struct {
 	src  GPR
 	dest GPR
 }
 
-var _ Operation = &not{}
+const OpcodeNOT = Opcode(0b1001)
+
+var (
+	_ decodable  = &not{}
+	_ executable = &not{}
+)
 
 func (n *not) opcode() Opcode {
 	return OpcodeNOT
 }
 
 func (n *not) Decode(ins Instruction) {
-	n.src = GPR(ins & 0x0e00 >> 9)
-	n.dest = GPR(ins & 0x01a0 >> 6)
+	*n = not{
+		src:  ins.SR1(),
+		dest: ins.DR(),
+	}
 }
 
 func (n *not) Execute(cpu *LC3) {
@@ -82,7 +95,10 @@ func (n *not) Execute(cpu *LC3) {
 }
 
 // AND: Bitwise AND binary operator (register mode)
-// [15] 0101 [11] (RDST) [7] (RSRC1) [5] 0 [4] 00 [2] (RSRC2) [0]
+//
+// | 0101 | DR | SR1 | 0 | 00 | SR2 |
+// |------+----+-----+---+----+-----|
+// |15  12|11 9|8   6| 5 |4  3|2   0|
 const OpcodeAND = Opcode(0b0101)
 
 type and struct {
@@ -98,9 +114,9 @@ func (a *and) opcode() Opcode {
 }
 
 func (a *and) Decode(ins Instruction) {
-	a.dest = GPR(ins & 0x0e00 >> 9)
-	a.sr1 = GPR(ins & 0x01d0 >> 6)
-	a.sr2 = GPR(ins & 0x0007)
+	a.dest = ins.DR()
+	a.sr1 = ins.SR1()
+	a.sr2 = ins.SR2()
 }
 
 func (a *and) Execute(cpu *LC3) {
@@ -111,7 +127,10 @@ func (a *and) Execute(cpu *LC3) {
 }
 
 // AND: Bitwise AND binary operator (immediate mode)
-// [15] 0101 [11] (DR) [7] (SR1) [5] 1 [5] (IMM5) [0]
+//
+// | 0101 | DR  | SR | 1 | IMM5 |
+// |------+-----+----+---+------|
+// |15  12|11  9|8  6| 5 |4    0|
 type andImm struct {
 	dr  GPR
 	sr  GPR
@@ -126,11 +145,11 @@ func (a *andImm) opcode() Opcode {
 
 func (a *andImm) Decode(ins Instruction) {
 	*a = andImm{
-		dr:  GPR(ins & 0x0e00 >> 9),
-		sr:  GPR(ins & 0x01d0 >> 6),
-		lit: Word(ins & 0x001f),
+		dr:  ins.DR(),
+		sr:  ins.SR1(),
+		lit: ins.Imm(),
 	}
-	a.lit.Sext(5)
+
 }
 
 func (a *andImm) Execute(cpu *LC3) {
@@ -141,7 +160,10 @@ func (a *andImm) Execute(cpu *LC3) {
 }
 
 // RES: Reserved operator
-// [15] 1101 [11] 0000 0000 0000 [0]
+//
+// | 1101 | 0000 0000 0000 |
+// |------+----------------|
+// |15  12|11             0|
 type reserved struct{}
 
 func (r *reserved) opcode() Opcode {
@@ -169,9 +191,9 @@ var (
 
 func (a *add) Decode(ins Instruction) {
 	*a = add{
-		dr:  GPR(ins & 0x0e00 >> 9),
-		sr1: GPR(ins & 0x1d0 >> 6),
-		sr2: GPR(ins & 0x007),
+		dr:  ins.DR(),
+		sr1: ins.SR1(),
+		sr2: ins.SR2(),
 	}
 }
 
@@ -182,7 +204,10 @@ func (a *add) Execute(cpu *LC3) {
 }
 
 // ADD: Arithmetic addition operator (immediate mode)
-// [15] 0001 [11] (DR) [7] (SR1) [5] 1 [5] IMM5 [0]
+//
+// | 0001 | DR  | SR | 1 | 11111 |
+// |------+-----+----+---+-------|
+// |15  12|11  9|8  6| 5 |4     0|
 type addImm struct {
 	dr  GPR
 	sr  GPR
@@ -200,11 +225,10 @@ var (
 
 func (a *addImm) Decode(ins Instruction) {
 	*a = addImm{
-		dr:  GPR(ins & 0x0e00 >> 9),
-		sr:  GPR(ins & 0x1d0 >> 6),
-		lit: Word(ins & 0x01f),
+		dr:  ins.DR(),
+		sr:  ins.SR1(),
+		lit: ins.Imm(),
 	}
-	a.lit.Sext(5)
 }
 
 func (a *addImm) Execute(cpu *LC3) {
@@ -213,10 +237,11 @@ func (a *addImm) Execute(cpu *LC3) {
 	cpu.Cond.Update(r)
 }
 
-const OpcodeLD = Opcode(0b0010)
-
 // LD: Load word from memory.
-// [15] 0010 [12] (DR) [9] PCOFFSET9 [0]
+//
+// | 0010 | DR  | PCOFFSET9 |
+// |------+-----+---+-------|
+// |15  12|11  9|8         0|
 type ld struct {
 	dr     GPR
 	offset Word
@@ -230,16 +255,17 @@ var (
 	_ executable  = &ld{}
 )
 
+const OpcodeLD = Opcode(0b0010)
+
 func (ld) opcode() Opcode {
 	return OpcodeLD
 }
 
 func (op *ld) Decode(ins Instruction) {
 	*op = ld{
-		dr:     GPR(ins & 0x0e00 >> 9),
-		offset: Word(ins & 0x01ff),
+		dr:     ins.DR(),
+		offset: ins.Offset(PCOFFSET9),
 	}
-	op.offset.Sext(9)
 }
 
 func (op *ld) EvalAddress(cpu *LC3) {
@@ -257,9 +283,9 @@ func (op *ld) Execute(cpu *LC3) {
 
 // LDI: Load indirect
 //
-// |  1010 |  DR  | PCOFFSET9 |
-// |-------+------+-----------|
-// | 15 12 | 11 9 |8         0|
+// | 1010 | DR | PCOFFSET9 |
+// |------+----------------|
+// |15  12|11 9|8         0|
 const OpcodeLDI = Opcode(0b1010)
 
 type ldi struct {
@@ -279,11 +305,11 @@ func (op *ldi) opcode() Opcode { return OpcodeLDI }
 
 func (op *ldi) Decode(ins Instruction) {
 	*op = ldi{
-		dr:     GPR(ins & 0x01d0 >> 9),
-		offset: Word(ins & 0x001ff),
+		dr:     ins.DR(),
+		offset: ins.Offset(PCOFFSET9),
 	}
-	op.offset.Sext(9)
 }
+
 func (op *ldi) EvalAddress(cpu *LC3) {
 	op.addr = Word(int16(cpu.PC) + int16(op.offset))
 }
@@ -300,7 +326,10 @@ func (op *ldi) Execute(cpu *LC3) {
 }
 
 // JMP: Unconditional branch
-// [15] 1100 [12] 000 [9] SR [6] 000000 [0]
+//
+// | 1100 | 000 | SR | 00 00000 |
+// |------+-----+----+----------|
+// |15  12|11  9|8  6|5        0|
 type jmp struct {
 	sr GPR
 }
@@ -328,7 +357,10 @@ func (op *jmp) Execute(cpu *LC3) {
 }
 
 // JSR: Jump to subroutine (relative mode)
-// [15] 0100 [12] 1 [11] PCOFFSET11 [0]
+//
+// | 0100 |  1 | PCOFFSET11 |
+// |------+----+------------|
+// |15  12| 11 |10         0|
 type jsr struct {
 	offset Word
 }
@@ -357,7 +389,10 @@ func (op *jsr) Execute(cpu *LC3) {
 }
 
 // JSRR: Jump to subroutine (register mode)
-// [15] 0100 [12] 0 [11] (SR) [7] 000000 [0]
+//
+// | 0100 |  0 | SR | 00 0000 |
+// |------+----+----+---------|
+// |15  12| 11 |8  6|5       0|
 type jsrr struct {
 	sr GPR
 }
@@ -371,7 +406,7 @@ func (op *jsrr) opcode() Opcode { return OpcodeJSR }
 
 func (op *jsrr) Decode(ins Instruction) {
 	*op = jsrr{
-		sr: GPR(ins & 0x01d0 >> 6),
+		sr: ins.SR1(),
 	}
 }
 

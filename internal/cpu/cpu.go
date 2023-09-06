@@ -110,20 +110,6 @@ func (c Condition) Zero() bool {
 	return c&ConditionZero != 0
 }
 
-// Instruction is a 16-bit value that encodes a single CPU operation. The LS-3
-// ISA has 15 distinct instructions (and one reserved value that is undefined).
-// The top 4 bits of an instruction define the opcode; the remaining bits are
-// used for operands and flags.
-type Instruction Register
-
-func (i Instruction) String() string {
-	return fmt.Sprintf("%s (OP: %s)", Word(i), i.Opcode())
-}
-
-func (i Instruction) Opcode() Opcode {
-	return Opcode(i >> 12)
-}
-
 // Set of general purpose registers.
 type RegisterFile [NumRegisters]Register
 
