@@ -11,7 +11,7 @@ func TestInstructions(t *testing.T) {
 		cpu := New()
 		cpu.IR = instr
 
-		var op Operation = cpu.Decode()
+		var op operation = cpu.Decode()
 		if op.opcode() != OpcodeReserved {
 			t.Errorf("instr: %s, want: %b, got: %b", instr, OpcodeReserved, op)
 		}

@@ -68,11 +68,12 @@ func (p ProgramCounter) String() string {
 }
 
 // Condition is a special-purpose register that it not directly usable by
-// programs. It is a 3-bit vector {Z, N, P} that stores the zero, negative and
+// programs. It is a 3-bit vector {N, Z, P} that stores the zero, negative and
 // positive properties, respectively; only the bottom bits of the register are
 // used.
 type Condition Register
 
+// Valid Condition bits.
 const (
 	ConditionPositive Condition = 1 << iota
 	ConditionZero
@@ -80,11 +81,12 @@ const (
 )
 
 func (c Condition) String() string {
-	i := uint16(c)
-	return fmt.Sprintf("%0#1x (P:%t N:%t Z:%t)",
-		i, c.Positive(), c.Negative(), c.Zero())
+	return fmt.Sprintf("%0#1x (Z:%t N:%t P:%t)",
+		Word(c), c.Zero(), c.Negative(), c.Positive())
 }
 
+// Update sets the condition flags based on the zero, negative, positive
+// attributes of the register value.
 func (c *Condition) Update(reg Register) {
 	switch {
 	case reg == 0:
@@ -98,20 +100,23 @@ func (c *Condition) Update(reg Register) {
 	}
 }
 
+// Positive returns true if the P flag is set.
 func (c Condition) Positive() bool {
 	return c&ConditionPositive != 0
 }
 
+// Negative returns true if the N flag is set.
 func (c Condition) Negative() bool {
 	return c&ConditionNegative != 0
 }
 
+// Zero returns true if the Z flag is set.
 func (c Condition) Zero() bool {
 	return c&ConditionZero != 0
 }
 
 // Set of general purpose registers.
-type RegisterFile [NumRegisters]Register
+type RegisterFile [NumGPR]Register
 
 func (rf *RegisterFile) String() string {
 	b := strings.Builder{}
@@ -137,7 +142,7 @@ const (
 	R7
 
 	// Count of general purpose registers.
-	NumRegisters
+	NumGPR
 )
 
 func (r GPR) String() string {

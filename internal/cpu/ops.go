@@ -1,5 +1,7 @@
 package cpu
 
+// An Opcode identifies the operation to be executed by the CPU. The ISA has 15
+// distinct opcodes (and one reserved value that is undefined).
 type Opcode uint8
 
 func (o Opcode) String() string {
@@ -22,10 +24,6 @@ func (o Opcode) String() string {
 		return "RESERVED"
 	}
 	return "UKNWN"
-}
-
-type Operation interface {
-	opcode() Opcode
 }
 
 // BR: Conditional branch
@@ -107,7 +105,10 @@ type and struct {
 	sr2  GPR
 }
 
-var _ Operation = &and{}
+var (
+	_ decodable  = &and{}
+	_ executable = &and{}
+)
 
 func (a *and) opcode() Opcode {
 	return OpcodeAND
@@ -137,17 +138,20 @@ type andImm struct {
 	lit Word
 }
 
-var _ Operation = &andImm{}
-
 func (a *andImm) opcode() Opcode {
 	return OpcodeAND
 }
+
+var (
+	_ decodable  = &andImm{}
+	_ executable = &andImm{}
+)
 
 func (a *andImm) Decode(ins Instruction) {
 	*a = andImm{
 		dr:  ins.DR(),
 		sr:  ins.SR1(),
-		lit: ins.Imm(),
+		lit: ins.Imm5(),
 	}
 
 }
@@ -159,26 +163,18 @@ func (a *andImm) Execute(cpu *LC3) {
 	cpu.Cond.Update(r)
 }
 
-// RES: Reserved operator
-//
-// | 1101 | 0000 0000 0000 |
-// |------+----------------|
-// |15  12|11             0|
-type reserved struct{}
-
-func (r *reserved) opcode() Opcode {
-	return OpcodeReserved
-}
-
-const OpcodeADD = Opcode(0b0001)
-
 // ADD: Arithmetic addition operator (register mode)
-// [15] 0001 [11] (DR) [7] (SR1) [5] 0 [5] 00 [2] (SR2) [0]
+//
+// | 0001 | DR | SR1 | 000 | SR2 |
+// |------+----+-----+-----+-----|
+// |15  12|11 9|8   6| 5  3|2   0|
 type add struct {
 	dr  GPR
 	sr1 GPR
 	sr2 GPR
 }
+
+const OpcodeADD = Opcode(0b0001)
 
 func (a *add) opcode() Opcode {
 	return OpcodeADD
@@ -227,7 +223,7 @@ func (a *addImm) Decode(ins Instruction) {
 	*a = addImm{
 		dr:  ins.DR(),
 		sr:  ins.SR1(),
-		lit: ins.Imm(),
+		lit: ins.Imm5(),
 	}
 }
 
@@ -415,6 +411,17 @@ func (op *jsrr) Execute(cpu *LC3) {
 	pc := ProgramCounter(cpu.Reg[op.sr])
 	cpu.PC = pc
 	cpu.Reg[R7] = Register(ret)
+}
+
+// RES: Reserved operator
+//
+// | 1101 | 0000 0000 0000 |
+// |------+----------------|
+// |15  12|11             0|
+type reserved struct{}
+
+func (r *reserved) opcode() Opcode {
+	return OpcodeReserved
 }
 
 const (
