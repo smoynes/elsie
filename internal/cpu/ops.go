@@ -18,6 +18,10 @@ func (o Opcode) String() string {
 		return "LD"
 	case OpcodeLDI:
 		return "LDI"
+	case OpcodeLEA:
+		return "LEA"
+	case OpcodeST:
+		return "ST"
 	case OpcodeJMP:
 		return "JMP"
 	case OpcodeReserved:
@@ -321,6 +325,44 @@ func (op *ldi) Execute(cpu *LC3) {
 	cpu.Cond.Update(r)
 }
 
+// LEA: Load effective address
+//
+// | 1110 | DR | PCOFFSET9 |
+// |------+----------------|
+// |15  12|11 9|8         0|
+
+type lea struct {
+	dr     GPR
+	offset Word
+	addr   Word
+}
+
+const OpcodeLEA = Opcode(0b1110)
+
+var (
+	_ decodable   = &lea{}
+	_ addressable = &lea{}
+	_ executable  = &lea{}
+)
+
+func (op *lea) opcode() Opcode { return OpcodeLEA }
+
+func (op *lea) Decode(ins Instruction) {
+	*op = lea{
+		dr:     ins.DR(),
+		offset: ins.Offset(PCOFFSET9),
+	}
+}
+
+func (op *lea) EvalAddress(cpu *LC3) {
+	op.addr = Word(int16(cpu.PC) + int16(op.offset))
+}
+
+func (op *lea) Execute(cpu *LC3) {
+	r := Register(op.addr)
+	cpu.Reg[op.dr] = r
+}
+
 // ST: Store word in memory.
 //
 // | 0011 | SR  | PCOFFSET9 |
@@ -468,7 +510,6 @@ func (r *reserved) opcode() Opcode {
 }
 
 const (
-	OpcodeLEA      = Opcode(0b1110)
 	OpcodeRET      = Opcode(0b1100)
 	OpcodeRTI      = Opcode(0b1000)
 	OpcodeSTI      = Opcode(0b1011)

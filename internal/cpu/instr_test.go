@@ -317,6 +317,34 @@ func TestInstructions(t *testing.T) {
 		}
 	})
 
+	t.Run("LEA", func(t *testing.T) {
+		var cpu *LC3 = New()
+		cpu.PC = 0x0400
+		cpu.Mem[cpu.PC] = 0b1110_000_1_00000000
+		cpu.Reg[R0] = 0xffff
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeLEA {
+			t.Errorf("IR: %s, want: %s, got: %s",
+				cpu.IR.String(), OpcodeLEA, op)
+		}
+
+		if cpu.Reg[R0] != 0x0301 {
+			t.Errorf("R0 incorrect, want: %d (%s), got: %d (%s)",
+				Register(0x0301), Register(0x0301),
+				cpu.Reg[R0], cpu.Reg[R0])
+		}
+
+		if !cpu.Cond.Zero() || cpu.Cond != ConditionZero {
+			t.Errorf("COND incorrect, want: %s, got: %s",
+				ConditionZero, cpu.Cond)
+		}
+	})
+
 	t.Run("ST", func(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
