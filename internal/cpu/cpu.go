@@ -178,13 +178,12 @@ func (c ProcessorStatus) Priority() Priority {
 }
 
 // Priority represents the priority level of a task.
-// TODO: range
 type Priority uint8
 
 const (
-	PriorityLow    Priority = 0x00
-	PriorityNormal Priority = 0x03
-	PriorityHigh   Priority = 0x07
+	PriorityLow    Priority = 0x00 // LOW
+	PriorityNormal Priority = 0x03 // NORM
+	PriorityHigh   Priority = 0x07 // HIGH
 )
 
 // Privilege returns the privilege of the current task.
@@ -197,8 +196,8 @@ type Privilege uint8
 
 // Privilege levels.
 const (
-	PrivilegeSystem Privilege = iota
-	PrivilegeUser
+	PrivilegeSystem Privilege = iota // System
+	PrivilegeUser                    // User
 )
 
 // Set of general purpose registers.
@@ -231,7 +230,3 @@ const (
 	// Count of general purpose registers.
 	NumGPR
 )
-
-func (r GPR) String() string {
-	return Register(r).String()
-}

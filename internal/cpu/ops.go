@@ -4,43 +4,6 @@ package cpu
 // distinct opcodes (and one reserved value that is undefined).
 type Opcode uint8
 
-func (o Opcode) String() string {
-	switch o {
-	case OpcodeRTI:
-		return "RTI"
-	case OpcodeSTI:
-		return "STI"
-	case OpcodeSTR:
-		return "STR"
-	case OpcodeBR:
-		return "BR"
-	case OpcodeNOT:
-		return "NOT"
-	case OpcodeAND:
-		return "AND"
-	case OpcodeADD:
-		return "ADD"
-	case OpcodeLD:
-		return "LD"
-	case OpcodeLDI:
-		return "LDI"
-	case OpcodeLEA:
-		return "LEA"
-	case OpcodeST:
-		return "ST"
-	case OpcodeJMP:
-		return "JMP"
-	case OpcodeRET:
-		return "RET"
-	case OpcodeTRAP:
-		return "TRAP"
-	case OpcodeReserved:
-		return "RESERVED"
-	default:
-		return "UKNWN"
-	}
-}
-
 // BR: Conditional branch
 //
 // | 0000 | NZP | PCOFFSET9 |
@@ -51,7 +14,7 @@ type br struct {
 	offset Word
 }
 
-const OpcodeBR = Opcode(0b0000)
+const OpcodeBR = Opcode(0b0000) // BR
 
 var (
 	_ decodable = &br{}
@@ -82,7 +45,7 @@ type not struct {
 	dest GPR
 }
 
-const OpcodeNOT = Opcode(0b1001)
+const OpcodeNOT = Opcode(0b1001) // NOT
 
 var (
 	_ decodable = &not{}
@@ -110,13 +73,14 @@ func (n *not) Execute(cpu *LC3) {
 // | 0101 | DR | SR1 | 0 | 00 | SR2 |
 // |------+----+-----+---+----+-----|
 // |15  12|11 9|8   6| 5 |4  3|2   0|
-const OpcodeAND = Opcode(0b0101)
 
 type and struct {
 	dest GPR
 	sr1  GPR
 	sr2  GPR
 }
+
+const OpcodeAND = Opcode(0b0101) // AND
 
 var (
 	_ decodable = &and{}
@@ -184,7 +148,7 @@ type add struct {
 	sr2 GPR
 }
 
-const OpcodeADD = Opcode(0b0001)
+const OpcodeADD = Opcode(0b0001) // ADD
 
 func (a *add) opcode() Opcode {
 	return OpcodeADD
@@ -258,7 +222,7 @@ var (
 	_ fetchable   = &ld{}
 )
 
-const OpcodeLD = Opcode(0b0010)
+const OpcodeLD = Opcode(0b0010) // LD
 
 func (ld) opcode() Opcode {
 	return OpcodeLD
@@ -289,13 +253,13 @@ func (op *ld) Execute(cpu *LC3) {
 // | 1010 | DR | PCOFFSET9 |
 // |------+----------------|
 // |15  12|11 9|8         0|
-const OpcodeLDI = Opcode(0b1010)
-
 type ldi struct {
 	dr     GPR
 	offset Word
 	addr   Word
 }
+
+const OpcodeLDI = Opcode(0b1010) // LDI
 
 var (
 	_ decodable   = &ldi{}
@@ -339,7 +303,7 @@ type lea struct {
 	addr   Word
 }
 
-const OpcodeLEA = Opcode(0b1110)
+const OpcodeLEA = Opcode(0b1110) // LEA
 
 var (
 	_ decodable   = &lea{}
@@ -381,7 +345,7 @@ var (
 	_ storable    = &st{}
 )
 
-const OpcodeST = Opcode(0b0011)
+const OpcodeST = Opcode(0b0011) // ST
 
 func (st) opcode() Opcode {
 	return OpcodeST
@@ -421,8 +385,8 @@ type jmp struct {
 }
 
 const (
-	OpcodeJMP = Opcode(0b1100)
-	OpcodeRET = Opcode(0xff)
+	OpcodeJMP = Opcode(0b1100) // JMP
+	OpcodeRET = Opcode(0xff)   // RET
 )
 
 var (
@@ -457,7 +421,7 @@ type jsr struct {
 	offset Word
 }
 
-const OpcodeJSR = Opcode(0b0100)
+const OpcodeJSR = Opcode(0b0100) // JSR
 
 var (
 	_ decodable = &jsr{}
@@ -488,11 +452,13 @@ type jsrr struct {
 	sr GPR
 }
 
+const OpcodeJSRR = Opcode(0xfe) // JSRR
+
 var (
 	_ decodable = &jsrr{}
 )
 
-func (op *jsrr) opcode() Opcode { return OpcodeJSR }
+func (op *jsrr) opcode() Opcode { return OpcodeJSRR }
 
 func (op *jsrr) Decode(ins Instruction) {
 	*op = jsrr{
@@ -516,7 +482,7 @@ type trap struct {
 	vec Word
 }
 
-const OpcodeTRAP = Opcode(0b1111)
+const OpcodeTRAP = Opcode(0b1111) // TRAP
 
 func (op *trap) opcode() Opcode {
 	return OpcodeTRAP
@@ -557,7 +523,7 @@ func (op *trap) Execute(cpu *LC3) {
 // |15  12|11             0|
 type reserved struct{}
 
-const OpcodeReserved = Opcode(0b1101)
+const OpcodeReserved = Opcode(0b1101) // RESV
 
 var _ operation = &reserved{}
 
@@ -571,7 +537,7 @@ func (reserved) Execute(cpu *LC3) {
 }
 
 const (
-	OpcodeRTI = Opcode(0b1000)
-	OpcodeSTI = Opcode(0b1011)
-	OpcodeSTR = Opcode(0b0111)
+	OpcodeRTI = Opcode(0b1000) // RTI
+	OpcodeSTI = Opcode(0b1011) // STI
+	OpcodeSTR = Opcode(0b0111) // STR
 )
