@@ -390,7 +390,8 @@ func TestInstructions(t *testing.T) {
 		cpu.PSR = StatusUser | StatusZero
 		cpu.SSP = 0x3000
 		cpu.Reg[R6] = 0xfe00
-		cpu.Mem[cpu.PC] = 0b1111_0000_0000_1100
+		cpu.Mem[cpu.PC] = 0b1111_0000_1000_0000
+		cpu.Mem[0x0080] = 0xadad
 
 		err := cpu.Execute()
 		if err != nil {
@@ -402,9 +403,9 @@ func TestInstructions(t *testing.T) {
 				cpu.IR, OpcodeTRAP, op)
 		}
 
-		if cpu.PC != 0x000c {
+		if cpu.PC != 0xadad {
 			t.Errorf("PC want: %s, got: %s",
-				ProgramCounter(0x000c), cpu.PC)
+				ProgramCounter(0xadad), cpu.PC)
 		}
 
 		if cpu.USP != 0xfe00 {

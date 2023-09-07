@@ -480,6 +480,7 @@ func (op *jsrr) Execute(cpu *LC3) {
 // |15  12|11   8|7       0|
 type trap struct {
 	vec Word
+	isr Word
 }
 
 const OpcodeTRAP = Opcode(0b1111) // TRAP
@@ -490,20 +491,30 @@ func (op *trap) opcode() Opcode {
 
 var (
 	_ decodable = &trap{}
+	_ fetchable = &trap{}
 )
 
 func (op *trap) Decode(ins Instruction) {
 	*op = trap{
 		vec: ins.Vector(VECTOR8),
+		isr: 0x0000,
 	}
+}
+
+func (op *trap) EvalAddress(*LC3) {
+	// NOP: the vector is already the address.
+}
+
+func (op *trap) FetchOperands(cpu *LC3) {
+	op.isr = cpu.Mem[op.vec]
 }
 
 func (op *trap) Execute(cpu *LC3) {
 	upsr := cpu.PSR
 
 	if cpu.PSR.Privilege() == PrivilegeUser {
-		cpu.USP = cpu.Reg[R6]      // Store user stack.
-		cpu.Reg[R6] = cpu.SSP      // Set R6 to system stack.
+		cpu.USP = cpu.Reg[R6]      // Save user stack in register.
+		cpu.Reg[R6] = cpu.SSP      // Set R6 to system stack from register.
 		cpu.PSR |= StatusPrivilege // Switch to system privilege level.
 	}
 
@@ -513,7 +524,7 @@ func (op *trap) Execute(cpu *LC3) {
 	cpu.Mem[cpu.SSP] = Word(cpu.PC)
 
 	// Finally, jump to the ISR using the interrupt vector.
-	cpu.PC = ProgramCounter(op.vec)
+	cpu.PC = ProgramCounter(op.isr)
 }
 
 // RES: Reserved operator
