@@ -66,6 +66,8 @@ func (cpu *LC3) Decode() operation {
 		op = &ld{}
 	case OpcodeLDI:
 		op = &ldi{}
+	case OpcodeST:
+		op = &st{}
 	case OpcodeJMP:
 		op = &jmp{}
 	case OpcodeJSR:

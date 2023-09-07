@@ -315,7 +315,46 @@ func TestInstructions(t *testing.T) {
 			t.Errorf("COND incorrect, want: %s, got: %s",
 				ConditionNegative, cpu.Cond)
 		}
+	})
 
+	t.Run("ST", func(t *testing.T) {
+		var cpu *LC3 = New()
+		cpu.PC = 0x0400
+		cpu.Reg[R7] = 0xcafe
+		cpu.Mem[cpu.PC] = 0b0011_111_0_1000_0000
+		cpu.Mem[0x0481] = 0x0f00
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeST {
+			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
+				cpu.IR, OpcodeST, op)
+		}
+
+		val := cpu.Mem[0x0481]
+		if val != 0xcafe {
+			t.Errorf("Mem[%s] want: %s, got: %s",
+				Word(0x0481), Word(0xcafe), val)
+		}
+
+		if cpu.Reg[R7] != 0xcafe {
+			t.Errorf("R7 incorrect, want: %d (%s), got: %d (%s)",
+				Register(0xcafe), Register(0xcafe),
+				cpu.Reg[R7], cpu.Reg[R7])
+		}
+
+		if !cpu.Cond.Zero() {
+			t.Errorf("cond incorrect, want: %s, got: %s",
+				ConditionZero, cpu.Cond)
+		}
+
+		oper := cpu.Decode().(*st)
+		oper.EvalAddress(cpu)
+		oper.StoreResult(cpu)
+		t.Logf("oper: %#+v", oper)
 	})
 
 }

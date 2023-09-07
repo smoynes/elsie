@@ -28,6 +28,16 @@ func (i Instruction) DR() GPR {
 	return GPR(i & 0x0e00 >> 9)
 }
 
+// SR returns the source register ID from the instruction.
+func (i Instruction) SR() GPR {
+	// Some operations have only a source register with no destination,
+	// e.g., storage operations, and use the same instruction bits as
+	// operations with a destination. The duplication is intentional: we
+	// trust the compiler to optimize the indirection and it makes
+	// implementations clearer to read.
+	return i.DR()
+}
+
 // SR1 returns the first register operand from the instruction.
 func (i Instruction) SR1() GPR {
 	return GPR(i & 0x01a0 >> 6)

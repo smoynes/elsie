@@ -321,6 +321,49 @@ func (op *ldi) Execute(cpu *LC3) {
 	cpu.Cond.Update(r)
 }
 
+// ST: Store word in memory.
+//
+// | 0011 | SR  | PCOFFSET9 |
+// |------+-----+---+-------|
+// |15  12|11  9|8         0|
+type st struct {
+	sr     GPR
+	offset Word
+	addr   Word
+}
+
+var (
+	_ decodable   = &st{}
+	_ addressable = &st{}
+	_ executable  = &st{}
+	_ storable    = &st{}
+)
+
+const OpcodeST = Opcode(0b0011)
+
+func (st) opcode() Opcode {
+	return OpcodeST
+}
+
+func (op *st) Decode(ins Instruction) {
+	*op = st{
+		sr:     ins.SR(),
+		offset: ins.Offset(PCOFFSET9),
+	}
+}
+
+func (op *st) EvalAddress(cpu *LC3) {
+	op.addr = Word(int16(cpu.PC) + int16(op.offset))
+}
+
+func (op *st) Execute(cpu *LC3) {
+	// TODO: check PSR and raise ACV
+}
+
+func (op *st) StoreResult(cpu *LC3) {
+	cpu.Mem[op.addr] = Word(cpu.Reg[op.sr])
+}
+
 // JMP: Unconditional branch
 //
 // | 1100 | 000 | SR | 00 00000 |
@@ -428,7 +471,6 @@ const (
 	OpcodeLEA      = Opcode(0b1110)
 	OpcodeRET      = Opcode(0b1100)
 	OpcodeRTI      = Opcode(0b1000)
-	OpcodeST       = Opcode(0b0011)
 	OpcodeSTI      = Opcode(0b1011)
 	OpcodeSTR      = Opcode(0b0111)
 	OpcodeTRAP     = Opcode(0b1111)
