@@ -48,10 +48,6 @@ func (w Word) String() string {
 
 // Sext sign-extends the lower n bits in-place.
 func (w *Word) Sext(n uint8) {
-	if n > 15 {
-		panic("n >= 16")
-	}
-
 	// Maybe this deserves an explanation. 😬
 	//
 	// Tersely, given:
@@ -82,9 +78,8 @@ func (w *Word) Sext(n uint8) {
 	*w = Word(uint16(i))
 }
 
-// Zext zero-extends the lower n bits in-place.
+// Zext zero extends the lower n bits in-place.
 func (w *Word) Zext(n uint8) {
-	// 🫠
 	var low Word = ^(0xffff << n)
 	*w &= low
 }

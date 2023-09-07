@@ -156,7 +156,7 @@ func (a *andImm) Decode(ins Instruction) {
 	*a = andImm{
 		dr:  ins.DR(),
 		sr:  ins.SR1(),
-		lit: ins.Imm5(),
+		lit: ins.Literal(IMM5),
 	}
 }
 
@@ -227,7 +227,7 @@ func (a *addImm) Decode(ins Instruction) {
 	*a = addImm{
 		dr:  ins.DR(),
 		sr:  ins.SR1(),
-		lit: ins.Imm5(),
+		lit: ins.Literal(IMM5),
 	}
 }
 
@@ -520,7 +520,7 @@ var (
 
 func (op *trap) Decode(ins Instruction) {
 	*op = trap{
-		vec: ins.Vector(8),
+		vec: ins.Vector(VECTOR8),
 	}
 }
 

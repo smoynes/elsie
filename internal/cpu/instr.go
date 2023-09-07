@@ -30,12 +30,7 @@ func (i Instruction) DR() GPR {
 
 // SR returns the source register ID from the instruction.
 func (i Instruction) SR() GPR {
-	// Some operations have only a source register with no destination,
-	// e.g., storage operations, and use the same instruction bits as
-	// operations with a destination. The duplication is intentional: we
-	// trust the compiler to optimize the indirection and it makes
-	// implementations clearer to read.
-	return i.DR()
+	return GPR(i & 0x0e00 >> 9)
 }
 
 // SR1 returns the first register operand from the instruction.
@@ -53,47 +48,42 @@ func (i Instruction) Imm() bool {
 	return i&0x020 != 0
 }
 
-// Imm5 returns the immediate-mode literal from the instruction. It is a 5-bit
-// value sign-extended to a word.
-func (i Instruction) Imm5() Word {
-	w := Word(i & 0x001f)
-	w.Sext(5)
-
+// Offset returns the PC-relative offset from the instruction.
+func (i Instruction) Offset(n offset) Word {
+	w := Word(i)
+	w.Sext(uint8(n))
 	return w
 }
 
-// Offset returns the PC-relative offset from the instruction. It may be a 5-,
-// 9-, or 11-bit value sign-extended to a word.
-func (i Instruction) Offset(n Offset) Word {
-	var w Word
-
-	switch n {
-	case PCOFFSET11:
-		w = Word(i & 0x03ff)
-		w.Sext(11)
-	case PCOFFSET9:
-		w = Word(i & 0x01ff)
-		w.Sext(9)
-	case PCOFFSET5:
-		w = Word(i & 0x001f)
-		w.Sext(5)
-	default:
-		panic("unexpected offset")
-	}
-
+// Literal returns a literal value from the instruction.
+func (i Instruction) Literal(n literal) Word {
+	w := Word(i)
+	w.Sext(uint8(n))
 	return w
 }
 
 // Vector returns a bit vector from the instruction.
-func (i Instruction) Vector(n uint8) Word {
+func (i Instruction) Vector(n vector) Word {
 	w := Word(i)
-	w.Zext(n)
-
+	w.Zext(uint8(n))
 	return w
 }
 
-// Offset identifies the length of a PC-relative offset.
-type Offset uint8
+type (
+	offset  uint8
+	literal uint8
+	vector  uint8
+)
+
+const (
+	PCOFFSET11 = offset(11)
+	PCOFFSET9  = offset(9)
+	PCOFFSET5  = offset(5)
+
+	IMM5 = literal(5)
+
+	VECTOR8 = vector(8)
+)
 
 // Condition represents a ZNP condition operand from an instruction.
 type Condition Word
@@ -126,10 +116,3 @@ func (c Condition) Zero() bool {
 func (c Condition) Positive() bool {
 	return c&ConditionPositive != 0
 }
-
-// Offset identifier constants.
-const (
-	PCOFFSET11 Offset = iota
-	PCOFFSET9
-	PCOFFSET5
-)
