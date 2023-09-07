@@ -6,6 +6,12 @@ type Opcode uint8
 
 func (o Opcode) String() string {
 	switch o {
+	case OpcodeRTI:
+		return "RTI"
+	case OpcodeSTI:
+		return "STI"
+	case OpcodeSTR:
+		return "STR"
 	case OpcodeBR:
 		return "BR"
 	case OpcodeNOT:
@@ -24,13 +30,15 @@ func (o Opcode) String() string {
 		return "ST"
 	case OpcodeJMP:
 		return "JMP"
+	case OpcodeRET:
+		return "RET"
 	case OpcodeTRAP:
 		return "TRAP"
 	case OpcodeReserved:
 		return "RESERVED"
+	default:
+		return "UKNWN"
 	}
-
-	return "UKNWN"
 }
 
 // BR: Conditional branch
@@ -403,18 +411,30 @@ func (op *st) StoreResult(cpu *LC3) {
 // | 1100 | 000 | SR | 00 00000 |
 // |------+-----+----+----------|
 // |15  12|11  9|8  6|5        0|
+//
+// RET: Return from subroutine
+// | 1100 | 111 | SR | 00 00000 |
+// |------+-----+----+----------|
+// |15  12|11  9|8  6|5        0|
 type jmp struct {
 	sr GPR
 }
 
-const OpcodeJMP = Opcode(0b1100)
+const (
+	OpcodeJMP = Opcode(0b1100)
+	OpcodeRET = Opcode(0xff)
+)
 
 var (
 	_ decodable = &jmp{}
 )
 
-func (jmp) opcode() Opcode {
-	return OpcodeJMP
+func (j jmp) opcode() Opcode {
+	if j.sr == R7 {
+		return OpcodeRET
+	} else {
+		return OpcodeJMP
+	}
 }
 
 func (op *jmp) Decode(ins Instruction) {
@@ -551,7 +571,6 @@ func (reserved) Execute(cpu *LC3) {
 }
 
 const (
-	OpcodeRET = Opcode(0b1100)
 	OpcodeRTI = Opcode(0b1000)
 	OpcodeSTI = Opcode(0b1011)
 	OpcodeSTR = Opcode(0b0111)

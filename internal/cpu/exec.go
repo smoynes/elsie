@@ -68,7 +68,7 @@ func (cpu *LC3) Decode() operation {
 		op = &lea{}
 	case OpcodeST:
 		op = &st{}
-	case OpcodeJMP:
+	case OpcodeJMP, OpcodeRET:
 		op = &jmp{}
 	case OpcodeJSR:
 		if (cpu.IR & 0x0800) == 0 {
