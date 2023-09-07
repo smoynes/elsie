@@ -175,9 +175,8 @@ func TestInstructions(t *testing.T) {
 		t.Logf("oper: %#+v", oper)
 
 		if cpu.Reg[R0] != 0xfff0 {
-			t.Errorf("r0 incorrect, want: %d (%s), got: %d (%s)",
-				Register(0xfff0), Register(0xfff0),
-				cpu.Reg[R0], cpu.Reg[R0])
+			t.Errorf("r0 incorrect, want: %s, got: %s",
+				Register(0xfff0), cpu.Reg[R0])
 		}
 
 		if !cpu.Cond.Negative() {
@@ -204,9 +203,8 @@ func TestInstructions(t *testing.T) {
 		}
 
 		if cpu.Reg[R2] != 0x0f00 {
-			t.Errorf("R2 incorrect, want: %d (%s), got: %d (%s)",
-				Register(0x0f00), Register(0x0f00),
-				cpu.Reg[R2], cpu.Reg[R2])
+			t.Errorf("R2 incorrect, want: %s, got: %s",
+				Register(0x0f00), cpu.Reg[R2])
 		}
 
 		if !cpu.Cond.Positive() {
@@ -237,9 +235,8 @@ func TestInstructions(t *testing.T) {
 		}
 
 		if cpu.PC != 0x0010 {
-			t.Errorf("PC incorrect, want: %d (%s), got: %d (%s)",
-				Register(0x0010), Register(0x0010),
-				cpu.PC, cpu.PC)
+			t.Errorf("PC incorrect, want: %s, got: %s",
+				Register(0x0010), cpu.PC)
 		}
 
 		oper := cpu.Decode().(*jmp)
@@ -263,15 +260,13 @@ func TestInstructions(t *testing.T) {
 		}
 
 		if cpu.PC != 0x0300 {
-			t.Errorf("PC incorrect, want: %d (%s), got: %d (%s)",
-				Register(0x0300), Register(0x0300),
-				cpu.PC, cpu.PC)
+			t.Errorf("PC incorrect, want: %s, got: %s",
+				Register(0x0300), cpu.PC)
 		}
 
 		if cpu.Reg[R7] != 0x0401 {
-			t.Errorf("R7 incorrect, want: %d (%s), got: %d (%s)",
-				Register(0x0401), Register(0x0401),
-				cpu.PC, cpu.PC)
+			t.Errorf("R7 incorrect, want: %s, got: %s",
+				Register(0x0401), cpu.PC)
 		}
 
 		oper := cpu.Decode().(*jsrr)
@@ -300,15 +295,13 @@ func TestInstructions(t *testing.T) {
 		}
 
 		if cpu.PC != 0x0401 {
-			t.Errorf("PC: want: %d (%s), got: %d (%s)",
-				Register(0x0401), Register(0x0401),
-				cpu.PC, cpu.PC)
+			t.Errorf("PC: want: %s, got: %s",
+				Register(0x0401), cpu.PC)
 		}
 
 		if cpu.Reg[R0] != 0xcafe {
-			t.Errorf("R0 incorrect, want: %d (%s), got: %d (%s)",
-				Register(0xdad0), Register(0xdad0),
-				cpu.Reg[R0], cpu.Reg[R0])
+			t.Errorf("R0 incorrect, want: %s, got: %s",
+				Register(0xdad0), cpu.Reg[R0])
 		}
 
 		if !cpu.Cond.Negative() {
@@ -334,9 +327,8 @@ func TestInstructions(t *testing.T) {
 		}
 
 		if cpu.Reg[R0] != 0x0301 {
-			t.Errorf("R0 incorrect, want: %d (%s), got: %d (%s)",
-				Register(0x0301), Register(0x0301),
-				cpu.Reg[R0], cpu.Reg[R0])
+			t.Errorf("R0 incorrect, want: %s, got: %s",
+				Register(0x0301), cpu.Reg[R0])
 		}
 
 		if !cpu.Cond.Zero() || cpu.Cond != ConditionZero {
@@ -369,9 +361,8 @@ func TestInstructions(t *testing.T) {
 		}
 
 		if cpu.Reg[R7] != 0xcafe {
-			t.Errorf("R7 incorrect, want: %d (%s), got: %d (%s)",
-				Register(0xcafe), Register(0xcafe),
-				cpu.Reg[R7], cpu.Reg[R7])
+			t.Errorf("R7 incorrect, want: %s, got: %s",
+				Register(0xcafe), cpu.Reg[R7])
 		}
 
 		if !cpu.Cond.Zero() {
