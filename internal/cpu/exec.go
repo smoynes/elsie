@@ -29,7 +29,9 @@ func (cpu *LC3) Execute() error {
 	if op, ok := op.(executable); ok {
 		op.Execute(cpu)
 	}
+
 	cpu.StoreResult(op)
+
 	return nil
 }
 

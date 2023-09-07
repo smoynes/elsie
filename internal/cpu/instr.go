@@ -18,7 +18,7 @@ func (i Instruction) Opcode() Opcode {
 	return Opcode(i >> 12)
 }
 
-// Cond returns the condition flags.
+// Cond returns the condition flags from the instruction.
 func (i Instruction) Cond() Condition {
 	return Condition(i & 0x0e00 >> 9)
 }
@@ -58,6 +58,7 @@ func (i Instruction) Imm() bool {
 func (i Instruction) Imm5() Word {
 	w := Word(i & 0x001f)
 	w.Sext(5)
+
 	return w
 }
 
@@ -65,6 +66,7 @@ func (i Instruction) Imm5() Word {
 // 9-, or 11-bit value sign-extended to a word.
 func (i Instruction) Offset(n Offset) Word {
 	var w Word
+
 	switch n {
 	case PCOFFSET11:
 		w = Word(i & 0x03ff)
@@ -78,11 +80,52 @@ func (i Instruction) Offset(n Offset) Word {
 	default:
 		panic("unexpected offset")
 	}
+
+	return w
+}
+
+// Vector returns a bit vector from the instruction.
+func (i Instruction) Vector(n uint8) Word {
+	w := Word(i)
+	w.Zext(n)
+
 	return w
 }
 
 // Offset identifies the length of a PC-relative offset.
 type Offset uint8
+
+// Condition represents a ZNP condition operand from an instruction.
+type Condition Word
+
+// Condition flags.
+const (
+	ConditionPositive Condition = 1 << iota
+	ConditionZero
+	ConditionNegative
+)
+
+func (c Condition) String() string {
+	return fmt.Sprintf(
+		"%s (N:%t Z:%t P:%t)",
+		Word(c).String(), c.Negative(), c.Zero(), c.Positive(),
+	)
+}
+
+// Negative returns true if the N flag is set.
+func (c Condition) Negative() bool {
+	return c&ConditionNegative != 0
+}
+
+// Zero returns true if the Z flag is set.
+func (c Condition) Zero() bool {
+	return c&ConditionZero != 0
+}
+
+// Positive returns true if the P flag is set.
+func (c Condition) Positive() bool {
+	return c&ConditionPositive != 0
+}
 
 // Offset identifier constants.
 const (

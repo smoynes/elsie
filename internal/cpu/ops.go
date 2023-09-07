@@ -27,6 +27,7 @@ func (o Opcode) String() string {
 	case OpcodeReserved:
 		return "RESERVED"
 	}
+
 	return "UKNWN"
 }
 
@@ -36,7 +37,7 @@ func (o Opcode) String() string {
 // |------+-----+-----------|
 // |15  12|11  9|8         0|
 type br struct {
-	nzp    Condition
+	cond   Condition
 	offset Word
 }
 
@@ -52,12 +53,12 @@ func (br *br) opcode() Opcode {
 }
 
 func (br *br) Decode(ins Instruction) {
-	br.nzp = ins.Cond()
+	br.cond = ins.Cond()
 	br.offset = ins.Offset(PCOFFSET9)
 }
 
 func (br *br) Execute(cpu *LC3) {
-	if br.nzp&cpu.Cond != 0x0 {
+	if cpu.PSR.Any(br.cond) {
 		cpu.PC = ProgramCounter(int16(cpu.PC) + int16(br.offset))
 	}
 }
@@ -93,7 +94,7 @@ func (n *not) Decode(ins Instruction) {
 func (n *not) Execute(cpu *LC3) {
 	r := cpu.Reg[n.src] ^ 0xffff
 	cpu.Reg[n.dest] = r
-	cpu.Cond.Update(r)
+	cpu.PSR.Set(r)
 }
 
 // AND: Bitwise AND binary operator (register mode)
@@ -128,7 +129,7 @@ func (a *and) Execute(cpu *LC3) {
 	r := cpu.Reg[a.sr1]
 	r = r & cpu.Reg[a.sr2]
 	cpu.Reg[a.dest] = r
-	cpu.Cond.Update(r)
+	cpu.PSR.Set(r)
 }
 
 // AND: Bitwise AND binary operator (immediate mode)
@@ -157,14 +158,13 @@ func (a *andImm) Decode(ins Instruction) {
 		sr:  ins.SR1(),
 		lit: ins.Imm5(),
 	}
-
 }
 
 func (a *andImm) Execute(cpu *LC3) {
 	r := cpu.Reg[a.sr]
 	r = r & Register(a.lit)
 	cpu.Reg[a.dr] = r
-	cpu.Cond.Update(r)
+	cpu.PSR.Set(r)
 }
 
 // ADD: Arithmetic addition operator (register mode)
@@ -200,7 +200,7 @@ func (a *add) Decode(ins Instruction) {
 func (a *add) Execute(cpu *LC3) {
 	r := Register(int16(cpu.Reg[a.sr1]) + int16(cpu.Reg[a.sr2]))
 	cpu.Reg[a.dr] = r
-	cpu.Cond.Update(r)
+	cpu.PSR.Set(r)
 }
 
 // ADD: Arithmetic addition operator (immediate mode)
@@ -234,7 +234,7 @@ func (a *addImm) Decode(ins Instruction) {
 func (a *addImm) Execute(cpu *LC3) {
 	r := Register(int16(cpu.Reg[a.sr]) + int16(a.lit))
 	cpu.Reg[a.dr] = r
-	cpu.Cond.Update(r)
+	cpu.PSR.Set(r)
 }
 
 // LD: Load word from memory.
@@ -278,7 +278,7 @@ func (op *ld) FetchOperands(cpu *LC3) {
 }
 
 func (op *ld) Execute(cpu *LC3) {
-	cpu.Cond.Update(cpu.Reg[op.dr])
+	cpu.PSR.Set(cpu.Reg[op.dr])
 }
 
 // LDI: Load indirect
@@ -322,7 +322,7 @@ func (op *ldi) FetchOperands(cpu *LC3) {
 func (op *ldi) Execute(cpu *LC3) {
 	r := Register(op.addr)
 	cpu.Reg[op.dr] = r
-	cpu.Cond.Update(r)
+	cpu.PSR.Set(r)
 }
 
 // LEA: Load effective address
@@ -498,6 +498,44 @@ func (op *jsrr) Execute(cpu *LC3) {
 	cpu.Reg[R7] = Register(ret)
 }
 
+// TRAP: System call
+//
+// | 1111 | 0000 | VECTOR8 |
+// |------+------+---------|
+// |15  12|11   8|7       0|
+type trap struct {
+	vec Word
+}
+
+const OpcodeTRAP = Opcode(0b1111)
+
+func (op *trap) opcode() Opcode {
+	return OpcodeTRAP
+}
+
+var (
+	_ decodable  = &trap{}
+	_ executable = &trap{}
+)
+
+func (op *trap) Decode(ins Instruction) {
+	*op = trap{
+		vec: ins.Vector(8),
+	}
+}
+
+func (op *trap) Execute(cpu *LC3) {
+	if cpu.PSR.Privilege() == PrivilegeUser {
+		cpu.USP = cpu.Reg[R6]
+		cpu.Reg[R6] = cpu.SSP
+		cpu.PSR ^= 0x8000
+	}
+	// push PC onto system stack
+	cpu.SSP -= 1
+	cpu.Mem[cpu.SSP] = Word(cpu.PC)
+	cpu.PC = ProgramCounter(op.vec)
+}
+
 // RES: Reserved operator
 //
 // | 1101 | 0000 0000 0000 |
@@ -514,6 +552,5 @@ const (
 	OpcodeRTI      = Opcode(0b1000)
 	OpcodeSTI      = Opcode(0b1011)
 	OpcodeSTR      = Opcode(0b0111)
-	OpcodeTRAP     = Opcode(0b1111)
 	OpcodeReserved = Opcode(0b1101)
 )

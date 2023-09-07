@@ -20,7 +20,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("BR", func(t *testing.T) {
 		cpu := New()
 		cpu.Mem[cpu.PC] = 0b0000_010_0_0000_0111
-		cpu.Cond = ConditionZero
+		cpu.PSR = StatusZero
 
 		err := cpu.Execute()
 		if err != nil {
@@ -28,22 +28,25 @@ func TestInstructions(t *testing.T) {
 		}
 
 		if op := cpu.IR.Opcode(); op != OpcodeBR {
-			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, OpcodeBR, op)
+			t.Errorf("instr: %s, want: %s, got: %s",
+				cpu.IR, OpcodeBR, op)
 		}
 
-		if cpu.PC != 0x3000+0x0008 {
-			t.Errorf("PC incorrect, want: %0b, got: %0b", 0x3000+0x0008, cpu.PC)
+		if cpu.PC != 0x0300+0x0008 {
+			t.Errorf("PC want: %0#x, got: %s",
+				0x3000+0x0008, cpu.PC)
 		}
 
-		if cpu.Cond != ConditionZero {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionZero, cpu.Cond)
+		if cpu.PSR != StatusZero {
+			t.Errorf("cond incorrect, want: %s, got: %s", StatusZero, cpu.PSR)
 		}
 	})
 
 	t.Run("BRnzp", func(t *testing.T) {
 		var cpu *LC3 = New()
+		cpu.PC = 0x0100
 		cpu.Mem[cpu.PC] = 0b0000_111_1_1111_0111
-		cpu.Cond = ConditionZero
+		cpu.PSR.Set(0xf000)
 
 		err := cpu.Execute()
 		if err != nil {
@@ -51,15 +54,18 @@ func TestInstructions(t *testing.T) {
 		}
 
 		if op := cpu.IR.Opcode(); op != OpcodeBR {
-			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, OpcodeBR, op)
+			t.Errorf("instr: %s, want: %s, got: %s",
+				cpu.IR, OpcodeBR, op)
 		}
 
-		if cpu.PC != 0x3000+1-0x0009 {
-			t.Errorf("PC incorrect, want: %0b, got: %0b", 0x3000+1-0x0009, cpu.PC)
+		if cpu.PC != 0x00f8 {
+			t.Errorf("PC incorrect, want: %0#x, got: %s",
+				0x00f8, cpu.PC)
 		}
 
-		if cpu.Cond != ConditionZero {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionZero, cpu.Cond)
+		if !cpu.PSR.Negative() {
+			t.Errorf("cond incorrect, want: %s, got: %s",
+				ConditionNegative, cpu.PSR.Cond())
 		}
 	})
 
@@ -81,15 +87,15 @@ func TestInstructions(t *testing.T) {
 			t.Errorf("r0 incorrect, want: %0b, got: %0b", 0b1010_0101_0000_1111, cpu.Reg[R0])
 		}
 
-		if cpu.Cond != ConditionNegative {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionNegative, cpu.Cond)
+		if cpu.PSR.Cond() != ConditionNegative {
+			t.Errorf("COND incorrect, want: %s, got: %s", ConditionNegative, cpu.PSR.Cond())
 		}
 	})
 
 	t.Run("AND", func(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.Mem[cpu.PC] = 0b0101_000_000_0_00_001
-		cpu.Reg[R0] = 0b0101_1010_1111_1111
+		cpu.Reg[R0] = 0x5aff
 		cpu.Reg[R1] = 0x00f0
 
 		err := cpu.Execute()
@@ -98,11 +104,13 @@ func TestInstructions(t *testing.T) {
 		}
 
 		if cpu.Reg[R0] != 0x00f0 {
-			t.Errorf("R0 incorrect, want: %0#16b, got: %0#b", 0x0000, cpu.Reg[R0])
+			t.Errorf("R0 incorrect, want: %0#16b, got: %0#b",
+				0x0000, cpu.Reg[R0])
 		}
 
-		if cpu.Cond != ConditionPositive {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionPositive, cpu.Cond)
+		if cpu.PSR.Cond() != ConditionPositive {
+			t.Errorf("COND incorrect, want: %s, got: %s",
+				ConditionPositive, cpu.PSR.Cond())
 		}
 	})
 
@@ -124,8 +132,8 @@ func TestInstructions(t *testing.T) {
 			t.Errorf("r0 incorrect, want: %016b, got: %016b", 0x5af5, cpu.Reg[R0])
 		}
 
-		if !cpu.Cond.Positive() {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionPositive, cpu.Cond)
+		if !cpu.PSR.Positive() {
+			t.Errorf("cond incorrect, want: %s, got: %s", StatusPositive, cpu.PSR)
 		}
 	})
 
@@ -151,8 +159,8 @@ func TestInstructions(t *testing.T) {
 			t.Errorf("r0 incorrect, want: %016b, got: %016b", 1, cpu.Reg[R0])
 		}
 
-		if !cpu.Cond.Positive() {
-			t.Errorf("cond incorrect, want: %s, got: %s", ConditionPositive, cpu.Cond)
+		if !cpu.PSR.Positive() {
+			t.Errorf("cond incorrect, want: %s, got: %s", StatusPositive, cpu.PSR)
 		}
 	})
 
@@ -179,9 +187,9 @@ func TestInstructions(t *testing.T) {
 				Register(0xfff0), cpu.Reg[R0])
 		}
 
-		if !cpu.Cond.Negative() {
+		if !cpu.PSR.Negative() {
 			t.Errorf("cond incorrect, want: %s, got: %s",
-				ConditionNegative, cpu.Cond)
+				StatusNegative, cpu.PSR)
 		}
 	})
 
@@ -207,9 +215,9 @@ func TestInstructions(t *testing.T) {
 				Register(0x0f00), cpu.Reg[R2])
 		}
 
-		if !cpu.Cond.Positive() {
+		if !cpu.PSR.Positive() {
 			t.Errorf("cond incorrect, want: %s, got: %s",
-				ConditionPositive, cpu.Cond)
+				StatusPositive, cpu.PSR)
 		}
 
 		oper := cpu.Decode().(*ld)
@@ -304,9 +312,9 @@ func TestInstructions(t *testing.T) {
 				Register(0xdad0), cpu.Reg[R0])
 		}
 
-		if !cpu.Cond.Negative() {
+		if !cpu.PSR.Negative() {
 			t.Errorf("COND incorrect, want: %s, got: %s",
-				ConditionNegative, cpu.Cond)
+				StatusNegative, cpu.PSR)
 		}
 	})
 
@@ -331,9 +339,9 @@ func TestInstructions(t *testing.T) {
 				Register(0x0301), cpu.Reg[R0])
 		}
 
-		if !cpu.Cond.Zero() || cpu.Cond != ConditionZero {
+		if !cpu.PSR.Zero() {
 			t.Errorf("COND incorrect, want: %s, got: %s",
-				ConditionZero, cpu.Cond)
+				ConditionZero, cpu.PSR.Cond())
 		}
 	})
 
@@ -365,9 +373,9 @@ func TestInstructions(t *testing.T) {
 				Register(0xcafe), cpu.Reg[R7])
 		}
 
-		if !cpu.Cond.Zero() {
+		if !cpu.PSR.Zero() {
 			t.Errorf("cond incorrect, want: %s, got: %s",
-				ConditionZero, cpu.Cond)
+				StatusZero, cpu.PSR)
 		}
 
 		oper := cpu.Decode().(*st)
@@ -375,7 +383,6 @@ func TestInstructions(t *testing.T) {
 		oper.StoreResult(cpu)
 		t.Logf("oper: %#+v", oper)
 	})
-
 }
 
 func TestSext(t *testing.T) {
