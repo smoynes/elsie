@@ -24,20 +24,20 @@ advanced features, and over 40 years of history etched into silicon, the LC-3
 remains a tractable system that is comprehensible by an individual.
 
 Hardware simulators already exist for the LC-3 architecture. The textbook
-authors provide one and there are many others freely available online. This one
-is a reinvention of the wheel with the aim of learning about:
+publishers provide one and there are many others freely available online. This
+one is a reinvention of the wheel with the aim of learning about:
 
 - computer architecture
 - assembly programming
 - operating systems
-- the Age of the PC
+- personal computing history
 - _Shokunin Kishitsu_ (職人気質), the artisan's spirit
 
-There are many things in computing that remain mysterious to me. Through
-experiential learning, I will read, write, ask questions, find answers, and
-solve problems. It is to be hoped that by building something esoteric using the
-old ways, by holding the master craftsman's tools, I will gain a better
-understanding of computing's past and present.
+There remain many computer things that baffle me. Through experiential learning,
+I will read, write, ask questions, find answers, and solve problems. It is to be
+hoped that by building something esoteric using the old ways, by holding the
+master craftsman's tools in my hands, I will gain a better understanding of
+computing's past and present.
 
 I have lots ideas for experiments to bring into the lab. I've thought about:
 
@@ -56,18 +56,21 @@ I have lots ideas for experiments to bring into the lab. I've thought about:
 - concurrency and parallelism, _e.g._ communicating sequential processes,
   preemptive multitasking, multicore execution
 
-Maybe with a little dedication and blind ambition I will finally create
-FACECLOUD™️: an ad-supported, privacy-preserving, social-media smart-contract for
-personal clouds based, of course, on the LC-3! 💰💰💰
-
 Admittedly, some of these experiments seem pretty straightforward, while others
 appear daunting and complex; some are immediate goals but most mere thought
 experiments. Trying to do all of that work might indeed be a path in madness.
 
-However, feel free to browse the code or follow the project if you enjoy the
-absurdist theatrics of a curious software engineer. As ever, I seek to
-understand the essence of computing. You are welcome to reach out if you'd like
-to join me on this journey of exploration.
+Maybe, with some dedication and blind ambition I will, finally realize my
+lifelong ambition: to develop FACECLOUD™️, an ad-supported, privacy-preserving,
+social-media smart-contract for personal clouds based, of course, on the LC-3
+ISA! 💰💰💰
+
+In the meantime, feel free to browse the code or follow the project if you enjoy
+the absurdist theatrics of a curious software engineer. As ever, I seek to
+understand the essence of computing.
+
+You are welcome to reach out if you'd like to join me on this journey of
+exploration.
 
 ----
 
