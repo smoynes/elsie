@@ -525,13 +525,17 @@ func (op *trap) Decode(ins Instruction) {
 }
 
 func (op *trap) Execute(cpu *LC3) {
+	upsr := cpu.PSR
+
 	if cpu.PSR.Privilege() == PrivilegeUser {
-		cpu.USP = cpu.Reg[R6]
-		cpu.Reg[R6] = cpu.SSP
-		cpu.PSR ^= 0x8000
+		cpu.USP = cpu.Reg[R6]      // Store user stack.
+		cpu.Reg[R6] = cpu.SSP      // Set R6 to system stack.
+		cpu.PSR |= StatusPrivilege // Switch to system privilege level.
 	}
-	// push PC onto system stack
-	cpu.SSP -= 1
+
+	// Push status register and program counter onto system stack.
+	cpu.SSP -= 2
+	cpu.Mem[cpu.SSP-1] = Word(upsr)
 	cpu.Mem[cpu.SSP] = Word(cpu.PC)
 	cpu.PC = ProgramCounter(op.vec)
 }

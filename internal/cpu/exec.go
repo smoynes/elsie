@@ -80,6 +80,8 @@ func (cpu *LC3) Decode() operation {
 		} else {
 			op = &jsr{}
 		}
+	case OpcodeTRAP:
+		op = &trap{}
 	case OpcodeReserved:
 		op = &reserved{}
 	default:

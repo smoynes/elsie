@@ -106,7 +106,7 @@ func (p ProgramCounter) String() string {
 // | 15 |14   12|11 9|8      3|2    0|
 type ProcessorStatus Register
 
-// Flag indexes in PSR vector.
+// Status flags in PSR vector.
 const (
 	StatusPositive  ProcessorStatus = 0x0001
 	StatusZero      ProcessorStatus = 0x0002
@@ -114,8 +114,11 @@ const (
 	StatusCondition ProcessorStatus = StatusNegative |
 		StatusZero | StatusPositive
 
+	StatusPriority ProcessorStatus = 0x0300
+
 	StatusPrivilege ProcessorStatus = 0x8000
-	StatusPriority  ProcessorStatus = 0x0300
+	StatusUser      ProcessorStatus = 0x8000
+	StatusSystem    ProcessorStatus = 0x0000
 )
 
 func (p ProcessorStatus) String() string {
@@ -171,7 +174,7 @@ func (c ProcessorStatus) Zero() bool {
 
 // Priority returns the priority level of the current task.
 func (c ProcessorStatus) Priority() Priority {
-	return Priority(c & 0x0300 >> 8)
+	return Priority(c & StatusPriority >> 8)
 }
 
 // Priority represents the priority level of a task.
@@ -186,7 +189,7 @@ const (
 
 // Privilege returns the privilege of the current task.
 func (c ProcessorStatus) Privilege() Privilege {
-	return Privilege(c & 0x8000 >> 15)
+	return Privilege(c >> 15)
 }
 
 // Privilege represents the privilege level of a task.
@@ -194,8 +197,8 @@ type Privilege uint8
 
 // Privilege levels.
 const (
-	PrivilegeSystem Privilege = 0
-	PrivilegeUser   Privilege = 1
+	PrivilegeSystem Privilege = iota
+	PrivilegeUser
 )
 
 // Set of general purpose registers.

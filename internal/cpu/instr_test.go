@@ -383,6 +383,65 @@ func TestInstructions(t *testing.T) {
 		oper.StoreResult(cpu)
 		t.Logf("oper: %#+v", oper)
 	})
+
+	t.Run("TRAP USER", func(t *testing.T) {
+		var cpu *LC3 = New()
+		cpu.PC = 0x0400
+		cpu.PSR = StatusUser | StatusZero
+		cpu.SSP = 0x3000
+		cpu.Reg[R6] = 0xfe00
+		cpu.Mem[cpu.PC] = 0b1111_0000_0000_1100
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeTRAP {
+			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
+				cpu.IR, OpcodeTRAP, op)
+		}
+
+		if cpu.PC != 0x000c {
+			t.Errorf("PC want: %s, got: %s",
+				ProgramCounter(0x000c), cpu.PC)
+		}
+
+		if cpu.USP != 0xfe00 {
+			t.Errorf("USP want: R6 = %s, got: %s",
+				Register(0xfe00), cpu.USP)
+		}
+
+		if cpu.SSP != 0x2ffe {
+			t.Errorf("SSP want: %s, got: %s",
+				Word(0x2ffe), cpu.SSP)
+		}
+
+		if cpu.Reg[R6] != 0x3000 {
+			t.Errorf("R6 want: SSP=%s, got: %s",
+				Word(0x3000), cpu.Reg[R6])
+		}
+
+		if cpu.Mem[cpu.SSP] != 0x0401 {
+			t.Errorf("SSP top want: %s = PC, got: %s",
+				Register(0xfe00), cpu.Mem[cpu.SSP])
+		}
+
+		if cpu.Mem[cpu.SSP-1] != 0x8002 {
+			t.Errorf("SSP below want PSR: %s, got: %s",
+				StatusZero|^StatusUser, ProcessorStatus(cpu.Mem[cpu.SSP-1]))
+		}
+
+		if !cpu.PSR.Zero() {
+			t.Errorf("cond incorrect, want: %s, got: %s",
+				StatusZero, cpu.PSR)
+		}
+
+		oper := cpu.Decode().(*trap)
+		oper.Decode(cpu.IR)
+		oper.Execute(cpu)
+		t.Logf("oper: %#+v", oper)
+	})
 }
 
 func TestSext(t *testing.T) {
