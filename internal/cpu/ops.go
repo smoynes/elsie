@@ -24,6 +24,8 @@ func (o Opcode) String() string {
 		return "ST"
 	case OpcodeJMP:
 		return "JMP"
+	case OpcodeTRAP:
+		return "TRAP"
 	case OpcodeReserved:
 		return "RESERVED"
 	}
@@ -44,8 +46,7 @@ type br struct {
 const OpcodeBR = Opcode(0b0000)
 
 var (
-	_ decodable  = &br{}
-	_ executable = &br{}
+	_ decodable = &br{}
 )
 
 func (br *br) opcode() Opcode {
@@ -76,8 +77,7 @@ type not struct {
 const OpcodeNOT = Opcode(0b1001)
 
 var (
-	_ decodable  = &not{}
-	_ executable = &not{}
+	_ decodable = &not{}
 )
 
 func (n *not) opcode() Opcode {
@@ -111,8 +111,7 @@ type and struct {
 }
 
 var (
-	_ decodable  = &and{}
-	_ executable = &and{}
+	_ decodable = &and{}
 )
 
 func (a *and) opcode() Opcode {
@@ -148,8 +147,7 @@ func (a *andImm) opcode() Opcode {
 }
 
 var (
-	_ decodable  = &andImm{}
-	_ executable = &andImm{}
+	_ decodable = &andImm{}
 )
 
 func (a *andImm) Decode(ins Instruction) {
@@ -185,8 +183,7 @@ func (a *add) opcode() Opcode {
 }
 
 var (
-	_ decodable  = &add{}
-	_ executable = &add{}
+	_ decodable = &add{}
 )
 
 func (a *add) Decode(ins Instruction) {
@@ -219,8 +216,7 @@ func (a *addImm) opcode() Opcode {
 }
 
 var (
-	_ decodable  = &addImm{}
-	_ executable = &addImm{}
+	_ decodable = &addImm{}
 )
 
 func (a *addImm) Decode(ins Instruction) {
@@ -252,7 +248,6 @@ var (
 	_ decodable   = &ld{}
 	_ addressable = &ld{}
 	_ fetchable   = &ld{}
-	_ executable  = &ld{}
 )
 
 const OpcodeLD = Opcode(0b0010)
@@ -298,7 +293,6 @@ var (
 	_ decodable   = &ldi{}
 	_ addressable = &ldi{}
 	_ fetchable   = &ldi{}
-	_ executable  = &ldi{}
 )
 
 func (op *ldi) opcode() Opcode { return OpcodeLDI }
@@ -342,7 +336,6 @@ const OpcodeLEA = Opcode(0b1110)
 var (
 	_ decodable   = &lea{}
 	_ addressable = &lea{}
-	_ executable  = &lea{}
 )
 
 func (op *lea) opcode() Opcode { return OpcodeLEA }
@@ -377,7 +370,6 @@ type st struct {
 var (
 	_ decodable   = &st{}
 	_ addressable = &st{}
-	_ executable  = &st{}
 	_ storable    = &st{}
 )
 
@@ -418,8 +410,7 @@ type jmp struct {
 const OpcodeJMP = Opcode(0b1100)
 
 var (
-	_ decodable  = &jmp{}
-	_ executable = &jmp{}
+	_ decodable = &jmp{}
 )
 
 func (jmp) opcode() Opcode {
@@ -449,8 +440,7 @@ type jsr struct {
 const OpcodeJSR = Opcode(0b0100)
 
 var (
-	_ decodable  = &jsr{}
-	_ executable = &jsr{}
+	_ decodable = &jsr{}
 )
 
 func (op *jsr) opcode() Opcode { return OpcodeJSR }
@@ -479,8 +469,7 @@ type jsrr struct {
 }
 
 var (
-	_ decodable  = &jsrr{}
-	_ executable = &jsrr{}
+	_ decodable = &jsrr{}
 )
 
 func (op *jsrr) opcode() Opcode { return OpcodeJSR }
@@ -498,7 +487,7 @@ func (op *jsrr) Execute(cpu *LC3) {
 	cpu.Reg[R7] = Register(ret)
 }
 
-// TRAP: System call
+// TRAP: System call or software interrupt.
 //
 // | 1111 | 0000 | VECTOR8 |
 // |------+------+---------|
@@ -514,8 +503,7 @@ func (op *trap) opcode() Opcode {
 }
 
 var (
-	_ decodable  = &trap{}
-	_ executable = &trap{}
+	_ decodable = &trap{}
 )
 
 func (op *trap) Decode(ins Instruction) {
@@ -537,6 +525,8 @@ func (op *trap) Execute(cpu *LC3) {
 	cpu.SSP -= 2
 	cpu.Mem[cpu.SSP-1] = Word(upsr)
 	cpu.Mem[cpu.SSP] = Word(cpu.PC)
+
+	// Finally, jump to the ISR using the interrupt vector.
 	cpu.PC = ProgramCounter(op.vec)
 }
 
@@ -547,14 +537,22 @@ func (op *trap) Execute(cpu *LC3) {
 // |15  12|11             0|
 type reserved struct{}
 
+const OpcodeReserved = Opcode(0b1101)
+
+var _ operation = &reserved{}
+
 func (r *reserved) opcode() Opcode {
 	return OpcodeReserved
 }
 
+func (reserved) Execute(cpu *LC3) {
+	// TODO: raise exception
+	panic("reserved")
+}
+
 const (
-	OpcodeRET      = Opcode(0b1100)
-	OpcodeRTI      = Opcode(0b1000)
-	OpcodeSTI      = Opcode(0b1011)
-	OpcodeSTR      = Opcode(0b0111)
-	OpcodeReserved = Opcode(0b1101)
+	OpcodeRET = Opcode(0b1100)
+	OpcodeRTI = Opcode(0b1000)
+	OpcodeSTI = Opcode(0b1011)
+	OpcodeSTR = Opcode(0b0111)
 )

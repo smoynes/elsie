@@ -25,11 +25,7 @@ func (cpu *LC3) Execute() error {
 	op := cpu.Decode()
 	cpu.EvalAddress(op)
 	cpu.FetchOperands(op)
-
-	if op, ok := op.(executable); ok {
-		op.Execute(cpu)
-	}
-
+	op.Execute(cpu)
 	cpu.StoreResult(op)
 
 	return nil
@@ -96,10 +92,11 @@ func (cpu *LC3) Decode() operation {
 }
 
 // An operation represents a CPU operation as it is being executed. It contains
-// its decoded operands and evaluation semantics implemented as several optional
+// its decoded operands and its semantics are implemented as several optional
 // methods defined below.
 type operation interface {
 	opcode() Opcode
+	Execute(cpu *LC3)
 }
 
 // decodable operations have operands that are decoded from the instruction
@@ -133,13 +130,6 @@ func (cpu *LC3) FetchOperands(op operation) {
 type fetchable interface {
 	addressable
 	FetchOperands(cpu *LC3)
-}
-
-// executable operations use operands for computation to update CPU state.
-// Nearly all operations are executable.
-type executable interface {
-	operation
-	Execute(cpu *LC3)
 }
 
 // StoreResult writes registers to memory if the operation is storable.
