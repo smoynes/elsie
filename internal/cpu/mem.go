@@ -33,7 +33,6 @@ import (
 // TODO: memory-mapped I/O
 //
 // Since ASCII art is worth a thousand words:
-//
 // +========+========+=================+
 // |        | 0x0000 |    Interrupt    |
 // |        |   ...  |  vector table   |--+
@@ -50,8 +49,8 @@ import (
 // |        |        |                 |<--|RET(R7)          |
 // |        |  ...   |   User data     |   |                 |
 // |        |        |                 |   |PSR              |
-// |        |        |                 |   |                 |
-// |  User  | 0xfdef |                 |   |                 |
+// |        |        |                 |<=>|MDR              |
+// |  User  | 0xfdef |                 |<==|MDR              |
 // + space  +--------+-----------------+   |                 |
 // |        | 0xfdf0 |                 |<--|SP(R6)           |
 // |        |        |                 |   |                 |
@@ -68,30 +67,35 @@ import (
 // +========+========+=================+    +-----------------+
 // .
 type Memory struct {
+	MAR  Register // Memory address register.
+	MDR  Register // Memory data register.
 	cell [AddressSpace]Word
 }
 
 // Size of addressable memory: 2 ^^ 16
 const AddressSpace = math.MaxUint16
 
-// Load loads.
-func (mem *Memory) Load(addr Word) Word {
+// Fetch loads the cell pointed at by the address register and puts the result
+// in the data register.
+//
+// Admittedly, this is a strange design. We use registers to mimic the design of
+// the LC-3 reference architecture and make clock cycles visible in the code structure.
+func (mem *Memory) Fetch() {
+	addr := Word(mem.MAR)
+	cell := mem.load(addr)
+	mem.MDR = Register(cell)
+}
+
+// Load loads a word from a memory directly, without simulated clock cycles.
+func (mem *Memory) load(addr Word) Word {
 	return mem.cell[addr]
 }
 
-// Store stores.
-func (mem *Memory) Store(addr Word, cell Word) {
+func (mem *Memory) Store() {
+	mem.cell[mem.MAR] = Word(mem.MDR)
+}
+
+// Store stores a word into memory directly, without simulated clock cycles.
+func (mem *Memory) store(addr Word, cell Word) {
 	mem.cell[addr] = cell
-}
-
-// PushStack pushes a word onto the current stack.
-func (cpu *LC3) PushStack(w Word) {
-	cpu.Reg[SP]--
-	cpu.Mem.Store(Word(cpu.Reg[SP]), w)
-}
-
-// PopStack pops a word from the current stack into a register.
-func (cpu *LC3) PopStack() Word {
-	cpu.Reg[SP]++
-	return cpu.Mem.Load(Word(cpu.Reg[SP]) - 1)
 }

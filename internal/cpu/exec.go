@@ -1,5 +1,7 @@
 package cpu
 
+// exec.go defines the CPU instruction cycle.
+
 // Cycle runs a single instruction cycle to completion.
 //
 // Each cycle has six steps:
@@ -32,9 +34,9 @@ func (cpu *LC3) Cycle() error {
 
 // Fetch loads the value addressed by PC into IR and increments PC.
 func (cpu *LC3) Fetch() {
-	addr := Word(cpu.PC)
-	word := cpu.Mem.Load(addr)
-	cpu.IR = Instruction(word)
+	cpu.Mem.MAR = Register(cpu.PC)
+	cpu.Mem.Fetch()
+	cpu.IR = Instruction(cpu.Mem.MDR)
 	cpu.PC++
 }
 
@@ -85,8 +87,8 @@ func (cpu *LC3) Decode() operation {
 		op = &trap{}
 	case OpcodeRTI:
 		op = &rti{}
-	case OpcodeReserved:
-		op = &reserved{}
+	case OpcodeRESV:
+		op = &resv{}
 	}
 
 	if op, ok := op.(decodable); ok {
@@ -104,31 +106,34 @@ func (cpu *LC3) EvalAddress(op operation) {
 	}
 }
 
-// FetchOperands loads a register from memory if the operation is fetchable.
+// FetchOperands reads from memory into a CPU register if the operation is fetchable.
 func (cpu *LC3) FetchOperands(op operation) {
 	if op, ok := op.(fetchable); ok {
+		cpu.Mem.Fetch()
 		op.FetchOperands(cpu)
 	}
 }
 
 // Execute does the operation.
 func (cpu *LC3) Execute(op operation) {
-	op.Execute(cpu)
+	if op, ok := op.(executable); ok {
+		op.Execute(cpu)
+	}
 }
 
 // StoreResult writes registers to memory if the operation is storable.
 func (cpu *LC3) StoreResult(op operation) {
 	if op, ok := op.(storable); ok {
 		op.StoreResult(cpu)
+		cpu.Mem.Store()
 	}
 }
 
 // operations represents a single CPU instruction as it is being executed. The
 // semantics defined by implementing optional interfaces: [decodable],
-// [addressable], [fetchable], [storable].
+// [addressable], [fetchable], [executable], [storable].
 type operation interface {
 	opcode() Opcode
-	Execute(cpu *LC3)
 }
 
 // decodable operations have operands that are decoded from the instruction
@@ -138,16 +143,24 @@ type decodable interface {
 	Decode(ir Instruction)
 }
 
+// addressable operations set the memory address register.
 type addressable interface {
 	operation
 	EvalAddress(cpu *LC3)
 }
 
+// fetchable operations load operands from the memory data registers.
 type fetchable interface {
 	addressable
 	FetchOperands(cpu *LC3)
 }
 
+// executable operations update CPU state. Some instructions do not, surprisingly.
+type executable interface {
+	Execute(cpu *LC3)
+}
+
+// storable operations store the memory data register.
 type storable interface {
 	addressable
 	StoreResult(cpu *LC3)

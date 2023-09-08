@@ -25,7 +25,7 @@ func _() {
 	_ = x[OpcodeJSRR-254]
 	_ = x[OpcodeTRAP-15]
 	_ = x[OpcodeRTI-8]
-	_ = x[OpcodeReserved-13]
+	_ = x[OpcodeRESV-13]
 }
 
 const (

@@ -1,5 +1,7 @@
 package cpu
 
+// ops.go defines the CPU operations and their semantics.
+
 // An Opcode identifies the operation to be executed by the CPU. The ISA has 15
 // distinct opcodes and one reserved value that is undefined and causes an
 // exception.
@@ -18,7 +20,8 @@ type br struct {
 const OpcodeBR = Opcode(0b0000) // BR
 
 var (
-	_ decodable = &br{}
+	_ decodable  = &br{}
+	_ executable = &br{}
 )
 
 func (br *br) opcode() Opcode {
@@ -213,7 +216,6 @@ func (a *addImm) Execute(cpu *LC3) {
 type ld struct {
 	dr     GPR
 	offset Word
-	addr   Word
 }
 
 var (
@@ -236,12 +238,11 @@ func (op *ld) Decode(ins Instruction) {
 }
 
 func (op *ld) EvalAddress(cpu *LC3) {
-	op.addr = Word(int16(cpu.PC) + int16(op.offset))
+	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
 }
 
 func (op *ld) FetchOperands(cpu *LC3) {
-	r := Register(cpu.Mem.Load(op.addr))
-	cpu.Reg[op.dr] = r
+	cpu.Reg[op.dr] = cpu.Mem.MDR
 }
 
 func (op *ld) Execute(cpu *LC3) {
@@ -256,7 +257,6 @@ func (op *ld) Execute(cpu *LC3) {
 type ldi struct {
 	dr     GPR
 	offset Word
-	addr   Word
 }
 
 const OpcodeLDI = Opcode(0b1010) // LDI
@@ -277,18 +277,17 @@ func (op *ldi) Decode(ins Instruction) {
 }
 
 func (op *ldi) EvalAddress(cpu *LC3) {
-	op.addr = Word(int16(cpu.PC) + int16(op.offset))
+	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
 }
 
 func (op *ldi) FetchOperands(cpu *LC3) {
-	op.addr = cpu.Mem.Load(op.addr)
+	cpu.Mem.MAR = cpu.Mem.MDR
+	cpu.Mem.Fetch()
+	cpu.Reg[op.dr] = cpu.Mem.MDR
 }
 
 func (op *ldi) Execute(cpu *LC3) {
-	a := cpu.Mem.Load(op.addr)
-	r := Register(a)
-	cpu.Reg[op.dr] = r
-	cpu.PSR.Set(r)
+	cpu.PSR.Set(cpu.Mem.MDR)
 }
 
 // LDR: Load Relative
@@ -300,7 +299,6 @@ type ldr struct {
 	dr     GPR
 	base   GPR
 	offset Word
-	addr   Word
 }
 
 const OpcodeLDR = Opcode(0b0110) // LDR
@@ -322,17 +320,15 @@ func (op *ldr) Decode(ins Instruction) {
 }
 
 func (op *ldr) EvalAddress(cpu *LC3) {
-	op.addr = Word(int16(cpu.Reg[op.base]) + int16(op.offset))
+	cpu.Mem.MAR = Register(int16(cpu.Reg[op.base]) + int16(op.offset))
 }
 
 func (op *ldr) FetchOperands(cpu *LC3) {
-	op.addr = cpu.Mem.Load(op.addr)
+	cpu.Reg[op.dr] = cpu.Mem.MDR
 }
 
 func (op *ldr) Execute(cpu *LC3) {
-	r := Register(op.addr)
-	cpu.Reg[op.dr] = r
-	cpu.PSR.Set(r)
+	cpu.PSR.Set(cpu.Reg[op.dr])
 }
 
 // LEA: Load effective address
@@ -343,14 +339,13 @@ func (op *ldr) Execute(cpu *LC3) {
 type lea struct {
 	dr     GPR
 	offset Word
-	addr   Word
 }
 
 const OpcodeLEA = Opcode(0b1110) // LEA
 
 var (
-	_ decodable   = &lea{}
-	_ addressable = &lea{}
+	_ decodable = &lea{}
+	_ fetchable = &lea{}
 )
 
 func (op *lea) opcode() Opcode { return OpcodeLEA }
@@ -363,12 +358,15 @@ func (op *lea) Decode(ins Instruction) {
 }
 
 func (op *lea) EvalAddress(cpu *LC3) {
-	op.addr = Word(int16(cpu.PC) + int16(op.offset))
+	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
+	println(cpu.Mem.MAR.String())
 }
 
-func (op *lea) Execute(cpu *LC3) {
-	r := Register(op.addr)
-	cpu.Reg[op.dr] = r
+func (op *lea) FetchOperands(cpu *LC3) {
+	cpu.Reg[op.dr] = cpu.Mem.MDR
+	println(cpu.Mem.MDR.String())
+	println(op.dr.String())
+
 }
 
 // ST: Store word in memory.
@@ -379,7 +377,6 @@ func (op *lea) Execute(cpu *LC3) {
 type st struct {
 	sr     GPR
 	offset Word
-	addr   Word
 }
 
 var (
@@ -402,16 +399,14 @@ func (op *st) Decode(ins Instruction) {
 }
 
 func (op *st) EvalAddress(cpu *LC3) {
-	op.addr = Word(int16(cpu.PC) + int16(op.offset))
+	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
 }
 
 func (op *st) Execute(cpu *LC3) {
-	// TODO: check PSR and raise ACV
+	cpu.Mem.MDR = cpu.Reg[op.sr]
 }
 
-func (op *st) StoreResult(cpu *LC3) {
-	cpu.Mem.Store(op.addr, Word(cpu.Reg[op.sr]))
-}
+func (op *st) StoreResult(cpu *LC3) {} // ?
 
 // STI: Store Indirect.
 //
@@ -421,7 +416,6 @@ func (op *st) StoreResult(cpu *LC3) {
 type sti struct {
 	sr     GPR
 	offset Word
-	addr   Word
 }
 
 var (
@@ -445,20 +439,18 @@ func (op *sti) Decode(ins Instruction) {
 }
 
 func (op *sti) EvalAddress(cpu *LC3) {
-	op.addr = Word(int16(cpu.PC) + int16(op.offset))
+	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
 }
 
 func (op *sti) FetchOperands(cpu *LC3) {
-	op.addr = cpu.Mem.Load(op.addr)
+	cpu.Mem.MAR = cpu.Mem.MDR
 }
 
 func (op *sti) Execute(cpu *LC3) {
-	// TODO: check PSR and raise ACV
+	cpu.Mem.MDR = cpu.Reg[op.sr]
 }
 
-func (op *sti) StoreResult(cpu *LC3) {
-	cpu.Mem.Store(op.addr, Word(cpu.Reg[op.sr]))
-}
+func (op *sti) StoreResult(cpu *LC3) {}
 
 // STR: Store Relative.
 //
@@ -469,7 +461,6 @@ type str struct {
 	sr     GPR
 	base   GPR
 	offset Word
-	addr   Word
 }
 
 var (
@@ -493,16 +484,14 @@ func (op *str) Decode(ins Instruction) {
 }
 
 func (op *str) EvalAddress(cpu *LC3) {
-	op.addr = Word(int16(cpu.Reg[op.base]) + int16(op.offset))
+	cpu.Mem.MAR = Register(int16(cpu.Reg[op.base]) + int16(op.offset))
 }
 
 func (op *str) Execute(cpu *LC3) {
-	// TODO: check PSR and raise ACV
+	cpu.Mem.MDR = cpu.Reg[op.sr]
 }
 
-func (op *str) StoreResult(cpu *LC3) {
-	cpu.Mem.Store(op.addr, Word(cpu.Reg[op.sr]))
-}
+func (op *str) StoreResult(cpu *LC3) {}
 
 // JMP: Unconditional branch
 //
@@ -635,12 +624,12 @@ func (op *trap) Decode(ins Instruction) {
 	}
 }
 
-func (op *trap) EvalAddress(*LC3) {
-	// NOP: the vector is already the address.
+func (op *trap) EvalAddress(cpu *LC3) {
+	cpu.Mem.MAR = Register(op.vec)
 }
 
 func (op *trap) FetchOperands(cpu *LC3) {
-	op.isr = cpu.Mem.Load(op.vec)
+	op.isr = Word(cpu.Mem.MDR)
 }
 
 func (op *trap) Execute(cpu *LC3) {
@@ -676,7 +665,7 @@ func (op *rti) opcode() Opcode {
 }
 
 var (
-	_ operation = &trap{}
+	_ executable = &trap{}
 )
 
 func (op *rti) Execute(cpu *LC3) {
@@ -702,16 +691,16 @@ func (op *rti) Execute(cpu *LC3) {
 // | 1101 | 0000 0000 0000 |
 // |------+----------------|
 // |15  12|11             0|
-type reserved struct{}
+type resv struct{}
 
-const OpcodeReserved = Opcode(0b1101) // RESV
+const OpcodeRESV = Opcode(0b1101) // RESV
 
-var _ operation = &reserved{}
+var _ executable = &resv{}
 
-func (r *reserved) opcode() Opcode {
-	return OpcodeReserved
+func (r *resv) opcode() Opcode {
+	return OpcodeRESV
 }
 
-func (reserved) Execute(cpu *LC3) {
+func (*resv) Execute(cpu *LC3) {
 	// TODO: raise exception
 }
