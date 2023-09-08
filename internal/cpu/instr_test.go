@@ -389,6 +389,7 @@ func TestInstructions(t *testing.T) {
 		cpu.PC = 0x0400
 		cpu.PSR = StatusUser | StatusZero
 		cpu.SSP = 0x3000
+		cpu.USP = 0xface
 		cpu.Reg[R6] = 0xfe00
 		cpu.Mem[cpu.PC] = 0b1111_0000_1000_0000
 		cpu.Mem[0x0080] = 0xadad
@@ -413,35 +414,86 @@ func TestInstructions(t *testing.T) {
 				Register(0xfe00), cpu.USP)
 		}
 
-		if cpu.SSP != 0x2ffe {
+		if cpu.SSP != 0x3000 {
 			t.Errorf("SSP want: %s, got: %s",
-				Word(0x2ffe), cpu.SSP)
+				Word(0x3000), cpu.SSP)
 		}
 
-		if cpu.Reg[R6] != 0x3000 {
-			t.Errorf("R6 want: SSP=%s, got: %s",
-				Word(0x3000), cpu.Reg[R6])
+		if cpu.Reg[SP] != 0x3000-2 {
+			t.Errorf("SP want: SSP=%s, got: %s",
+				Word(0x2ffe), cpu.Reg[SP])
 		}
 
-		if cpu.Mem[cpu.SSP] != 0x0401 {
-			t.Errorf("SSP top want: %s = PC, got: %s",
-				Register(0xfe00), cpu.Mem[cpu.SSP])
+		if cpu.Mem[cpu.Reg[SP]] != 0x0401 {
+			t.Errorf("SP top want: %s = PC, got: %s",
+				Register(0x0401), cpu.Mem[cpu.SSP])
 		}
 
-		if cpu.Mem[cpu.SSP-1] != 0x8002 {
-			t.Errorf("SSP below want PSR: %s, got: %s",
-				StatusZero|^StatusUser, ProcessorStatus(cpu.Mem[cpu.SSP-1]))
+		if cpu.Mem[cpu.Reg[SP]+1] != 0x8002 {
+			t.Errorf("SP bottom want PSR: %s, got: %s",
+				StatusZero&^StatusPrivilege, ProcessorStatus(cpu.Mem[cpu.Reg[SP]+1]))
 		}
 
-		if !cpu.PSR.Zero() {
-			t.Errorf("cond incorrect, want: %s, got: %s",
-				StatusZero, cpu.PSR)
+		if cpu.PSR.Privilege() != PrivilegeSystem {
+			t.Errorf("PSR want: %s, got: %s",
+				ProcessorStatus(0x0000), cpu.PSR)
+		}
+	})
+
+	t.Run("TRAP SYSTEM", func(t *testing.T) {
+		var cpu *LC3 = New()
+		cpu.PC = 0x0400
+		cpu.PSR = StatusSystem | StatusZero
+		cpu.USP = 0xfade
+		cpu.SSP = 0x3000
+		cpu.Reg[SP] = 0xfe00
+		cpu.Mem[cpu.PC] = 0b1111_0000_1000_0000
+		cpu.Mem[0x0080] = 0xadad
+
+		err := cpu.Execute()
+		if err != nil {
+			t.Error(err)
 		}
 
-		oper := cpu.Decode().(*trap)
-		oper.Decode(cpu.IR)
-		oper.Execute(cpu)
-		t.Logf("oper: %#+v", oper)
+		if op := cpu.IR.Opcode(); op != OpcodeTRAP {
+			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
+				cpu.IR, OpcodeTRAP, op)
+		}
+
+		if cpu.PC != 0xadad {
+			t.Errorf("PC want: %s, got: %s",
+				ProgramCounter(0xadad), cpu.PC)
+		}
+
+		if cpu.USP != 0xfade {
+			t.Errorf("USP want: R6 = %s, got: %s",
+				Register(0xfade), cpu.USP)
+		}
+
+		if cpu.SSP != 0x3000 {
+			t.Errorf("SSP want: %s, got: %s",
+				Word(0x3000), cpu.SSP)
+		}
+
+		if cpu.Reg[SP] != 0xfe00-2 {
+			t.Errorf("SP want: SSP=%s, got: %s",
+				Word(0xfdfe), cpu.Reg[SP])
+		}
+
+		if cpu.Mem[cpu.Reg[SP]] != 0x0401 {
+			t.Errorf("SP top want: %s = PC, got: %s",
+				Register(0x0401), cpu.Mem[cpu.SSP])
+		}
+
+		if cpu.Mem[cpu.Reg[SP]+1] != 0x0002 {
+			t.Errorf("SP bottom want PSR: %s, got: %s",
+				StatusZero|StatusPrivilege, ProcessorStatus(cpu.Mem[cpu.Reg[SP]+1]))
+		}
+
+		if cpu.PSR.Privilege() != PrivilegeSystem {
+			t.Errorf("PSR want: %s, got: %s",
+				ProcessorStatus(0x0000), cpu.PSR)
+		}
 	})
 }
 

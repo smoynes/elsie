@@ -63,9 +63,9 @@ func (n *not) Decode(ins Instruction) {
 }
 
 func (n *not) Execute(cpu *LC3) {
-	r := cpu.Reg[n.src] ^ 0xffff
-	cpu.Reg[n.dest] = r
-	cpu.PSR.Set(r)
+	cpu.Temp = cpu.Reg[n.src] ^ 0xffff
+	cpu.Reg[n.dest] = cpu.Temp
+	cpu.PSR.Set(cpu.Temp)
 }
 
 // AND: Bitwise AND binary operator (register mode)
@@ -97,10 +97,10 @@ func (a *and) Decode(ins Instruction) {
 }
 
 func (a *and) Execute(cpu *LC3) {
-	r := cpu.Reg[a.sr1]
-	r = r & cpu.Reg[a.sr2]
-	cpu.Reg[a.dest] = r
-	cpu.PSR.Set(r)
+	cpu.Temp = cpu.Reg[a.sr1]
+	cpu.Temp &= cpu.Reg[a.sr2]
+	cpu.Reg[a.dest] = cpu.Temp
+	cpu.PSR.Set(cpu.Temp)
 }
 
 // AND: Bitwise AND binary operator (immediate mode)
@@ -131,10 +131,9 @@ func (a *andImm) Decode(ins Instruction) {
 }
 
 func (a *andImm) Execute(cpu *LC3) {
-	r := cpu.Reg[a.sr]
-	r = r & Register(a.lit)
-	cpu.Reg[a.dr] = r
-	cpu.PSR.Set(r)
+	cpu.Temp = cpu.Reg[a.sr] & Register(a.lit)
+	cpu.Reg[a.dr] = cpu.Temp
+	cpu.PSR.Set(cpu.Temp)
 }
 
 // ADD: Arithmetic addition operator (register mode)
@@ -167,9 +166,9 @@ func (a *add) Decode(ins Instruction) {
 }
 
 func (a *add) Execute(cpu *LC3) {
-	r := Register(int16(cpu.Reg[a.sr1]) + int16(cpu.Reg[a.sr2]))
-	cpu.Reg[a.dr] = r
-	cpu.PSR.Set(r)
+	cpu.Temp = Register(int16(cpu.Reg[a.sr1]) + int16(cpu.Reg[a.sr2]))
+	cpu.Reg[a.dr] = cpu.Temp
+	cpu.PSR.Set(cpu.Temp)
 }
 
 // ADD: Arithmetic addition operator (immediate mode)
@@ -200,9 +199,9 @@ func (a *addImm) Decode(ins Instruction) {
 }
 
 func (a *addImm) Execute(cpu *LC3) {
-	r := Register(int16(cpu.Reg[a.sr]) + int16(a.lit))
-	cpu.Reg[a.dr] = r
-	cpu.PSR.Set(r)
+	cpu.Temp = Register(int16(cpu.Reg[a.sr]) + int16(a.lit))
+	cpu.Reg[a.dr] = cpu.Temp
+	cpu.PSR.Set(cpu.Temp)
 }
 
 // LD: Load word from memory.
@@ -510,21 +509,56 @@ func (op *trap) FetchOperands(cpu *LC3) {
 }
 
 func (op *trap) Execute(cpu *LC3) {
-	upsr := cpu.PSR
+	cpu.Temp = Register(cpu.PSR)
 
 	if cpu.PSR.Privilege() == PrivilegeUser {
 		cpu.USP = cpu.Reg[R6]      // Save user stack in register.
-		cpu.Reg[R6] = cpu.SSP      // Set R6 to system stack from register.
-		cpu.PSR |= StatusPrivilege // Switch to system privilege level.
+		cpu.Reg[SP] = cpu.SSP      // Set R6 to system stack pointer.
+		cpu.PSR ^= StatusPrivilege // Switch to system privilege level.
 	}
 
-	// Push status register and program counter onto system stack.
-	cpu.SSP -= 2
-	cpu.Mem[cpu.SSP-1] = Word(upsr)
-	cpu.Mem[cpu.SSP] = Word(cpu.PC)
+	// Push the old status register and program counter onto system stack.
+	cpu.PushStack(Word(cpu.Temp))
+	cpu.PushStack(Word(cpu.PC))
 
 	// Finally, jump to the ISR using the interrupt vector.
 	cpu.PC = ProgramCounter(op.isr)
+
+}
+
+// RTI: Return from trap or interrupt
+//
+// | 1000 | 0000 0000 0000 |
+// |------+----------------|
+// |15  12|11             0|
+type rti struct{}
+
+const OpcodeRTI = Opcode(0b1000) // RTI
+
+func (op *rti) opcode() Opcode {
+	return OpcodeRTI
+}
+
+var (
+	_ operation = &trap{}
+)
+
+func (op *rti) Execute(cpu *LC3) {
+	if cpu.PSR.Privilege() == PrivilegeUser {
+		// TODO: raise privilege exception
+		return
+	}
+
+	// Restore program counter and status register.
+	cpu.PC = ProgramCounter(cpu.PopStack())
+	cpu.PSR = ProcessorStatus(cpu.PopStack())
+
+	if cpu.PSR.Privilege() == PrivilegeUser {
+		// When changing back to user privileges, swap the system stack
+		// the user stack pointers.
+		cpu.SSP = cpu.Reg[SP]
+		cpu.Reg[SP] = cpu.USP
+	}
 }
 
 // RES: Reserved operator
@@ -548,7 +582,6 @@ func (reserved) Execute(cpu *LC3) {
 }
 
 const (
-	OpcodeRTI = Opcode(0b1000) // RTI
 	OpcodeSTI = Opcode(0b1011) // STI
 	OpcodeSTR = Opcode(0b0111) // STR
 )

@@ -8,13 +8,14 @@ import (
 
 // LC3 is a computer simulated in software.
 type LC3 struct {
-	PC  ProgramCounter  // Instruction Pointer
-	IR  Instruction     // Instruction Register
-	PSR ProcessorStatus // Processor Status Register
-	Reg RegisterFile    // General-purpose register file
-	Mem Memory          // All the memory you'll ever need
-	USP Register        // User stack pointer
-	SSP Register        // System stack pointer
+	PC   ProgramCounter  // Instruction Pointer
+	IR   Instruction     // Instruction Register
+	PSR  ProcessorStatus // Processor Status Register
+	Reg  RegisterFile    // General-purpose register file
+	Mem  Memory          // All the memory you'll ever need
+	USP  Register        // User stack pointer
+	SSP  Register        // System stack pointer
+	Temp Register        // Temporary value
 }
 
 func New() *LC3 {
@@ -229,4 +230,10 @@ const (
 
 	// Count of general purpose registers.
 	NumGPR
+
+	// ABI: Subroutine return address is in R7
+	RET GPR = R7
+
+	// ABI: Current stack is in R6
+	SP GPR = R6
 )
