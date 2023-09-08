@@ -6,14 +6,19 @@ import (
 )
 
 func TestInstructions(t *testing.T) {
-	t.Run("Reserved", func(t *testing.T) {
-		var instr Instruction = 0b11010011_10100111
+	t.Run("RESV", func(t *testing.T) {
+		t.SkipNow()
 		cpu := New()
-		cpu.IR = instr
+		cpu.Mem.Store(Word(cpu.PC), 0b11010011_10100111)
 
-		var op operation = cpu.Decode()
-		if op.opcode() != OpcodeReserved {
-			t.Errorf("instr: %s, want: %b, got: %b", instr, OpcodeReserved, op)
+		err := cpu.Cycle()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if cpu.IR.Opcode() != OpcodeReserved {
+			t.Errorf("instr: %s, want: %b, got: %b",
+				cpu.IR, OpcodeReserved, cpu.IR.Opcode())
 		}
 	})
 

@@ -579,7 +579,6 @@ func (r *reserved) opcode() Opcode {
 
 func (reserved) Execute(cpu *LC3) {
 	// TODO: raise exception
-	panic("reserved")
 }
 
 const (
