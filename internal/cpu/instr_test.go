@@ -404,6 +404,37 @@ func TestInstructions(t *testing.T) {
 		t.Logf("oper: %#+v", oper)
 	})
 
+	t.Run("STI", func(t *testing.T) {
+		t.Parallel()
+		var cpu *LC3 = New()
+		cpu.PC = 0x0400
+		cpu.Reg[R7] = 0xcafe
+		cpu.Mem.Store(Word(cpu.PC), 0b1011_111_0_0000_0001)
+		cpu.Mem.Store(Word(cpu.PC)+2, 0x0f00)
+		cpu.Mem.Store(Word(0x0f00), 0x0fff)
+
+		err := cpu.Cycle()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeSTI {
+			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
+				cpu.IR, OpcodeSTI, op)
+		}
+
+		val := cpu.Mem.Load(Word(0x0f00))
+		if val != 0xcafe {
+			t.Errorf("Mem[%s] want: %s, got: %s",
+				Word(0x0f00), Word(0xcafe), val)
+		}
+
+		if !cpu.PSR.Zero() {
+			t.Errorf("cond incorrect, want: %s, got: %s",
+				StatusZero, cpu.PSR)
+		}
+	})
+
 	t.Run("TRAP USER", func(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()

@@ -369,6 +369,53 @@ func (op *st) StoreResult(cpu *LC3) {
 	cpu.Mem.Store(op.addr, Word(cpu.Reg[op.sr]))
 }
 
+// STI: Store Indirect.
+//
+// | 1011 | SR  | PCOFFSET9 |
+// |------+-----+---+-------|
+// |15  12|11  9|8         0|
+type sti struct {
+	sr     GPR
+	offset Word
+	addr   Word
+}
+
+var (
+	_ decodable   = &sti{}
+	_ addressable = &sti{}
+	_ fetchable   = &sti{}
+	_ storable    = &sti{}
+)
+
+const OpcodeSTI = Opcode(0b1011) // STI
+
+func (sti) opcode() Opcode {
+	return OpcodeSTI
+}
+
+func (op *sti) Decode(ins Instruction) {
+	*op = sti{
+		sr:     ins.SR(),
+		offset: ins.Offset(PCOFFSET9),
+	}
+}
+
+func (op *sti) EvalAddress(cpu *LC3) {
+	op.addr = Word(int16(cpu.PC) + int16(op.offset))
+}
+
+func (op *sti) FetchOperands(cpu *LC3) {
+	op.addr = cpu.Mem.Load(op.addr)
+}
+
+func (op *sti) Execute(cpu *LC3) {
+	// TODO: check PSR and raise ACV
+}
+
+func (op *sti) StoreResult(cpu *LC3) {
+	cpu.Mem.Store(op.addr, Word(cpu.Reg[op.sr]))
+}
+
 // JMP: Unconditional branch
 //
 // | 1100 | 000 | SR | 00 00000 |
@@ -582,6 +629,5 @@ func (reserved) Execute(cpu *LC3) {
 }
 
 const (
-	OpcodeSTI = Opcode(0b1011) // STI
 	OpcodeSTR = Opcode(0b0111) // STR
 )
