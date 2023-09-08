@@ -11,7 +11,16 @@ func main() {
 	machine.Reg[cpu.R0] = 0xffff
 	print(machine.String(), "\n")
 	print(machine.Reg.String(), "\n")
-	machine.Execute()
+
+	machine.Cycle()
+	print(machine.String(), "\n")
+	print(machine.Reg.String(), "\n")
+
+	machine.Cycle()
+	print(machine.String(), "\n")
+	print(machine.Reg.String(), "\n")
+
+	machine.Cycle()
 	print(machine.String(), "\n")
 	print(machine.Reg.String(), "\n")
 }

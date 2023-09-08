@@ -1,7 +1,8 @@
 package cpu
 
 // An Opcode identifies the operation to be executed by the CPU. The ISA has 15
-// distinct opcodes (and one reserved value that is undefined).
+// distinct opcodes and one reserved value that is undefined and causes an
+// exception.
 type Opcode uint8
 
 // BR: Conditional branch
@@ -511,19 +512,20 @@ func (op *trap) FetchOperands(cpu *LC3) {
 func (op *trap) Execute(cpu *LC3) {
 	cpu.Temp = Register(cpu.PSR)
 
+	// Switch from the user to the system stack and elevate to system
+	// privilege level.
 	if cpu.PSR.Privilege() == PrivilegeUser {
-		cpu.USP = cpu.Reg[R6]      // Save user stack in register.
-		cpu.Reg[SP] = cpu.SSP      // Set R6 to system stack pointer.
-		cpu.PSR ^= StatusPrivilege // Switch to system privilege level.
+		cpu.USP = cpu.Reg[SP]
+		cpu.Reg[SP] = cpu.SSP
+		cpu.PSR ^= StatusPrivilege
 	}
 
-	// Push the old status register and program counter onto system stack.
+	// Push the old status register and program counter onto the stack.
 	cpu.PushStack(Word(cpu.Temp))
 	cpu.PushStack(Word(cpu.PC))
 
 	// Finally, jump to the ISR using the interrupt vector.
 	cpu.PC = ProgramCounter(op.isr)
-
 }
 
 // RTI: Return from trap or interrupt
@@ -561,7 +563,7 @@ func (op *rti) Execute(cpu *LC3) {
 	}
 }
 
-// RES: Reserved operator
+// RESV: Reserved operator
 //
 // | 1101 | 0000 0000 0000 |
 // |------+----------------|
