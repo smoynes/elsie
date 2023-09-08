@@ -92,16 +92,16 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 
 Focus right now:
 
-- implementing remaining instructions 🤓
-  - `STI`
-  - `STR`
-  - `RESV`
+- memory access control
+
 
 Up next:
 
-- exceptions
-- memory access control
 - memory mapped I/O
+- implementing remaining instructions 🤓
+  - RESV
+- exceptions
+- ISRs
 - I/O interrupts
 
 Completed:
@@ -114,8 +114,11 @@ Completed:
   - ADD
   - LD
   - LDI
+  - LDR
   - LEA
   - ST
+  - STI
+  - STR
   - JMP/RET
   - JSR
   - JSRR
