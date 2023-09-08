@@ -7,6 +7,7 @@ import (
 
 func TestInstructions(t *testing.T) {
 	t.Run("RESV", func(t *testing.T) {
+		t.Parallel()
 		t.SkipNow()
 		cpu := New()
 		cpu.Mem.Store(Word(cpu.PC), 0b11010011_10100111)
@@ -23,6 +24,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("BR", func(t *testing.T) {
+		t.Parallel()
 		cpu := New()
 		cpu.Mem.Store(Word(cpu.PC), 0b0000_010_0_0000_0111)
 		cpu.PSR = StatusZero
@@ -49,6 +51,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("BRnzp", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0100
 		cpu.Mem.Store(Word(cpu.PC), 0b0000_111_1_1111_0111)
@@ -76,6 +79,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("NOT", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Reg[R0] = 0b0101_1010_1111_0000
 		cpu.Mem.Store(Word(cpu.PC), 0b1001_000_000_111111)
@@ -99,6 +103,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("AND", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem.Store(Word(cpu.PC), 0b0101_000_000_0_00_001)
 		cpu.Reg[R0] = 0x5aff
@@ -121,6 +126,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("ANDIMM", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem.Store(Word(cpu.PC), 0b0101_000_000_1_10101)
 		cpu.Reg[R0] = 0b0101_1010_1111_1111
@@ -144,6 +150,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("ADD", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem.Store(Word(cpu.PC), 0b0001_000_000_0_00001)
 		cpu.Reg[R0] = 0
@@ -171,6 +178,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("ADDIMM", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Mem.Store(Word(cpu.PC), 0b0001_000_000_1_10000)
 		cpu.Reg[R0] = 0
@@ -200,6 +208,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("LD", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
 		cpu.Reg[R2] = 0xcafe
@@ -233,6 +242,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("JMP", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
 		cpu.Mem.Store(Word(cpu.PC), 0b1100_000_111_000000)
@@ -259,6 +269,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("JSRR", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Mem.Store(Word(cpu.PC), 0b0100_0_00_100_000000)
@@ -288,6 +299,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("LDI", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Mem.Store(Word(cpu.PC), 0xa001)
@@ -325,6 +337,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("LEA", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Mem.Store(Word(cpu.PC), 0b1110_000_1_00000000)
@@ -352,6 +365,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("ST", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Reg[R7] = 0xcafe
@@ -391,6 +405,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("TRAP USER", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.PSR = StatusUser | StatusZero
@@ -447,6 +462,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("TRAP SYSTEM", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.PSR = StatusSystem | StatusZero
@@ -503,6 +519,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("RTI to user", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0xadaf
 		cpu.Mem.Store(Word(cpu.PC), 0b1000_0000_0000_0000)
@@ -568,6 +585,7 @@ func TestInstructions(t *testing.T) {
 	})
 
 	t.Run("RTI to system", func(t *testing.T) {
+		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0xadaf
 		cpu.Mem.Store(Word(cpu.PC), 0b1000_0000_0000_0000)
@@ -715,6 +733,7 @@ func TestSext(t *testing.T) {
 		tc := tc
 		name := fmt.Sprintf("%0#4x %d", tc.have, tc.bits)
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			got := Word(tc.have)
 			got.Sext(tc.bits)
 
