@@ -1,31 +1,30 @@
 package cpu
 
-// Execute runs a single instruction cycle to completion.
+// Cycle runs a single instruction cycle to completion.
 //
-// Each cycle includes six stages:
+// Each cycle has six steps:
 //
 //   - fetch instruction: using the program counter as a pointer, fetch an
 //     instruction from memory and increment the program counter.
 //
-//   - decode operation: decode the operation to be performed and its operands
-//     from the instruction.
+//   - decode operation: decode an operation and its operands from the
+//     instruction.
 //
-//   - evaluate address: compute the memory address for loading or storing values
-//     in memory.
+//   - evaluate address: compute the memory address to be accessed.
 //
-// - fetch operands: load an operand from memory using the computed address.
+//   - fetch operands: load an operand from memory using the computed address.
 //
-// - execute operation: do the thing.
+//   - execute operation: do the thing.
 //
-// - store result: store operation result in memory.
+//   - store result: store operation result in memory.
 //
-// An operation may or may not implement each phase depending on its semantics.
-func (cpu *LC3) Execute() error {
+// Operations implement a set of methods according to their semantics.
+func (cpu *LC3) Cycle() error {
 	cpu.Fetch()
 	op := cpu.Decode()
 	cpu.EvalAddress(op)
 	cpu.FetchOperands(op)
-	op.Execute(cpu)
+	cpu.Execute(op)
 	cpu.StoreResult(op)
 
 	return nil
@@ -91,9 +90,36 @@ func (cpu *LC3) Decode() operation {
 	return op
 }
 
-// An operation represents a CPU operation as it is being executed. It contains
-// its decoded operands and its semantics are implemented as several optional
-// methods defined below.
+// EvalAddress computes a relative memory address if the operation is
+// addressable.
+func (cpu *LC3) EvalAddress(op operation) {
+	if op, ok := op.(addressable); ok {
+		op.EvalAddress(cpu)
+	}
+}
+
+// FetchOperands loads a register from memory if the operation is fetchable.
+func (cpu *LC3) FetchOperands(op operation) {
+	if op, ok := op.(fetchable); ok {
+		op.FetchOperands(cpu)
+	}
+}
+
+// Execute does the operation.
+func (cpu *LC3) Execute(op operation) {
+	op.Execute(cpu)
+}
+
+// StoreResult writes registers to memory if the operation is storable.
+func (cpu *LC3) StoreResult(op operation) {
+	if op, ok := op.(storable); ok {
+		op.StoreResult(cpu)
+	}
+}
+
+// operations represents a single CPU instruction as it is being executed. The
+// semantics defined by implementing optional interfaces: [decodable],
+// [addressable], [fetchable], [storable].
 type operation interface {
 	opcode() Opcode
 	Execute(cpu *LC3)
@@ -106,40 +132,16 @@ type decodable interface {
 	Decode(ir Instruction)
 }
 
-// EvalAddress computes a memory address if the operation is addressable.
-func (cpu *LC3) EvalAddress(op operation) {
-	if op, ok := op.(addressable); ok {
-		op.EvalAddress(cpu)
-	}
-}
-
-// addressable operations evaluate relative addresses to be loaded or stored.
 type addressable interface {
 	operation
 	EvalAddress(cpu *LC3)
 }
 
-// FetchOperands loads a register from memory if the operation is fetchable.
-func (cpu *LC3) FetchOperands(op operation) {
-	if op, ok := op.(fetchable); ok {
-		op.FetchOperands(cpu)
-	}
-}
-
-// fetchable operations load words of memory into registers.
 type fetchable interface {
 	addressable
 	FetchOperands(cpu *LC3)
 }
 
-// StoreResult writes registers to memory if the operation is storable.
-func (cpu *LC3) StoreResult(op operation) {
-	if op, ok := op.(storable); ok {
-		op.StoreResult(cpu)
-	}
-}
-
-// storable operations write registers to memory.
 type storable interface {
 	addressable
 	StoreResult(cpu *LC3)

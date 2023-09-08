@@ -22,7 +22,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Mem[cpu.PC] = 0b0000_010_0_0000_0111
 		cpu.PSR = StatusZero
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -48,7 +48,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Mem[cpu.PC] = 0b0000_111_1_1111_0111
 		cpu.PSR.Set(0xf000)
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -74,7 +74,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Reg[R0] = 0b0101_1010_1111_0000
 		cpu.Mem[cpu.PC] = 0b1001_000_000_111111
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -98,7 +98,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Reg[R0] = 0x5aff
 		cpu.Reg[R1] = 0x00f0
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -119,7 +119,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Mem[cpu.PC] = 0b0101_000_000_1_10101
 		cpu.Reg[R0] = 0b0101_1010_1111_1111
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -143,7 +143,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Reg[R0] = 0
 		cpu.Reg[R1] = 1
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -169,7 +169,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Mem[cpu.PC] = 0b0001_000_000_1_10000
 		cpu.Reg[R0] = 0
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -200,7 +200,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Mem[cpu.PC] = 0b0010_010_011000110
 		cpu.Mem[0x0100+0x00c6] = 0x0f00
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -232,7 +232,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Mem[cpu.PC] = 0b1100_000_111_000000
 		cpu.Reg[R7] = 0x0010
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -257,7 +257,7 @@ func TestInstructions(t *testing.T) {
 		cpu.PC = 0x0400
 		cpu.Mem[cpu.PC] = 0b0100_0_00_100_000000
 		cpu.Reg[R4] = 0x0300
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -290,7 +290,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Reg[R0] = 0xffff
 		cpu.Mem[0xdad0] = 0xcafe
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -324,7 +324,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Mem[cpu.PC] = 0b1110_000_1_00000000
 		cpu.Reg[R0] = 0xffff
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -352,7 +352,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Mem[cpu.PC] = 0b0011_111_0_1000_0000
 		cpu.Mem[0x0481] = 0x0f00
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -394,7 +394,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Mem[cpu.PC] = 0b1111_0000_1000_0000
 		cpu.Mem[0x0080] = 0xadad
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
@@ -450,7 +450,7 @@ func TestInstructions(t *testing.T) {
 		cpu.Mem[cpu.PC] = 0b1111_0000_1000_0000
 		cpu.Mem[0x0080] = 0xadad
 
-		err := cpu.Execute()
+		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
