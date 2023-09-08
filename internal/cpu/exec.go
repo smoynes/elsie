@@ -77,6 +77,8 @@ func (cpu *LC3) Decode() operation {
 		}
 	case OpcodeTRAP:
 		op = &trap{}
+	case OpcodeRTI:
+		op = &rti{}
 	case OpcodeReserved:
 		op = &reserved{}
 	default:

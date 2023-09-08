@@ -555,8 +555,8 @@ func (op *rti) Execute(cpu *LC3) {
 	cpu.PSR = ProcessorStatus(cpu.PopStack())
 
 	if cpu.PSR.Privilege() == PrivilegeUser {
-		// When changing back to user privileges, swap the system stack
-		// the user stack pointers.
+		// When changing back to user privileges, swap the system and
+		// user stack pointers.
 		cpu.SSP = cpu.Reg[SP]
 		cpu.Reg[SP] = cpu.USP
 	}

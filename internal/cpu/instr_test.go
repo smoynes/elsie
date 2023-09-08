@@ -43,7 +43,8 @@ func TestInstructions(t *testing.T) {
 		}
 
 		if cpu.PSR != StatusZero {
-			t.Errorf("cond incorrect, want: %s, got: %s", StatusZero, cpu.PSR)
+			t.Errorf("cond incorrect, want: %s, got: %s",
+				StatusZero, cpu.PSR)
 		}
 	})
 
@@ -498,6 +499,141 @@ func TestInstructions(t *testing.T) {
 		if cpu.PSR.Privilege() != PrivilegeSystem {
 			t.Errorf("PSR want: %s, got: %s",
 				ProcessorStatus(0x0000), cpu.PSR)
+		}
+	})
+
+	t.Run("RTI to user", func(t *testing.T) {
+		var cpu *LC3 = New()
+		cpu.PC = 0xadaf
+		cpu.Mem.Store(Word(cpu.PC), 0b1000_0000_0000_0000)
+		cpu.Mem.Store(Word(0x0080), 0xcafe)
+		cpu.PSR = StatusSystem | StatusNegative
+		cpu.SSP = 0xffff
+
+		cpu.Reg[SP] = 0x3000 - 2 // user PC, PSR on system stack
+		cpu.Mem.Store(Word(cpu.Reg[SP]), 0x0401)
+		cpu.Mem.Store(Word(cpu.Reg[SP]+1),
+			Word(StatusUser|StatusNegative))
+
+		cpu.USP = 0xfade // previous stored user stack
+		cpu.Mem.Store(Word(cpu.USP), 0xff00)
+		cpu.Mem.Store(Word(cpu.USP+1), 0x0ff0)
+
+		err := cpu.Cycle()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeRTI {
+			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
+				cpu.IR, OpcodeRTI, op)
+		}
+
+		if cpu.PC != 0x0401 {
+			t.Errorf("PC want: %s, got: %s",
+				ProgramCounter(0x0401), cpu.PC)
+		}
+
+		if cpu.PSR.Privilege() != PrivilegeUser {
+			t.Errorf("PSR want: %s, got: %s",
+				ProcessorStatus(0x8004), cpu.PSR)
+		}
+
+		if cpu.USP != 0xfade {
+			t.Errorf("USP want: %s, got: %s",
+				Register(0xfade), cpu.USP)
+		}
+		if cpu.SSP != 0x3000 {
+			t.Errorf("SSP want: %s, got: %s",
+				Word(0x3000), cpu.SSP)
+		}
+
+		if cpu.Reg[SP] != 0xfade {
+			t.Errorf("SP want: USP=%s, got: %s",
+				Word(0xfade), cpu.Reg[SP])
+		}
+
+		top := cpu.Mem.Load(Word(cpu.Reg[SP]))
+		if top != 0xff00 {
+			t.Errorf("SP top want: %s, got: %s",
+				Word(0xff00), top)
+		}
+
+		bottom := cpu.Mem.Load(Word(cpu.Reg[SP] + 1))
+		if bottom != 0x0ff0 {
+			t.Errorf("SP bottom want: %s, got: %s",
+				Word(0x0ff0), bottom)
+
+		}
+	})
+
+	t.Run("RTI to system", func(t *testing.T) {
+		var cpu *LC3 = New()
+		cpu.PC = 0xadaf
+		cpu.Mem.Store(Word(cpu.PC), 0b1000_0000_0000_0000)
+		cpu.Mem.Store(Word(0x0080), 0xcafe)
+		cpu.PSR = StatusSystem | StatusNegative
+		cpu.SSP = 0xffff
+
+		cpu.Reg[SP] = 0x2f00 - 2 // system PC, PSR on system stack
+		cpu.Mem.Store(Word(cpu.Reg[SP]), 0x0401)
+		cpu.Mem.Store(Word(cpu.Reg[SP]+1),
+			Word(StatusSystem|StatusZero))
+
+		// Values on old system stack.
+		cpu.Mem.Store(Word(cpu.Reg[SP]+2), 0x1111)
+		cpu.Mem.Store(Word(cpu.Reg[SP]+3), 0x2222)
+
+		cpu.USP = 0x4200 // Previous stored user stack.
+		cpu.Mem.Store(Word(cpu.USP), 0xff00)
+		cpu.Mem.Store(Word(cpu.USP+1), 0x0ff0)
+
+		err := cpu.Cycle()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != OpcodeRTI {
+			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
+				cpu.IR, OpcodeRTI, op)
+		}
+
+		if cpu.PC != 0x0401 {
+			t.Errorf("PC want: %s, got: %s",
+				ProgramCounter(0x0401), cpu.PC)
+		}
+
+		if cpu.PSR != StatusSystem|StatusZero {
+			t.Errorf("PSR want: %s, got: %s",
+				ProcessorStatus(0x0002), cpu.PSR)
+		}
+
+		if cpu.USP != 0x4200 {
+			t.Errorf("USP want: %s, got: %s",
+				Register(0x4200), cpu.USP)
+		}
+
+		if cpu.SSP != 0xffff {
+			t.Errorf("SSP want: %s, got: %s",
+				Word(0xffff), cpu.SSP)
+		}
+
+		if cpu.Reg[SP] != 0x2f00 {
+			t.Errorf("SP want: %s, got: %s",
+				Word(0x3000), cpu.Reg[SP])
+		}
+
+		top := cpu.Mem.Load(Word(cpu.Reg[SP]))
+		if top != 0x1111 {
+			t.Errorf("SP top want: %s, got: %s",
+				Word(0x1111), top)
+		}
+
+		bottom := cpu.Mem.Load(Word(cpu.Reg[SP] + 1))
+		if bottom != 0x2222 {
+			t.Errorf("SP bottom want: %s, got: %s",
+				Word(0x2222), bottom)
+
 		}
 	})
 }
