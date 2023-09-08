@@ -14,41 +14,37 @@ func _() {
 	_ = x[OpcodeADD-1]
 	_ = x[OpcodeLD-2]
 	_ = x[OpcodeLDI-10]
+	_ = x[OpcodeLDR-6]
 	_ = x[OpcodeLEA-14]
 	_ = x[OpcodeST-3]
+	_ = x[OpcodeSTI-11]
+	_ = x[OpcodeSTR-7]
 	_ = x[OpcodeJMP-12]
 	_ = x[OpcodeRET-255]
 	_ = x[OpcodeJSR-4]
 	_ = x[OpcodeJSRR-254]
 	_ = x[OpcodeTRAP-15]
-	_ = x[OpcodeReserved-13]
 	_ = x[OpcodeRTI-8]
-	_ = x[OpcodeSTI-11]
-	_ = x[OpcodeSTR-7]
+	_ = x[OpcodeReserved-13]
 }
 
 const (
-	_Opcode_name_0 = "BRADDLDSTJSRAND"
-	_Opcode_name_1 = "STRRTINOTLDISTIJMPRESVLEATRAP"
-	_Opcode_name_2 = "JSRRRET"
+	_Opcode_name_0 = "BRADDLDSTJSRANDLDRSTRRTINOTLDISTIJMPRESVLEATRAP"
+	_Opcode_name_1 = "JSRRRET"
 )
 
 var (
-	_Opcode_index_0 = [...]uint8{0, 2, 5, 7, 9, 12, 15}
-	_Opcode_index_1 = [...]uint8{0, 3, 6, 9, 12, 15, 18, 22, 25, 29}
-	_Opcode_index_2 = [...]uint8{0, 4, 7}
+	_Opcode_index_0 = [...]uint8{0, 2, 5, 7, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 40, 43, 47}
+	_Opcode_index_1 = [...]uint8{0, 4, 7}
 )
 
 func (i Opcode) String() string {
 	switch {
-	case i <= 5:
+	case i <= 15:
 		return _Opcode_name_0[_Opcode_index_0[i]:_Opcode_index_0[i+1]]
-	case 7 <= i && i <= 15:
-		i -= 7
-		return _Opcode_name_1[_Opcode_index_1[i]:_Opcode_index_1[i+1]]
 	case 254 <= i && i <= 255:
 		i -= 254
-		return _Opcode_name_2[_Opcode_index_2[i]:_Opcode_index_2[i+1]]
+		return _Opcode_name_1[_Opcode_index_1[i]:_Opcode_index_1[i+1]]
 	default:
 		return "Opcode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
@@ -66,6 +62,8 @@ func _() {
 	_ = x[R6-6]
 	_ = x[R7-7]
 	_ = x[NumGPR-8]
+	_ = x[RET-7]
+	_ = x[SP-6]
 }
 
 const _GPR_name = "R0R1R2R3R4R5R6R7NumGPR"
@@ -127,21 +125,27 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[PCOFFSET11-11]
-	_ = x[PCOFFSET9-9]
-	_ = x[PCOFFSET5-5]
+	_ = x[OFFSET11-11]
+	_ = x[OFFSET9-9]
+	_ = x[OFFSET6-6]
+	_ = x[OFFSET5-5]
 }
 
 const (
-	_offset_name_0 = "PCOFFSET5"
-	_offset_name_1 = "PCOFFSET9"
-	_offset_name_2 = "PCOFFSET11"
+	_offset_name_0 = "OFFSET5OFFSET6"
+	_offset_name_1 = "OFFSET9"
+	_offset_name_2 = "OFFSET11"
+)
+
+var (
+	_offset_index_0 = [...]uint8{0, 7, 14}
 )
 
 func (i offset) String() string {
 	switch {
-	case i == 5:
-		return _offset_name_0
+	case 5 <= i && i <= 6:
+		i -= 5
+		return _offset_name_0[_offset_index_0[i]:_offset_index_0[i+1]]
 	case i == 9:
 		return _offset_name_1
 	case i == 11:

@@ -35,7 +35,7 @@ func (i Instruction) SR() GPR {
 
 // SR1 returns the first register operand from the instruction.
 func (i Instruction) SR1() GPR {
-	return GPR(i & 0x01a0 >> 6)
+	return GPR(i & 0x01d0 >> 6)
 }
 
 // SR2 returns the second register operand from the instruction.
@@ -76,13 +76,12 @@ type (
 )
 
 const (
-	PCOFFSET11 = offset(11)
-	PCOFFSET9  = offset(9)
-	PCOFFSET5  = offset(5)
-
-	IMM5 = literal(5)
-
-	VECTOR8 = vector(8)
+	OFFSET11 = offset(11)
+	OFFSET9  = offset(9)
+	OFFSET6  = offset(6)
+	OFFSET5  = offset(5)
+	IMM5     = literal(5)
+	VECTOR8  = vector(8)
 )
 
 // Condition represents a ZNP condition operand from an instruction.

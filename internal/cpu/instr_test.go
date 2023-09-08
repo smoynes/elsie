@@ -336,6 +336,44 @@ func TestInstructions(t *testing.T) {
 		}
 	})
 
+	t.Run("LDR", func(t *testing.T) {
+		t.Parallel()
+		var cpu *LC3 = New()
+		cpu.PC = 0x0400
+		cpu.Reg[R0] = 0xf0f0
+		cpu.Reg[R4] = 0x8000
+		cpu.Mem.Store(Word(cpu.PC), 0b0110_000_100_00_0010)
+		addr := Word(0x8000 + 0x0002)
+		cpu.Mem.Store(Word(addr), 0xdad0)
+
+		err := cpu.Cycle()
+		if err != nil {
+			t.Error(err)
+		}
+
+		t.Logf("mem: %0#v", cpu.Mem.Load(addr))
+
+		if op := cpu.IR.Opcode(); op != OpcodeLDR {
+			t.Errorf("IR: %s, want: %s, got: %s",
+				cpu.IR.String(), OpcodeLDR, op)
+		}
+
+		if cpu.PC != 0x0401 {
+			t.Errorf("PC: want: %s, got: %s",
+				Register(0x0401), cpu.PC)
+		}
+
+		if cpu.Reg[R0] != 0xdad0 {
+			t.Errorf("R0 incorrect, want: %s, got: %s",
+				Register(0xdad0), cpu.Reg[R0])
+		}
+
+		if !cpu.PSR.Negative() {
+			t.Errorf("COND incorrect, want: %s, got: %s",
+				StatusNegative, cpu.PSR)
+		}
+	})
+
 	t.Run("LEA", func(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()

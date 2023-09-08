@@ -7,9 +7,9 @@ type Opcode uint8
 
 // BR: Conditional branch
 //
-// | 0000 | NZP | PCOFFSET9 |
-// |------+-----+-----------|
-// |15  12|11  9|8         0|
+// | 0000 | NZP | OFFSET9 |
+// |------+-----+---------|
+// |15  12|11  9|8       0|
 type br struct {
 	cond   Condition
 	offset Word
@@ -27,7 +27,7 @@ func (br *br) opcode() Opcode {
 
 func (br *br) Decode(ins Instruction) {
 	br.cond = ins.Cond()
-	br.offset = ins.Offset(PCOFFSET9)
+	br.offset = ins.Offset(OFFSET9)
 }
 
 func (br *br) Execute(cpu *LC3) {
@@ -207,9 +207,9 @@ func (a *addImm) Execute(cpu *LC3) {
 
 // LD: Load word from memory.
 //
-// | 0010 | DR  | PCOFFSET9 |
-// |------+-----+---+-------|
-// |15  12|11  9|8         0|
+// | 0010 | DR  | OFFSET9 |
+// |------+-----+---------|
+// |15  12|11  9|8       0|
 type ld struct {
 	dr     GPR
 	offset Word
@@ -231,7 +231,7 @@ func (ld) opcode() Opcode {
 func (op *ld) Decode(ins Instruction) {
 	*op = ld{
 		dr:     ins.DR(),
-		offset: ins.Offset(PCOFFSET9),
+		offset: ins.Offset(OFFSET9),
 	}
 }
 
@@ -250,9 +250,9 @@ func (op *ld) Execute(cpu *LC3) {
 
 // LDI: Load indirect
 //
-// | 1010 | DR | PCOFFSET9 |
-// |------+----------------|
-// |15  12|11 9|8         0|
+// | 1010 | DR | OFFSET9 |
+// |------+--------------|
+// |15  12|11 9|8       0|
 type ldi struct {
 	dr     GPR
 	offset Word
@@ -272,7 +272,7 @@ func (op *ldi) opcode() Opcode { return OpcodeLDI }
 func (op *ldi) Decode(ins Instruction) {
 	*op = ldi{
 		dr:     ins.DR(),
-		offset: ins.Offset(PCOFFSET9),
+		offset: ins.Offset(OFFSET9),
 	}
 }
 
@@ -291,11 +291,55 @@ func (op *ldi) Execute(cpu *LC3) {
 	cpu.PSR.Set(r)
 }
 
+// LDR: Load Relative
+//
+// | 0110 | DR | BASE | OFFSET6 |
+// |------+----+------+---------|
+// |15  12|11 9|8    6|5       0|
+type ldr struct {
+	dr     GPR
+	base   GPR
+	offset Word
+	addr   Word
+}
+
+const OpcodeLDR = Opcode(0b0110) // LDR
+
+var (
+	_ decodable   = &ldr{}
+	_ addressable = &ldr{}
+	_ fetchable   = &ldr{}
+)
+
+func (op *ldr) opcode() Opcode { return OpcodeLDR }
+
+func (op *ldr) Decode(ins Instruction) {
+	*op = ldr{
+		dr:     ins.DR(),
+		base:   ins.SR1(),
+		offset: ins.Offset(OFFSET6),
+	}
+}
+
+func (op *ldr) EvalAddress(cpu *LC3) {
+	op.addr = Word(int16(cpu.Reg[op.base]) + int16(op.offset))
+}
+
+func (op *ldr) FetchOperands(cpu *LC3) {
+	op.addr = cpu.Mem.Load(op.addr)
+}
+
+func (op *ldr) Execute(cpu *LC3) {
+	r := Register(op.addr)
+	cpu.Reg[op.dr] = r
+	cpu.PSR.Set(r)
+}
+
 // LEA: Load effective address
 //
-// | 1110 | DR | PCOFFSET9 |
-// |------+----------------|
-// |15  12|11 9|8         0|
+// | 1110 | DR | OFFSET9 |
+// |------+--------------|
+// |15  12|11 9|8       0|
 type lea struct {
 	dr     GPR
 	offset Word
@@ -314,7 +358,7 @@ func (op *lea) opcode() Opcode { return OpcodeLEA }
 func (op *lea) Decode(ins Instruction) {
 	*op = lea{
 		dr:     ins.DR(),
-		offset: ins.Offset(PCOFFSET9),
+		offset: ins.Offset(OFFSET9),
 	}
 }
 
@@ -329,9 +373,9 @@ func (op *lea) Execute(cpu *LC3) {
 
 // ST: Store word in memory.
 //
-// | 0011 | SR  | PCOFFSET9 |
-// |------+-----+---+-------|
-// |15  12|11  9|8         0|
+// | 0011 | SR  | OFFSET9 |
+// |------+-----+---------|
+// |15  12|11  9|8       0|
 type st struct {
 	sr     GPR
 	offset Word
@@ -353,7 +397,7 @@ func (st) opcode() Opcode {
 func (op *st) Decode(ins Instruction) {
 	*op = st{
 		sr:     ins.SR(),
-		offset: ins.Offset(PCOFFSET9),
+		offset: ins.Offset(OFFSET9),
 	}
 }
 
@@ -371,9 +415,9 @@ func (op *st) StoreResult(cpu *LC3) {
 
 // STI: Store Indirect.
 //
-// | 1011 | SR  | PCOFFSET9 |
-// |------+-----+---+-------|
-// |15  12|11  9|8         0|
+// | 1011 | SR  | OFFSET9 |
+// |------+-----+---------|
+// |15  12|11  9|8       0|
 type sti struct {
 	sr     GPR
 	offset Word
@@ -396,7 +440,7 @@ func (sti) opcode() Opcode {
 func (op *sti) Decode(ins Instruction) {
 	*op = sti{
 		sr:     ins.SR(),
-		offset: ins.Offset(PCOFFSET9),
+		offset: ins.Offset(OFFSET9),
 	}
 }
 
@@ -413,6 +457,50 @@ func (op *sti) Execute(cpu *LC3) {
 }
 
 func (op *sti) StoreResult(cpu *LC3) {
+	cpu.Mem.Store(op.addr, Word(cpu.Reg[op.sr]))
+}
+
+// STR: Store Relative.
+//
+// | 0111 | SR  | GPR | OFFSET6 |
+// |------+-----+-----+---------|
+// |15  12|11  9|8   6|5       0|
+type str struct {
+	sr     GPR
+	base   GPR
+	offset Word
+	addr   Word
+}
+
+var (
+	_ decodable   = &str{}
+	_ addressable = &str{}
+	_ storable    = &str{}
+)
+
+const OpcodeSTR = Opcode(0b0111) // STR
+
+func (str) opcode() Opcode {
+	return OpcodeSTR
+}
+
+func (op *str) Decode(ins Instruction) {
+	*op = str{
+		sr:     ins.SR(),
+		base:   ins.SR1(),
+		offset: ins.Offset(OFFSET6),
+	}
+}
+
+func (op *str) EvalAddress(cpu *LC3) {
+	op.addr = Word(int16(cpu.Reg[op.base]) + int16(op.offset))
+}
+
+func (op *str) Execute(cpu *LC3) {
+	// TODO: check PSR and raise ACV
+}
+
+func (op *str) StoreResult(cpu *LC3) {
 	cpu.Mem.Store(op.addr, Word(cpu.Reg[op.sr]))
 }
 
@@ -460,9 +548,9 @@ func (op *jmp) Execute(cpu *LC3) {
 
 // JSR: Jump to subroutine (relative mode)
 //
-// | 0100 |  1 | PCOFFSET11 |
-// |------+----+------------|
-// |15  12| 11 |10         0|
+// | 0100 |  1 | OFFSET11 |
+// |------+----+----------|
+// |15  12| 11 |10       0|
 type jsr struct {
 	offset Word
 }
@@ -627,7 +715,3 @@ func (r *reserved) opcode() Opcode {
 func (reserved) Execute(cpu *LC3) {
 	// TODO: raise exception
 }
-
-const (
-	OpcodeSTR = Opcode(0b0111) // STR
-)

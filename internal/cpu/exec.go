@@ -63,12 +63,16 @@ func (cpu *LC3) Decode() operation {
 		op = &ld{}
 	case OpcodeLDI:
 		op = &ldi{}
+	case OpcodeLDR:
+		op = &ldr{}
 	case OpcodeLEA:
 		op = &lea{}
 	case OpcodeST:
 		op = &st{}
 	case OpcodeSTI:
 		op = &sti{}
+	case OpcodeSTR:
+		op = &str{}
 	case OpcodeJMP, OpcodeRET:
 		op = &jmp{}
 	case OpcodeJSR, OpcodeJSRR:
@@ -83,8 +87,6 @@ func (cpu *LC3) Decode() operation {
 		op = &rti{}
 	case OpcodeReserved:
 		op = &reserved{}
-	default:
-		panic("decode error")
 	}
 
 	if op, ok := op.(decodable); ok {
