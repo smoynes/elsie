@@ -240,7 +240,7 @@ func (op *ld) EvalAddress(cpu *LC3) {
 }
 
 func (op *ld) FetchOperands(cpu *LC3) {
-	r := Register(cpu.Mem[op.addr])
+	r := Register(cpu.Mem.Load(op.addr))
 	cpu.Reg[op.dr] = r
 }
 
@@ -281,12 +281,12 @@ func (op *ldi) EvalAddress(cpu *LC3) {
 }
 
 func (op *ldi) FetchOperands(cpu *LC3) {
-	a := cpu.Mem[op.addr]
-	op.addr = cpu.Mem[a]
+	op.addr = cpu.Mem.Load(op.addr)
 }
 
 func (op *ldi) Execute(cpu *LC3) {
-	r := Register(op.addr)
+	a := cpu.Mem.Load(op.addr)
+	r := Register(a)
 	cpu.Reg[op.dr] = r
 	cpu.PSR.Set(r)
 }
@@ -296,7 +296,6 @@ func (op *ldi) Execute(cpu *LC3) {
 // | 1110 | DR | PCOFFSET9 |
 // |------+----------------|
 // |15  12|11 9|8         0|
-
 type lea struct {
 	dr     GPR
 	offset Word
@@ -367,7 +366,7 @@ func (op *st) Execute(cpu *LC3) {
 }
 
 func (op *st) StoreResult(cpu *LC3) {
-	cpu.Mem[op.addr] = Word(cpu.Reg[op.sr])
+	cpu.Mem.Store(op.addr, Word(cpu.Reg[op.sr]))
 }
 
 // JMP: Unconditional branch
@@ -440,7 +439,7 @@ func (op *jsr) Execute(cpu *LC3) {
 	ret := Word(cpu.PC)
 	pc := ProgramCounter(int16(cpu.PC) + int16(op.offset))
 	cpu.PC = pc
-	cpu.Reg[R7] = Register(ret)
+	cpu.Reg[RET] = Register(ret)
 }
 
 // JSRR: Jump to subroutine (register mode)
@@ -470,7 +469,7 @@ func (op *jsrr) Execute(cpu *LC3) {
 	ret := Word(cpu.PC)
 	pc := ProgramCounter(cpu.Reg[op.sr])
 	cpu.PC = pc
-	cpu.Reg[R7] = Register(ret)
+	cpu.Reg[RET] = Register(ret)
 }
 
 // TRAP: System call or software interrupt.
@@ -506,7 +505,7 @@ func (op *trap) EvalAddress(*LC3) {
 }
 
 func (op *trap) FetchOperands(cpu *LC3) {
-	op.isr = cpu.Mem[op.vec]
+	op.isr = cpu.Mem.Load(op.vec)
 }
 
 func (op *trap) Execute(cpu *LC3) {

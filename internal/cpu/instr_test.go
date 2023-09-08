@@ -19,7 +19,7 @@ func TestInstructions(t *testing.T) {
 
 	t.Run("BR", func(t *testing.T) {
 		cpu := New()
-		cpu.Mem[cpu.PC] = 0b0000_010_0_0000_0111
+		cpu.Mem.Store(Word(cpu.PC), 0b0000_010_0_0000_0111)
 		cpu.PSR = StatusZero
 
 		err := cpu.Cycle()
@@ -45,7 +45,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("BRnzp", func(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x0100
-		cpu.Mem[cpu.PC] = 0b0000_111_1_1111_0111
+		cpu.Mem.Store(Word(cpu.PC), 0b0000_111_1_1111_0111)
 		cpu.PSR.Set(0xf000)
 
 		err := cpu.Cycle()
@@ -72,7 +72,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("NOT", func(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.Reg[R0] = 0b0101_1010_1111_0000
-		cpu.Mem[cpu.PC] = 0b1001_000_000_111111
+		cpu.Mem.Store(Word(cpu.PC), 0b1001_000_000_111111)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -94,7 +94,7 @@ func TestInstructions(t *testing.T) {
 
 	t.Run("AND", func(t *testing.T) {
 		var cpu *LC3 = New()
-		cpu.Mem[cpu.PC] = 0b0101_000_000_0_00_001
+		cpu.Mem.Store(Word(cpu.PC), 0b0101_000_000_0_00_001)
 		cpu.Reg[R0] = 0x5aff
 		cpu.Reg[R1] = 0x00f0
 
@@ -116,7 +116,7 @@ func TestInstructions(t *testing.T) {
 
 	t.Run("ANDIMM", func(t *testing.T) {
 		var cpu *LC3 = New()
-		cpu.Mem[cpu.PC] = 0b0101_000_000_1_10101
+		cpu.Mem.Store(Word(cpu.PC), 0b0101_000_000_1_10101)
 		cpu.Reg[R0] = 0b0101_1010_1111_1111
 
 		err := cpu.Cycle()
@@ -139,7 +139,7 @@ func TestInstructions(t *testing.T) {
 
 	t.Run("ADD", func(t *testing.T) {
 		var cpu *LC3 = New()
-		cpu.Mem[cpu.PC] = 0b0001_000_000_0_00001
+		cpu.Mem.Store(Word(cpu.PC), 0b0001_000_000_0_00001)
 		cpu.Reg[R0] = 0
 		cpu.Reg[R1] = 1
 
@@ -166,7 +166,7 @@ func TestInstructions(t *testing.T) {
 
 	t.Run("ADDIMM", func(t *testing.T) {
 		var cpu *LC3 = New()
-		cpu.Mem[cpu.PC] = 0b0001_000_000_1_10000
+		cpu.Mem.Store(Word(cpu.PC), 0b0001_000_000_1_10000)
 		cpu.Reg[R0] = 0
 
 		err := cpu.Cycle()
@@ -197,8 +197,8 @@ func TestInstructions(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
 		cpu.Reg[R2] = 0xcafe
-		cpu.Mem[cpu.PC] = 0b0010_010_011000110
-		cpu.Mem[0x0100+0x00c6] = 0x0f00
+		cpu.Mem.Store(Word(cpu.PC), 0b0010_010_011000110)
+		cpu.Mem.Store(Word(0x0100+0x00c6), 0x0f00)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -229,7 +229,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("JMP", func(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
-		cpu.Mem[cpu.PC] = 0b1100_000_111_000000
+		cpu.Mem.Store(Word(cpu.PC), 0b1100_000_111_000000)
 		cpu.Reg[R7] = 0x0010
 
 		err := cpu.Cycle()
@@ -255,7 +255,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("JSRR", func(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
-		cpu.Mem[cpu.PC] = 0b0100_0_00_100_000000
+		cpu.Mem.Store(Word(cpu.PC), 0b0100_0_00_100_000000)
 		cpu.Reg[R4] = 0x0300
 		err := cpu.Cycle()
 		if err != nil {
@@ -284,18 +284,18 @@ func TestInstructions(t *testing.T) {
 	t.Run("LDI", func(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
-		cpu.Mem[cpu.PC] = 0xa001
+		cpu.Mem.Store(Word(cpu.PC), 0xa001)
 		addr := Word(0x0402)
-		cpu.Mem[addr] = 0xdad0
+		cpu.Mem.Store(Word(addr), 0xdad0)
 		cpu.Reg[R0] = 0xffff
-		cpu.Mem[0xdad0] = 0xcafe
+		cpu.Mem.Store(Word(0xdad0), 0xcafe)
 
 		err := cpu.Cycle()
 		if err != nil {
 			t.Error(err)
 		}
 
-		t.Logf("mem: %0#v", cpu.Mem[0x0402])
+		t.Logf("mem: %0#v", cpu.Mem.Load(Word(0x0402)))
 
 		if op := cpu.IR.Opcode(); op != OpcodeLDI {
 			t.Errorf("IR: %s, want: %s, got: %s",
@@ -321,7 +321,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("LEA", func(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
-		cpu.Mem[cpu.PC] = 0b1110_000_1_00000000
+		cpu.Mem.Store(Word(cpu.PC), 0b1110_000_1_00000000)
 		cpu.Reg[R0] = 0xffff
 
 		err := cpu.Cycle()
@@ -349,8 +349,8 @@ func TestInstructions(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Reg[R7] = 0xcafe
-		cpu.Mem[cpu.PC] = 0b0011_111_0_1000_0000
-		cpu.Mem[0x0481] = 0x0f00
+		cpu.Mem.Store(Word(cpu.PC), 0b0011_111_0_1000_0000)
+		cpu.Mem.Store(Word(0x0481), 0x0f00)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -362,7 +362,7 @@ func TestInstructions(t *testing.T) {
 				cpu.IR, OpcodeST, op)
 		}
 
-		val := cpu.Mem[0x0481]
+		val := cpu.Mem.Load(Word(0x0481))
 		if val != 0xcafe {
 			t.Errorf("Mem[%s] want: %s, got: %s",
 				Word(0x0481), Word(0xcafe), val)
@@ -391,8 +391,8 @@ func TestInstructions(t *testing.T) {
 		cpu.SSP = 0x3000
 		cpu.USP = 0xface
 		cpu.Reg[R6] = 0xfe00
-		cpu.Mem[cpu.PC] = 0b1111_0000_1000_0000
-		cpu.Mem[0x0080] = 0xadad
+		cpu.Mem.Store(Word(cpu.PC), 0b1111_0000_1000_0000)
+		cpu.Mem.Store(Word(0x0080), 0xadad)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -424,14 +424,14 @@ func TestInstructions(t *testing.T) {
 				Word(0x2ffe), cpu.Reg[SP])
 		}
 
-		if cpu.Mem[cpu.Reg[SP]] != 0x0401 {
+		if cpu.Mem.Load(Word(cpu.Reg[SP])) != 0x0401 {
 			t.Errorf("SP top want: %s = PC, got: %s",
-				Register(0x0401), cpu.Mem[cpu.SSP])
+				Register(0x0401), cpu.Mem.Load(Word(cpu.SSP)))
 		}
 
-		if cpu.Mem[cpu.Reg[SP]+1] != 0x8002 {
+		if cpu.Mem.Load(Word(cpu.Reg[SP]+1)) != 0x8002 {
 			t.Errorf("SP bottom want PSR: %s, got: %s",
-				StatusZero&^StatusPrivilege, ProcessorStatus(cpu.Mem[cpu.Reg[SP]+1]))
+				StatusZero&^StatusPrivilege, ProcessorStatus(cpu.Mem.Load(Word(cpu.Reg[SP]+1))))
 		}
 
 		if cpu.PSR.Privilege() != PrivilegeSystem {
@@ -447,8 +447,8 @@ func TestInstructions(t *testing.T) {
 		cpu.USP = 0xfade
 		cpu.SSP = 0x3000
 		cpu.Reg[SP] = 0xfe00
-		cpu.Mem[cpu.PC] = 0b1111_0000_1000_0000
-		cpu.Mem[0x0080] = 0xadad
+		cpu.Mem.Store(Word(cpu.PC), 0b1111_0000_1000_0000)
+		cpu.Mem.Store(Word(0x0080), 0xadad)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -480,14 +480,14 @@ func TestInstructions(t *testing.T) {
 				Word(0xfdfe), cpu.Reg[SP])
 		}
 
-		if cpu.Mem[cpu.Reg[SP]] != 0x0401 {
+		if cpu.Mem.Load(Word(cpu.Reg[SP])) != 0x0401 {
 			t.Errorf("SP top want: %s = PC, got: %s",
-				Register(0x0401), cpu.Mem[cpu.SSP])
+				Register(0x0401), cpu.Mem.Load(Word(cpu.SSP)))
 		}
 
-		if cpu.Mem[cpu.Reg[SP]+1] != 0x0002 {
+		if cpu.Mem.Load(Word(cpu.Reg[SP]+1)) != 0x0002 {
 			t.Errorf("SP bottom want PSR: %s, got: %s",
-				StatusZero|StatusPrivilege, ProcessorStatus(cpu.Mem[cpu.Reg[SP]+1]))
+				StatusZero|StatusPrivilege, ProcessorStatus(cpu.Mem.Load(Word(cpu.Reg[SP]+1))))
 		}
 
 		if cpu.PSR.Privilege() != PrivilegeSystem {

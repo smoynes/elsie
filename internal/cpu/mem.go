@@ -67,27 +67,31 @@ import (
 // |        | 0xffff |                 |--->|KBDR             |
 // +========+========+=================+    +-----------------+
 // .
-type Memory [AddressSpace]Word
+type Memory struct {
+	cell [AddressSpace]Word
+}
 
 // Size of addressable memory: 2 ^^ 16
 const AddressSpace = math.MaxUint16
 
+// Load loads.
 func (mem *Memory) Load(addr Word) Word {
-	return mem[addr]
+	return mem.cell[addr]
 }
 
+// Store stores.
 func (mem *Memory) Store(addr Word, cell Word) {
-	mem[addr] = cell
+	mem.cell[addr] = cell
 }
 
 // PushStack pushes a word onto the current stack.
 func (cpu *LC3) PushStack(w Word) {
-	cpu.Mem[cpu.Reg[SP]-1] = w
 	cpu.Reg[SP]--
+	cpu.Mem.Store(Word(cpu.Reg[SP]), w)
 }
 
 // PopStack pops a word from the current stack into a register.
 func (cpu *LC3) PopStack() Word {
 	cpu.Reg[SP]++
-	return cpu.Mem[cpu.Reg[SP]-1]
+	return cpu.Mem.Load(Word(cpu.Reg[SP]) - 1)
 }
