@@ -88,11 +88,39 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 
 ## Status ##
 
-**IN DEVELOPMENT**: Some instructions are implemented. 🤓
+**IN DEVELOPMENT**
+
+Focus right now:
+
+- implementing remaining instructions 🤓
+  - `STI`
+  - `STR`
+  - `RESV`
+
+Up next:
+
+- exceptions
+- memory access control
+- memory mapped I/O
+- I/O interrupts
 
 Completed:
 
 - instruction loop
+- operations:
+  - BR
+  - NOT
+  - AND
+  - ADD
+  - LD
+  - LDI
+  - LEA
+  - ST
+  - JMP/RET
+  - JSR
+  - JSRR
+  - TRAP
+  - RTI
 
 ----
 
