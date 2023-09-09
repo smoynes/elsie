@@ -2,6 +2,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/smoynes/elsie/internal/cpu"
 )
 
@@ -14,15 +16,21 @@ func main() {
 	print(machine.String(), "\n")
 	print(machine.Reg.String(), "\n")
 
-	machine.Cycle()
+	if err := machine.Cycle(); err != nil {
+		log.Fatal(err)
+	}
 	print(machine.String(), "\n")
 	print(machine.Reg.String(), "\n")
 
-	machine.Cycle()
+	if err := machine.Cycle(); err != nil {
+		log.Fatal(err)
+	}
 	print(machine.String(), "\n")
 	print(machine.Reg.String(), "\n")
 
-	machine.Cycle()
+	if err := machine.Cycle(); err != nil {
+		log.Fatal(err)
+	}
 	print(machine.String(), "\n")
 	print(machine.Reg.String(), "\n")
 }
