@@ -19,13 +19,16 @@ func main() {
 	}
 	machine.Reg[cpu.R0] = 0xffff
 
-	print(machine.String(), "\n")
-	print(machine.Reg.String(), "\n")
+	println(machine.String())
+	println(machine.Reg.String())
 
 	if err := machine.Cycle(); err != nil {
 		log.Fatal(err)
 	}
-	print(machine.String(), "\n")
-	print(machine.Reg.String(), "\n")
+
+	println()
+	println("Post cycle state:")
+	println(machine.String())
+	println(machine.Reg.String())
 
 }
