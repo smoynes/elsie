@@ -83,7 +83,10 @@ const (
 	StatusCondition ProcessorStatus = StatusNegative |
 		StatusZero | StatusPositive
 
-	StatusPriority ProcessorStatus = 0x0300
+	StatusPriority ProcessorStatus = 0x0700
+	StatusHigh     ProcessorStatus = 0x0700
+	StatusNormal   ProcessorStatus = 0x0300
+	StatusLow      ProcessorStatus = 0x0000
 
 	StatusPrivilege ProcessorStatus = 0x8000
 	StatusUser      ProcessorStatus = 0x8000

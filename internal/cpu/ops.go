@@ -2,6 +2,10 @@ package cpu
 
 // ops.go defines the CPU operations and their semantics.
 
+import (
+	"fmt"
+)
+
 // An Opcode identifies the operation to be executed by the CPU. The ISA has 15
 // distinct opcodes and one reserved value that is undefined and causes an
 // exception.
@@ -33,10 +37,11 @@ func (br *br) Decode(ins Instruction) {
 	br.offset = ins.Offset(OFFSET9)
 }
 
-func (br *br) Execute(cpu *LC3) {
+func (br *br) Execute(cpu *LC3) error {
 	if cpu.PSR.Any(br.cond) {
 		cpu.PC = ProgramCounter(int16(cpu.PC) + int16(br.offset))
 	}
+	return nil
 }
 
 // NOT: Bitwise complement operation
@@ -66,10 +71,10 @@ func (n *not) Decode(ins Instruction) {
 	}
 }
 
-func (n *not) Execute(cpu *LC3) {
-	cpu.Temp = cpu.Reg[n.src] ^ 0xffff
-	cpu.Reg[n.dest] = cpu.Temp
-	cpu.PSR.Set(cpu.Temp)
+func (n *not) Execute(cpu *LC3) error {
+	cpu.Reg[n.dest] = cpu.Reg[n.src] ^ 0xffff
+	cpu.PSR.Set(cpu.Reg[n.dest])
+	return nil
 }
 
 // AND: Bitwise AND binary operator (register mode)
@@ -77,7 +82,6 @@ func (n *not) Execute(cpu *LC3) {
 // | 0101 | DR | SR1 | 0 | 00 | SR2 |
 // |------+----+-----+---+----+-----|
 // |15  12|11 9|8   6| 5 |4  3|2   0|
-
 type and struct {
 	dest GPR
 	sr1  GPR
@@ -100,11 +104,11 @@ func (a *and) Decode(ins Instruction) {
 	a.sr2 = ins.SR2()
 }
 
-func (a *and) Execute(cpu *LC3) {
-	cpu.Temp = cpu.Reg[a.sr1]
-	cpu.Temp &= cpu.Reg[a.sr2]
-	cpu.Reg[a.dest] = cpu.Temp
-	cpu.PSR.Set(cpu.Temp)
+func (a *and) Execute(cpu *LC3) error {
+	cpu.Reg[a.dest] = cpu.Reg[a.sr1]
+	cpu.Reg[a.dest] &= cpu.Reg[a.sr2]
+	cpu.PSR.Set(cpu.Reg[a.dest])
+	return nil
 }
 
 // AND: Bitwise AND binary operator (immediate mode)
@@ -134,10 +138,10 @@ func (a *andImm) Decode(ins Instruction) {
 	}
 }
 
-func (a *andImm) Execute(cpu *LC3) {
-	cpu.Temp = cpu.Reg[a.sr] & Register(a.lit)
-	cpu.Reg[a.dr] = cpu.Temp
-	cpu.PSR.Set(cpu.Temp)
+func (a *andImm) Execute(cpu *LC3) error {
+	cpu.Reg[a.dr] = cpu.Reg[a.sr] & Register(a.lit)
+	cpu.PSR.Set(cpu.Reg[a.dr])
+	return nil
 }
 
 // ADD: Arithmetic addition operator (register mode)
@@ -169,10 +173,10 @@ func (a *add) Decode(ins Instruction) {
 	}
 }
 
-func (a *add) Execute(cpu *LC3) {
-	cpu.Temp = Register(int16(cpu.Reg[a.sr1]) + int16(cpu.Reg[a.sr2]))
-	cpu.Reg[a.dr] = cpu.Temp
-	cpu.PSR.Set(cpu.Temp)
+func (a *add) Execute(cpu *LC3) error {
+	cpu.Reg[a.dr] = Register(int16(cpu.Reg[a.sr1]) + int16(cpu.Reg[a.sr2]))
+	cpu.PSR.Set(cpu.Reg[a.dr])
+	return nil
 }
 
 // ADD: Arithmetic addition operator (immediate mode)
@@ -202,10 +206,10 @@ func (a *addImm) Decode(ins Instruction) {
 	}
 }
 
-func (a *addImm) Execute(cpu *LC3) {
-	cpu.Temp = Register(int16(cpu.Reg[a.sr]) + int16(a.lit))
-	cpu.Reg[a.dr] = cpu.Temp
-	cpu.PSR.Set(cpu.Temp)
+func (a *addImm) Execute(cpu *LC3) error {
+	cpu.Reg[a.dr] = Register(int16(cpu.Reg[a.sr]) + int16(a.lit))
+	cpu.PSR.Set(cpu.Reg[a.dr])
+	return nil
 }
 
 // LD: Load word from memory.
@@ -241,12 +245,14 @@ func (op *ld) EvalAddress(cpu *LC3) {
 	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
 }
 
-func (op *ld) FetchOperands(cpu *LC3) {
+func (op *ld) FetchOperands(cpu *LC3) error {
 	cpu.Reg[op.dr] = cpu.Mem.MDR
+	return nil
 }
 
-func (op *ld) Execute(cpu *LC3) {
+func (op *ld) Execute(cpu *LC3) error {
 	cpu.PSR.Set(cpu.Reg[op.dr])
+	return nil
 }
 
 // LDI: Load indirect
@@ -280,14 +286,20 @@ func (op *ldi) EvalAddress(cpu *LC3) {
 	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
 }
 
-func (op *ldi) FetchOperands(cpu *LC3) {
+func (op *ldi) FetchOperands(cpu *LC3) error {
 	cpu.Mem.MAR = cpu.Mem.MDR
-	cpu.Mem.Fetch()
+	err := cpu.Mem.Fetch()
+	if err != nil {
+		return err
+	}
 	cpu.Reg[op.dr] = cpu.Mem.MDR
+
+	return nil
 }
 
-func (op *ldi) Execute(cpu *LC3) {
+func (op *ldi) Execute(cpu *LC3) error {
 	cpu.PSR.Set(cpu.Mem.MDR)
+	return nil
 }
 
 // LDR: Load Relative
@@ -323,12 +335,14 @@ func (op *ldr) EvalAddress(cpu *LC3) {
 	cpu.Mem.MAR = Register(int16(cpu.Reg[op.base]) + int16(op.offset))
 }
 
-func (op *ldr) FetchOperands(cpu *LC3) {
+func (op *ldr) FetchOperands(cpu *LC3) error {
 	cpu.Reg[op.dr] = cpu.Mem.MDR
+	return nil
 }
 
-func (op *ldr) Execute(cpu *LC3) {
+func (op *ldr) Execute(cpu *LC3) error {
 	cpu.PSR.Set(cpu.Reg[op.dr])
+	return nil
 }
 
 // LEA: Load effective address
@@ -359,14 +373,11 @@ func (op *lea) Decode(ins Instruction) {
 
 func (op *lea) EvalAddress(cpu *LC3) {
 	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
-	println(cpu.Mem.MAR.String())
 }
 
-func (op *lea) FetchOperands(cpu *LC3) {
+func (op *lea) FetchOperands(cpu *LC3) error {
 	cpu.Reg[op.dr] = cpu.Mem.MDR
-	println(cpu.Mem.MDR.String())
-	println(op.dr.String())
-
+	return nil
 }
 
 // ST: Store word in memory.
@@ -402,8 +413,9 @@ func (op *st) EvalAddress(cpu *LC3) {
 	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
 }
 
-func (op *st) Execute(cpu *LC3) {
+func (op *st) Execute(cpu *LC3) error {
 	cpu.Mem.MDR = cpu.Reg[op.sr]
+	return nil
 }
 
 func (op *st) StoreResult(cpu *LC3) {} // ?
@@ -442,12 +454,14 @@ func (op *sti) EvalAddress(cpu *LC3) {
 	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
 }
 
-func (op *sti) FetchOperands(cpu *LC3) {
+func (op *sti) FetchOperands(cpu *LC3) error {
 	cpu.Mem.MAR = cpu.Mem.MDR
+	return nil
 }
 
-func (op *sti) Execute(cpu *LC3) {
+func (op *sti) Execute(cpu *LC3) error {
 	cpu.Mem.MDR = cpu.Reg[op.sr]
+	return nil
 }
 
 func (op *sti) StoreResult(cpu *LC3) {}
@@ -487,8 +501,9 @@ func (op *str) EvalAddress(cpu *LC3) {
 	cpu.Mem.MAR = Register(int16(cpu.Reg[op.base]) + int16(op.offset))
 }
 
-func (op *str) Execute(cpu *LC3) {
+func (op *str) Execute(cpu *LC3) error {
 	cpu.Mem.MDR = cpu.Reg[op.sr]
+	return nil
 }
 
 func (op *str) StoreResult(cpu *LC3) {}
@@ -530,9 +545,10 @@ func (op *jmp) Decode(ins Instruction) {
 	}
 }
 
-func (op *jmp) Execute(cpu *LC3) {
+func (op *jmp) Execute(cpu *LC3) error {
 	pc := ProgramCounter(cpu.Reg[op.sr])
 	cpu.PC = pc
+	return nil
 }
 
 // JSR: Jump to subroutine (relative mode)
@@ -559,11 +575,12 @@ func (op *jsr) Decode(ins Instruction) {
 	op.offset.Sext(11)
 }
 
-func (op *jsr) Execute(cpu *LC3) {
+func (op *jsr) Execute(cpu *LC3) error {
 	ret := Word(cpu.PC)
 	pc := ProgramCounter(int16(cpu.PC) + int16(op.offset))
 	cpu.PC = pc
 	cpu.Reg[RET] = Register(ret)
+	return nil
 }
 
 // JSRR: Jump to subroutine (register mode)
@@ -589,11 +606,12 @@ func (op *jsrr) Decode(ins Instruction) {
 	}
 }
 
-func (op *jsrr) Execute(cpu *LC3) {
+func (op *jsrr) Execute(cpu *LC3) error {
 	ret := Word(cpu.PC)
 	pc := ProgramCounter(cpu.Reg[op.sr])
 	cpu.PC = pc
 	cpu.Reg[RET] = Register(ret)
+	return nil
 }
 
 // TRAP: System call or software interrupt.
@@ -602,8 +620,8 @@ func (op *jsrr) Execute(cpu *LC3) {
 // |------+------+---------|
 // |15  12|11   8|7       0|
 type trap struct {
-	vec Word
-	isr Word
+	vec  Word
+	addr Word
 }
 
 const OpcodeTRAP = Opcode(0b1111) // TRAP
@@ -612,43 +630,50 @@ func (op *trap) opcode() Opcode {
 	return OpcodeTRAP
 }
 
+func (op *trap) String() string {
+	return fmt.Sprintf("TRAP: %s (%s)", op.vec, op.addr)
+}
+
+func (op *trap) Error() string {
+	return op.String()
+}
+
 var (
-	_ decodable = &trap{}
-	_ fetchable = &trap{}
+	_ decodable  = &trap{}
+	_ executable = &trap{}
 )
 
 func (op *trap) Decode(ins Instruction) {
 	*op = trap{
 		vec: ins.Vector(VECTOR8),
-		isr: 0x0000,
 	}
 }
 
-func (op *trap) EvalAddress(cpu *LC3) {
-	cpu.Mem.MAR = Register(op.vec)
+type trapErr struct {
+	interrupt
 }
 
-func (op *trap) FetchOperands(cpu *LC3) {
-	op.isr = Word(cpu.Mem.MDR)
+func (op *trap) Execute(cpu *LC3) error {
+	return &trapErr{
+		interrupt{
+			table: TrapTable,
+			vec:   op.vec,
+			pc:    cpu.PC,
+			psr:   cpu.PSR,
+		},
+	}
 }
 
-func (op *trap) Execute(cpu *LC3) {
-	cpu.Temp = Register(cpu.PSR)
-
-	// Switch from the user to the system stack and elevate to system
-	// privilege level.
+func (op *trapErr) Handle(cpu *LC3) error {
+	// Switch from the user to the system stack and system privilege level
+	// if it is a user trap.
 	if cpu.PSR.Privilege() == PrivilegeUser {
 		cpu.USP = cpu.Reg[SP]
 		cpu.Reg[SP] = cpu.SSP
-		cpu.PSR ^= StatusPrivilege
+		cpu.PSR &= ^StatusUser
 	}
 
-	// Push the old status register and program counter onto the stack.
-	cpu.PushStack(Word(cpu.Temp))
-	cpu.PushStack(Word(cpu.PC))
-
-	// Finally, jump to the ISR using the interrupt vector.
-	cpu.PC = ProgramCounter(op.isr)
+	return op.interrupt.Handle(cpu)
 }
 
 // RTI: Return from trap or interrupt
@@ -656,7 +681,8 @@ func (op *trap) Execute(cpu *LC3) {
 // | 1000 | 0000 0000 0000 |
 // |------+----------------|
 // |15  12|11             0|
-type rti struct{}
+type rti struct {
+}
 
 const OpcodeRTI = Opcode(0b1000) // RTI
 
@@ -665,18 +691,33 @@ func (op *rti) opcode() Opcode {
 }
 
 var (
-	_ executable = &trap{}
+	_ executable = &rti{}
 )
 
-func (op *rti) Execute(cpu *LC3) {
+func (op *rti) Execute(cpu *LC3) error {
 	if cpu.PSR.Privilege() == PrivilegeUser {
-		// TODO: raise privilege exception
-		return
+		return &pmv{
+			interrupt{
+				table: ExceptionTable,
+				vec:   ExceptionPMV,
+				pc:    cpu.PC,
+				psr:   cpu.PSR,
+			},
+		}
 	}
 
 	// Restore program counter and status register.
-	cpu.PC = ProgramCounter(cpu.PopStack())
-	cpu.PSR = ProcessorStatus(cpu.PopStack())
+	err := cpu.PopStack()
+	if err != nil {
+		panic(err)
+	}
+	cpu.PC = ProgramCounter(cpu.Mem.MDR)
+
+	err = cpu.PopStack()
+	if err != nil {
+		panic(err)
+	}
+	cpu.PSR = ProcessorStatus(cpu.Mem.MDR)
 
 	if cpu.PSR.Privilege() == PrivilegeUser {
 		// When changing back to user privileges, swap the system and
@@ -684,6 +725,25 @@ func (op *rti) Execute(cpu *LC3) {
 		cpu.SSP = cpu.Reg[SP]
 		cpu.Reg[SP] = cpu.USP
 	}
+
+	return nil
+}
+
+type pmv struct {
+	interrupt
+}
+
+func (pmv *pmv) Error() string {
+	return fmt.Sprintf("INT: PMV (%s:%s)", pmv.table, pmv.vec)
+}
+
+func (pmv *pmv) Handle(cpu *LC3) error {
+	// PMV only occurs with user privileges so switch to system before
+	// handling the interrupt.
+	cpu.USP = cpu.Reg[SP]
+	cpu.Reg[SP] = cpu.SSP
+	cpu.PSR ^= StatusUser
+	return pmv.interrupt.Handle(cpu)
 }
 
 // RESV: Reserved operator
@@ -701,6 +761,33 @@ func (r *resv) opcode() Opcode {
 	return OpcodeRESV
 }
 
-func (*resv) Execute(cpu *LC3) {
-	// TODO: raise exception
+func (*resv) Execute(cpu *LC3) error {
+	return &xop{
+		interrupt{
+			table: ExceptionTable,
+			vec:   ExceptionXOP,
+			pc:    cpu.PC,
+			psr:   cpu.PSR,
+		},
+	}
+}
+
+type xop struct {
+	interrupt
+}
+
+func (xop *xop) Error() string {
+	return fmt.Sprintf("INT: XOP (%s:%s)", xop.table, xop.vec)
+}
+
+func (xop *xop) Handle(cpu *LC3) error {
+	// Switch from the user to the system stack and system privilege level
+	// if it is a user trap.
+	if cpu.PSR.Privilege() == PrivilegeUser {
+		cpu.USP = cpu.Reg[SP]
+		cpu.Reg[SP] = cpu.SSP
+		cpu.PSR ^= StatusUser
+	}
+
+	return xop.interrupt.Handle(cpu)
 }

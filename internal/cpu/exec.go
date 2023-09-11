@@ -2,15 +2,20 @@ package cpu
 
 // exec.go defines the CPU instruction cycle.
 
+import (
+	"errors"
+	"fmt"
+)
+
 // Cycle runs a single instruction cycle to completion.
 //
 // Each cycle has six steps:
 //
 //   - fetch instruction: using the program counter as a pointer, fetch an
-//     instruction from memory and increment the program counter.
+//     instruction from memory into the instruction register and increment the
+//     program counter.
 //
-//   - decode operation: decode an operation and its operands from the
-//     instruction.
+//   - decode operation: get instruction from the instruction register.
 //
 //   - evaluate address: compute the memory address to be accessed.
 //
@@ -18,115 +23,125 @@ package cpu
 //
 //   - execute operation: do the thing.
 //
-//   - store result: store operation result in memory.
+//   - store result: store operation result in memory using the computed
+//     address.
 //
-// Operations implement a set of methods according to their semantics.
+// Each of these steps is optional: an instruction must implement methods
+// according to its semantics.
 func (cpu *LC3) Cycle() error {
-	cpu.Fetch()
-	op := cpu.Decode()
-	cpu.EvalAddress(op)
-	cpu.FetchOperands(op)
-	cpu.Execute(op)
-	cpu.StoreResult(op)
+	var (
+		err error
+		op  operation
+	)
+
+	err = cpu.Fetch()
+
+	if err == nil {
+		op = cpu.IR.Decode()
+	}
+
+	if err == nil {
+		err = cpu.EvalAddress(op)
+	}
+
+	if err == nil {
+		err = cpu.FetchOperands(op)
+	}
+
+	if err == nil {
+		err = cpu.Execute(op)
+	}
+
+	if err == nil {
+		err = cpu.StoreResult(op)
+	}
+
+	if err != nil {
+		fmt.Printf("cycle error: %v\n", err)
+		fmt.Println(cpu)
+	}
+
+	switch intr := errors.Unwrap(err).(type) {
+	case interruptable:
+		err = intr.Handle(cpu)
+	}
+
+	if err != nil {
+		// Either the error is not interruptable or it is but invoking
+		// the handler failed.
+		panic(err)
+	}
+
+	return err
+}
+
+// Fetch loads the value addressed by PC into IR and increments PC.
+func (cpu *LC3) Fetch() error {
+	cpu.Mem.MAR = Register(cpu.PC)
+	err := cpu.Mem.Fetch()
+	if err != nil {
+		return fmt.Errorf("fetch: %w", err)
+	}
+	cpu.IR = Instruction(cpu.Mem.MDR)
+	cpu.PC++
 
 	return nil
 }
 
-// Fetch loads the value addressed by PC into IR and increments PC.
-func (cpu *LC3) Fetch() {
-	cpu.Mem.MAR = Register(cpu.PC)
-	cpu.Mem.Fetch()
-	cpu.IR = Instruction(cpu.Mem.MDR)
-	cpu.PC++
-}
-
-// Decode returns the operation encoded in the instruction register.
-func (cpu *LC3) Decode() operation {
-	var op operation
-
-	switch cpu.IR.Opcode() {
-	case OpcodeBR:
-		op = &br{}
-	case OpcodeAND:
-		if cpu.IR.Imm() {
-			op = &andImm{}
-		} else {
-			op = &and{}
-		}
-	case OpcodeADD:
-		if cpu.IR.Imm() {
-			op = &addImm{}
-		} else {
-			op = &add{}
-		}
-	case OpcodeNOT:
-		op = &not{}
-	case OpcodeLD:
-		op = &ld{}
-	case OpcodeLDI:
-		op = &ldi{}
-	case OpcodeLDR:
-		op = &ldr{}
-	case OpcodeLEA:
-		op = &lea{}
-	case OpcodeST:
-		op = &st{}
-	case OpcodeSTI:
-		op = &sti{}
-	case OpcodeSTR:
-		op = &str{}
-	case OpcodeJMP, OpcodeRET:
-		op = &jmp{}
-	case OpcodeJSR, OpcodeJSRR:
-		if (cpu.IR & 0x0800) == 0 {
-			op = &jsrr{}
-		} else {
-			op = &jsr{}
-		}
-	case OpcodeTRAP:
-		op = &trap{}
-	case OpcodeRTI:
-		op = &rti{}
-	case OpcodeRESV:
-		op = &resv{}
-	}
-
-	if op, ok := op.(decodable); ok {
-		op.Decode(cpu.IR)
-	}
-
-	return op
-}
-
 // EvalAddress computes a relative memory address if the operation is
 // addressable.
-func (cpu *LC3) EvalAddress(op operation) {
+func (cpu *LC3) EvalAddress(op operation) error {
 	if op, ok := op.(addressable); ok {
 		op.EvalAddress(cpu)
 	}
+
+	return nil
 }
 
 // FetchOperands reads from memory into a CPU register if the operation is fetchable.
-func (cpu *LC3) FetchOperands(op operation) {
+func (cpu *LC3) FetchOperands(op operation) error {
+	var err error
+
 	if op, ok := op.(fetchable); ok {
-		cpu.Mem.Fetch()
-		op.FetchOperands(cpu)
+		err = cpu.Mem.Fetch()
+		if err != nil {
+			return fmt.Errorf("operand: %w", err)
+		}
+
+		err = op.FetchOperands(cpu)
+		if err != nil {
+			return fmt.Errorf("operand: %w", err)
+		}
 	}
+
+	return nil
 }
 
 // Execute does the operation.
-func (cpu *LC3) Execute(op operation) {
+func (cpu *LC3) Execute(op operation) error {
+	var err error
 	if op, ok := op.(executable); ok {
-		op.Execute(cpu)
+		err = op.Execute(cpu)
+		if err != nil {
+			return fmt.Errorf("execute: %w", err)
+		}
 	}
+
+	return nil
 }
 
 // StoreResult writes registers to memory if the operation is storable.
-func (cpu *LC3) StoreResult(op operation) {
+func (cpu *LC3) StoreResult(op operation) error {
+	var err error
 	if op, ok := op.(storable); ok {
 		op.StoreResult(cpu)
-		cpu.Mem.Store()
+		err = cpu.Mem.Store()
+		if err != nil {
+			return fmt.Errorf("store: %w", err)
+		}
 	}
+
+	return nil
 }
 
 // operations represents a single CPU instruction as it is being executed. The
@@ -152,12 +167,12 @@ type addressable interface {
 // fetchable operations load operands from the memory data registers.
 type fetchable interface {
 	addressable
-	FetchOperands(cpu *LC3)
+	FetchOperands(cpu *LC3) error
 }
 
 // executable operations update CPU state. Some instructions do not, surprisingly.
 type executable interface {
-	Execute(cpu *LC3)
+	Execute(cpu *LC3) error
 }
 
 // storable operations store the memory data register.

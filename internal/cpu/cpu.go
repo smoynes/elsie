@@ -7,14 +7,13 @@ import (
 
 // LC3 is a computer simulated in software.
 type LC3 struct {
-	PC   ProgramCounter  // Instruction Pointer
-	IR   Instruction     // Instruction Register
-	PSR  ProcessorStatus // Processor Status Register
-	Reg  RegisterFile    // General-purpose register file
-	Mem  Memory          // All the memory you'll ever need
-	USP  Register        // User stack pointer
-	SSP  Register        // System stack pointer
-	Temp Register        // Temporary value
+	PC  ProgramCounter  // Instruction Pointer
+	IR  Instruction     // Instruction Register
+	PSR ProcessorStatus // Processor Status Register
+	Reg RegisterFile    // General-purpose register file
+	USP Register        // User stack pointer
+	SSP Register        // System stack pointer
+	Mem Memory          // All the memory you'll ever need
 }
 
 func New() *LC3 {
@@ -22,34 +21,32 @@ func New() *LC3 {
 		PC:  0x0300,
 		PSR: initialStatus,
 	}
+	cpu.Mem = NewMemory(&cpu.PSR)
 
 	return &cpu
 }
 
 // initial value of PSR at boot is seemingly undefined. At least, I haven't
-// found it in the ISA reference. Set all condition flags, an invalid value, to
-// make it a bit more obvious that the conditions are uninitialized when
-// debugging.
-const initialStatus = ProcessorStatus(
-	Word(PrivilegeSystem) | Word(PriorityNormal) | Word(StatusCondition),
-)
+// found it in the ISA reference. Starts with system privileges, normal
+// priority, and with condition flags set.
+const initialStatus = ProcessorStatus(StatusSystem | StatusNormal | StatusCondition)
 
 func (cpu *LC3) String() string {
-	return fmt.Sprintf("PC: %s IR: %s PSR: %s", cpu.PC, cpu.IR, cpu.PSR)
+	return fmt.Sprintf("PC: %s IR: %s PSR: %s USP: %s SSP: %s",
+		cpu.PC, cpu.IR, cpu.PSR, cpu.USP, cpu.SSP)
 }
 
 // PushStack pushes a word onto the current stack.
-func (cpu *LC3) PushStack(w Word) {
+func (cpu *LC3) PushStack(w Word) error {
 	cpu.Reg[SP]--
 	cpu.Mem.MAR = cpu.Reg[SP]
 	cpu.Mem.MDR = Register(w)
-	cpu.Mem.Store()
+	return cpu.Mem.Store()
 }
 
-// PopStack pops a word from the current stack into a register.
-func (cpu *LC3) PopStack() Word {
+// PopStack pops a word from the current stack into MDR.
+func (cpu *LC3) PopStack() error {
 	cpu.Reg[SP]++
 	cpu.Mem.MAR = cpu.Reg[SP] - 1
-	cpu.Mem.Fetch()
-	return Word(cpu.Mem.MDR)
+	return cpu.Mem.Fetch()
 }

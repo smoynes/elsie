@@ -13,6 +13,64 @@ func (i Instruction) String() string {
 	return fmt.Sprintf("%s (OP: %s)", Word(i), i.Opcode())
 }
 
+// Decode the instruction from IR.
+func (i Instruction) Decode() operation {
+	var oper operation
+
+	switch i.Opcode() {
+	case OpcodeBR:
+		oper = &br{}
+	case OpcodeAND:
+		if i.Imm() {
+			oper = &andImm{}
+		} else {
+			oper = &and{}
+		}
+	case OpcodeADD:
+		if i.Imm() {
+			oper = &addImm{}
+		} else {
+			oper = &add{}
+		}
+	case OpcodeNOT:
+		oper = &not{}
+	case OpcodeLD:
+		oper = &ld{}
+	case OpcodeLDI:
+		oper = &ldi{}
+	case OpcodeLDR:
+		oper = &ldr{}
+	case OpcodeLEA:
+		oper = &lea{}
+	case OpcodeST:
+		oper = &st{}
+	case OpcodeSTI:
+		oper = &sti{}
+	case OpcodeSTR:
+		oper = &str{}
+	case OpcodeJMP, OpcodeRET:
+		oper = &jmp{}
+	case OpcodeJSR, OpcodeJSRR:
+		if (i & 0x0800) == 0 {
+			oper = &jsrr{}
+		} else {
+			oper = &jsr{}
+		}
+	case OpcodeTRAP:
+		oper = &trap{}
+	case OpcodeRTI:
+		oper = &rti{}
+	case OpcodeRESV:
+		oper = &resv{}
+	}
+
+	if op, ok := oper.(decodable); ok {
+		op.Decode(i)
+	}
+
+	return oper
+}
+
 // Opcode returns the instruction opcode.
 func (i Instruction) Opcode() Opcode {
 	return Opcode(i >> 12)
