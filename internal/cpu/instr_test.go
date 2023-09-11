@@ -35,8 +35,8 @@ func TestInstructions(t *testing.T) {
 			t.Errorf("SP want: %s, got: %s", Word(0x2fee)-2, cpu.Reg[SP])
 		}
 
-		if cpu.USP != 0x0000 {
-			t.Errorf("USP want: %s, got: %s", Word(0x0000), cpu.USP)
+		if cpu.USP != 0xfe00 {
+			t.Errorf("USP want: %s, got: %s", Word(0xfe00), cpu.USP)
 		}
 
 		if cpu.PSR != StatusSystem|StatusNormal|StatusNegative {
