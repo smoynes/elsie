@@ -14,7 +14,9 @@ func main() {
 	instruction := cpu.Register(cpu.Word(cpu.OpcodeTRAP)<<12 | cpu.TrapHALT)
 	machine.Mem.MAR = cpu.Register(machine.PC)
 	machine.Mem.MDR = instruction
-	machine.Mem.Store()
+	if err := machine.Mem.Store(); err != nil {
+		log.Fatal(err)
+	}
 	machine.Reg[cpu.R0] = 0xffff
 
 	print(machine.String(), "\n")
