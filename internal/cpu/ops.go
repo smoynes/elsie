@@ -664,7 +664,11 @@ func (op *trap) Execute(cpu *LC3) error {
 	}
 }
 
-func (op *trapErr) Handle(cpu *LC3) error {
+func (err *trapErr) Error() string {
+	return fmt.Sprintf("INT: TRAP (%s:%s)", err.table, err.vec)
+}
+
+func (err *trapErr) Handle(cpu *LC3) error {
 	// Switch from the user to the system stack and system privilege level
 	// if it is a user trap.
 	if cpu.PSR.Privilege() == PrivilegeUser {
@@ -673,7 +677,7 @@ func (op *trapErr) Handle(cpu *LC3) error {
 		cpu.PSR &= ^StatusUser
 	}
 
-	return op.interrupt.Handle(cpu)
+	return err.interrupt.Handle(cpu)
 }
 
 // RTI: Return from trap or interrupt

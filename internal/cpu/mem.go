@@ -206,20 +206,6 @@ const (
 	MCRAddr  Word = 0xfffe // Machine control register. Privileged.
 )
 
-// Exception vector table and defined vectors in the table.
-const (
-	ExceptionTable = Word(0x0100)
-	ExceptionPMV   = Word(0x00)
-	ExceptionXOP   = Word(0x01)
-	ExceptionACV   = Word(0x02)
-)
-
-// Trap handler table and defined vectors in the table.
-const (
-	TrapTable = Word(0x0000)
-	TrapHALT  = Word(0x0025)
-)
-
 type acv struct {
 	interrupt
 }

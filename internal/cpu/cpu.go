@@ -19,9 +19,13 @@ type LC3 struct {
 func New() *LC3 {
 	cpu := LC3{
 		PC:  0x0300,
+		IR:  0x0000,
 		PSR: initialStatus,
+		USP: Register(IOPageAddr),    // User stack grows down from the top of user space.
+		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where users end.
 	}
 	cpu.Mem = NewMemory(&cpu.PSR)
+	cpu.Reg[SP] = Register(UserSpaceAddr)
 
 	return &cpu
 }

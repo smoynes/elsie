@@ -9,10 +9,14 @@ import (
 
 func main() {
 	machine := cpu.New()
+
+	// TRAP HALT
+	instruction := cpu.Register(cpu.Word(cpu.OpcodeTRAP)<<12 | cpu.TrapHALT)
 	machine.Mem.MAR = cpu.Register(machine.PC)
-	machine.Mem.MDR = cpu.Register(cpu.OpcodeAND)<<12 | 0x0040 | 0x0011
+	machine.Mem.MDR = instruction
 	machine.Mem.Store()
 	machine.Reg[cpu.R0] = 0xffff
+
 	print(machine.String(), "\n")
 	print(machine.Reg.String(), "\n")
 
@@ -22,15 +26,4 @@ func main() {
 	print(machine.String(), "\n")
 	print(machine.Reg.String(), "\n")
 
-	if err := machine.Cycle(); err != nil {
-		log.Fatal(err)
-	}
-	print(machine.String(), "\n")
-	print(machine.Reg.String(), "\n")
-
-	if err := machine.Cycle(); err != nil {
-		log.Fatal(err)
-	}
-	print(machine.String(), "\n")
-	print(machine.Reg.String(), "\n")
 }
