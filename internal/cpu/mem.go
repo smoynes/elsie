@@ -141,8 +141,16 @@ func (mem *Memory) Fetch() error {
 		return &acv{interrupt{}}
 	}
 
-	cell := mem.load(Word(mem.MAR))
-	mem.MDR = Register(cell)
+	if Word(mem.MAR) < IOPageAddr {
+		cell := mem.load(Word(mem.MAR))
+		mem.MDR = Register(cell)
+		return nil
+	}
+
+	err := mem.device.Load(Word(mem.MAR), mem.MDR)
+	if err != nil {
+		panic(err)
+	}
 
 	return nil
 }
@@ -175,11 +183,12 @@ func (mem *Memory) Store() error {
 
 	if Word(mem.MAR) < IOPageAddr {
 		mem.cell[mem.MAR] = Word(mem.MDR)
-	} else {
-		err := mem.device.Store(Word(mem.MAR), mem.MDR)
-		if err != nil {
-			panic(err)
-		}
+		return nil
+	}
+
+	err := mem.device.Store(Word(mem.MAR), mem.MDR)
+	if err != nil {
+		panic(err)
 	}
 
 	return nil
@@ -214,6 +223,16 @@ func (mem *Memory) Map(devices MMIO) {
 type MMIO map[Word]*Register
 
 func (mem MMIO) Store(addr Word, reg Register) error {
+	if devReg, ok := mem[addr]; ok {
+		*devReg = reg
+	} else {
+		panic("mmio no device")
+	}
+
+	return nil
+}
+
+func (mem MMIO) Load(addr Word, reg Register) error {
 	if devReg, ok := mem[addr]; ok {
 		*devReg = reg
 	} else {
