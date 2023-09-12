@@ -4,7 +4,6 @@ package cpu
 
 import (
 	"fmt"
-	"math"
 )
 
 // Memory is where we keep our most precious things: programs and data.
@@ -121,14 +120,18 @@ type Memory struct {
 	device MMIO
 }
 
-// Logical memory address space.
+// Regions of address space. Each region begins at the address and grows upwards towards the next.
 const (
-	MaxAddress Word = math.MaxUint16 // 65_536 addressable words.
+	ServiceRoutineAddr Word = 0x0000
+	SystemSpaceAddr    Word = 0x0200
+	UserSpaceAddr      Word = 0x3000
+	IOPageAddr         Word = 0xfe00
+	AddrSpace          Word = 0xffff // Logical address space; 65_536 addressable words.
 )
 
 // PhysicalMemory is (virtualized) physical memory. The top of the logical address space is reserved
 // for the I/O page so the backing buffer is slightly smaller than the full logical address space.
-type PhysicalMemory [MaxAddress & IOPageAddr]Word
+type PhysicalMemory [AddrSpace & IOPageAddr]Word
 
 // NewMemory initializes a memory controller.
 func NewMemory(psr *ProcessorStatus) Memory {
@@ -143,12 +146,6 @@ func NewMemory(psr *ProcessorStatus) Memory {
 
 	return mem
 }
-
-// Address space regions.
-const (
-	UserSpaceAddr Word = 0x3000 // Start of user address space.
-	IOPageAddr    Word = 0xfe00 // I/O page address space.
-)
 
 // Fetch loads the data register from the address in the address register.
 func (mem *Memory) Fetch() error {
