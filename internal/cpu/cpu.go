@@ -7,6 +7,7 @@ import (
 
 // LC3 is a computer simulated in software.
 type LC3 struct {
+	MCR Register        // Master control register
 	PC  ProgramCounter  // Instruction Pointer
 	IR  Instruction     // Instruction Register
 	PSR ProcessorStatus // Processor Status Register
@@ -23,9 +24,17 @@ func New() *LC3 {
 		PSR: initialStatus,
 		USP: Register(IOPageAddr),    // User stack grows down from the top of user space.
 		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where users end.
+		MCR: Register(0x8000),
 	}
 	cpu.Mem = NewMemory(&cpu.PSR)
 	cpu.Reg[SP] = Register(UserSpaceAddr)
+
+	PSR := Register(cpu.PSR)
+	devices := MMIO{
+		MCRAddr: &cpu.MCR,
+		PSRAddr: &PSR,
+	}
+	cpu.Mem.Map(devices)
 
 	return &cpu
 }
@@ -36,8 +45,8 @@ func New() *LC3 {
 const initialStatus = ProcessorStatus(StatusSystem | StatusNormal | StatusCondition)
 
 func (cpu *LC3) String() string {
-	return fmt.Sprintf("PC: %s IR: %s PSR: %s USP: %s SSP: %s",
-		cpu.PC, cpu.IR, cpu.PSR, cpu.USP, cpu.SSP)
+	return fmt.Sprintf("PC:  %s IR: %s \nPSR: %s\nUSP: %s SSP: %s MCR: %s",
+		cpu.PC, cpu.IR, cpu.PSR, cpu.USP, cpu.SSP, cpu.MCR)
 }
 
 // PushStack pushes a word onto the current stack.

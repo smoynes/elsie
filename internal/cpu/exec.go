@@ -75,6 +75,28 @@ func (cpu *LC3) Cycle() error {
 	return err
 }
 
+func (cpu *LC3) Run() error {
+	var err error
+	for {
+		if cpu.MCR == 0x0000 {
+			// HALT
+			println("System HALTED")
+			return nil
+		}
+		err = cpu.Cycle()
+
+		if err != nil {
+			return err
+		}
+		println()
+		println("Post cycle state:")
+		println(cpu.String())
+		println(cpu.Reg.String())
+	}
+
+	return err
+}
+
 // Fetch loads the value addressed by PC into IR and increments PC.
 func (cpu *LC3) Fetch() error {
 	cpu.Mem.MAR = Register(cpu.PC)

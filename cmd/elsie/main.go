@@ -27,7 +27,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// AND R0,R0,0
+	// AND R0,R0,0 ; clear R0
 	program = cpu.Register(cpu.Word(cpu.OpcodeAND)<<12 | 0x0020)
 	machine.Mem.MAR = cpu.Register(0x1000)
 	machine.Mem.MDR = program
@@ -35,50 +35,28 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// STI MCR,R0
-	program = cpu.Register(cpu.Word(cpu.OpcodeSTI)<<12 | 0x0010)
+	// LDI R1,[0x1002]
+	program = cpu.Register(cpu.Word(cpu.OpcodeLDR) << 12)
 	machine.Mem.MAR = cpu.Register(0x1001)
 	machine.Mem.MDR = program
 	if err := machine.Mem.Store(); err != nil {
 		log.Fatal(err)
 	}
 
-	println(machine.String())
-	println(machine.Reg.String())
-
-	if err := machine.Cycle(); err != nil {
+	// STI R0,0
+	program = cpu.Register(cpu.Word(cpu.OpcodeSTI) << 12)
+	machine.Mem.MAR = cpu.Register(0x1001)
+	machine.Mem.MDR = program
+	if err := machine.Mem.Store(); err != nil {
 		log.Fatal(err)
 	}
 
-	println()
-	println("Post cycle state:")
-	println(machine.String())
-	println(machine.Reg.String())
-
-	if err := machine.Cycle(); err != nil {
+	// MCR addr
+	machine.Mem.MAR = cpu.Register(0x1002)
+	machine.Mem.MDR = cpu.Register(0xfffe)
+	if err := machine.Mem.Store(); err != nil {
 		log.Fatal(err)
 	}
 
-	println()
-	println("Post cycle state:")
-	println(machine.String())
-	println(machine.Reg.String())
-
-	if err := machine.Cycle(); err != nil {
-		log.Fatal(err)
-	}
-
-	println()
-	println("Post cycle state:")
-	println(machine.String())
-	println(machine.Reg.String())
-	if err := machine.Cycle(); err != nil {
-		log.Fatal(err)
-	}
-
-	println()
-	println("Post cycle state:")
-	println(machine.String())
-	println(machine.Reg.String())
-
+	machine.Run()
 }

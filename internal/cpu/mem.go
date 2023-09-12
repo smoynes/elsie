@@ -117,9 +117,9 @@ const (
 	IOPageAddr    Word = 0xfe00 // I/O page address space.
 )
 
-// PhysicalMemory is (virtualized) physical memory. The top of the address space
-// is reserved for memory-mapped I/O.
-type PhysicalMemory [MaxAddress&IOPageAddr + 1]Word
+// PhysicalMemory is (virtualized) physical memory. The bottom of the address
+// space is reserved for memory-mapped I/O.
+type PhysicalMemory [MaxAddress & IOPageAddr]Word
 
 func NewMemory(psr *ProcessorStatus) Memory {
 	mem := Memory{
@@ -140,6 +140,7 @@ func (mem *Memory) Fetch() error {
 		mem.MDR = Register(*mem.PSR)
 		return &acv{interrupt{}}
 	}
+
 	cell := mem.load(Word(mem.MAR))
 	mem.MDR = Register(cell)
 
@@ -153,6 +154,15 @@ func (mem *Memory) privileged() bool {
 		Word(mem.MDR) == PSRAddr)
 }
 
+// acv is an memory access control violation exception.
+type acv struct {
+	interrupt
+}
+
+func (acv *acv) Error() string {
+	return fmt.Sprintf("INT: ACV (%s:%s)", acv.table, acv.vec)
+}
+
 // Store writes the word in the data register to the word in the address
 // register.
 func (mem *Memory) Store() error {
@@ -163,7 +173,14 @@ func (mem *Memory) Store() error {
 		}
 	}
 
-	mem.cell[mem.MAR] = Word(mem.MDR)
+	if Word(mem.MAR) < IOPageAddr {
+		mem.cell[mem.MAR] = Word(mem.MDR)
+	} else {
+		err := mem.device.Store(Word(mem.MAR), mem.MDR)
+		if err != nil {
+			panic(err)
+		}
+	}
 
 	return nil
 }
@@ -193,17 +210,18 @@ func (mem *Memory) Map(devices MMIO) {
 	}
 }
 
-// acv is an memory access control violation exception.
-type acv struct {
-	interrupt
-}
-
-func (acv *acv) Error() string {
-	return fmt.Sprintf("INT: ACV (%s:%s)", acv.table, acv.vec)
-}
-
 // MMIO controls memory-mapped I/O for device registers.
 type MMIO map[Word]*Register
+
+func (mem MMIO) Store(addr Word, reg Register) error {
+	if devReg, ok := mem[addr]; ok {
+		*devReg = reg
+	} else {
+		panic("mmio no device")
+	}
+
+	return nil
+}
 
 // Addresses of memory-mapped device registers.
 const (

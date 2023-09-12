@@ -92,14 +92,11 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 
 Focus right now:
 
-- memory access control
-
+- memory mapped i/o
 
 Up next:
 
 - memory mapped I/O
-- implementing remaining instructions 🤓
-  - RESV
 - exceptions
 - ISRs
 - I/O interrupts
@@ -124,6 +121,7 @@ Completed:
   - JSRR
   - TRAP
   - RTI
+  - RESV
 
 ----
 
