@@ -212,7 +212,7 @@ func (mem *Memory) store(addr Word, cell Word) {
 	mem.cell[addr] = cell
 }
 
-// Map attaches a device register to an address in the I/O page.
+// Map attaches device registers to an address in the I/O page.
 func (mem *Memory) Map(devices MMIO) {
 	for addr, reg := range devices {
 		mem.device[addr] = reg

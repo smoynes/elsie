@@ -29,11 +29,10 @@ func New() *LC3 {
 	cpu.Mem = NewMemory(&cpu.PSR)
 	cpu.Reg[SP] = Register(UserSpaceAddr)
 
-	PSR := Register(cpu.PSR)
 	devices := MMIO{
 		MCRAddr: &cpu.MCR,
-		PSRAddr: &PSR,
 	}
+
 	cpu.Mem.Map(devices)
 
 	return &cpu

@@ -79,12 +79,10 @@ func (cpu *LC3) Run() error {
 	var err error
 	for {
 		if cpu.MCR == 0x0000 {
-			// HALT
-			println("System HALTED")
-			return nil
+			break
 		}
-		err = cpu.Cycle()
 
+		err = cpu.Cycle()
 		if err != nil {
 			return err
 		}
@@ -94,7 +92,9 @@ func (cpu *LC3) Run() error {
 		println(cpu.Reg.String())
 	}
 
-	return err
+	// HALT
+	println("System HALTED")
+	return nil
 }
 
 // Fetch loads the value addressed by PC into IR and increments PC.
