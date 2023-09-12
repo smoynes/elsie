@@ -139,8 +139,6 @@ func NewMemory(psr *ProcessorStatus) Memory {
 
 		cell:   PhysicalMemory{},
 		device: MMIO{},
-
-		Size: len(PhysicalMemory{}),
 	}
 
 	return mem
