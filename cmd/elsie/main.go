@@ -57,5 +57,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	machine.Run()
+	if err := machine.Run(); err != nil {
+		log.Fatal(err)
+	}
 }
