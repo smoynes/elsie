@@ -1,13 +1,10 @@
 package cpu
 
-// devices.go includes code for device I/O. That includes only memory-mapped
-// I/O.
-//
-// # Memory-mapped I/O #
+// io.go includes code for memory mapped I/O.
 //
 // The memory controller redirects accesses of addresses in the I/O page to the
-// MMIO controller. During boot, addresses are mapped to registers elsewhere in
-// the CPU or provided by devices.
+// MMIO controller. During boot, addresses are mapped to registers from elsewhere in
+// the CPU or external mdevices.
 //
 // Different kinds of devices have different types of registers, i.e., Register,
 // StatusRegister, KeyboardRegister, etc. However, in Go, pointer types are
@@ -19,7 +16,8 @@ import (
 	"fmt"
 )
 
-// MMIO is the memory-mapped I/O controller.
+// MMIO is the memory-mapped I/O controller. It holds a pointers to registers in
+// a table indexed by logical address.
 type MMIO map[Word]any
 
 // Map attaches device registers to an address in the I/O page.

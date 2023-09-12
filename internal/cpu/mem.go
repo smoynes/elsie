@@ -1,96 +1,111 @@
 package cpu
 
-// Memory is where we keep our most precious things: programs and data.
-//
-// The LC-3 has nearly unlimited memory: 128 kilobytes in a 16-bit address space
-// of 2-byte words. Within this addressable memory space there is:
-//
-//   - system space for operating system code and data
-//   - user space for unprivileged programs
-//   - I/O page for memory-mapped device-registers
-//
-// ## Usage ##
-//
-// To read or write to memory, the CPU puts the address into the address
-// register and either calls Fetch which reads the value and puts it in the data
-// register, or it puts a value in the data register and calls Store, which
-// writes the value to the address.
-//
-// Admittedly, this is a strange design, at least from a software perspective.
-// We could simply use function arguments and return values to pass values
-// instead. However, registers are used here to reflect the design of the LC-3
-// reference architecture and make the clock cycles visible in the code
-// structure.
-//
-// ## Access Control ##
-//
-// ACV
-//
-// ## Stacks ##
-//
-// Each space is further divided into regions.
-//
-// The top of the current stack is pointed to by the stack pointer (register SP,
-// i.e. R6). The inactive stack is saved in another register until the privilege
-// level changes. For example, the system stack value is saved in SSP when
-// running with user privileges; conversely, USP with system privileges.
-//
-// Both stacks grow down; that is, when a word is pushed onto the stack, the
-// address decreases and will point at the new data on the top of the stack.
-// (Note, however, that the stacks grow typographically upwards in the diagram
-// below.)
-//
-// ## Memory-mapped I/O ##
-//
-// ## Interrupt and Trap Vectors ##
-//
-// Since ASCII art is worth a thousand words:
-//
-// +========+========+=================+
-// |        | 0x0100 |   Exception     |
-// |        |   ...  |  vector table   |--+
-// |        | 0x01ff |                 |  |
-// |        +--------------------------+
-// |        | 0x0??? |   Trap vector   |
-// |        |   ...  |      table      |--+
-// |        | 0x0??? |                 |  |
-// |        +--------------------------+
-// |        | 0x0??? |    Interrupt    |
-// |        |   ...  |  vector table   |--+
-// |        | 0x0??? |                 |  |
-// |        +--------------------------+  |
-// | System | 0x1000 |     System      |<-+ ISR
-// | space  |        |      data       |
-// |        +--------+-----------------+   +-----------------+
-// |        | 0x2ff0 |                 |<--|SSP              |
-// |        |   ...  |  System stack   |   |                 |
-// |        | 0x2fff |                 |   |                 |
-// +========+========+=================+   |      CPU ⚙️     |
-// |        | 0x3000 |                 |   |                 |
-// |        |        |                 |<--|RET(R7)          |
-// |        |  ...   |   User data     |   |                 |
-// |        |        |                 |   |                 |
-// |        |        |                 |<=>|MDR              |
-// |  User  | 0xfdef |                 |<==|MDR              |
-// + space  +--------+-----------------+   |                 |
-// |        | 0xfdf0 |                 |<--|SP(R6)           |
-// |        |        |                 |   |                 |
-// |        |   ...  |   User stack    |<--|USP   MCR PSR    |
-// |        |        |                 |   +-----------------+
-// |        |        |                 |           ^
-// |        | 0xfdff |                 |  +--------+
-// +========+========+=================+  | +-----------------+
-// |        | 0xfe00 |                 |--+ |                 |
-// | I/O    |        |  Memory-mapped  |--->|DSR   Device     |
-// | page   |   ...  |     I/O page    |--->|DDR   registers  |
-// |        |        |                 |--->|KBSR             |
-// |        | 0xffff |                 |--->|KBDR             |
-// +========+========+=================+    +-----------------+
+// mem.go contains the machine's memory controller.
 
 import (
 	"fmt"
 	"math"
 )
+
+// Memory is where we keep our most precious things: programs and data.
+//
+// The LC-3 has nearly unlimited memory: 128 kilobytes in a 16-bit address space of 2-byte words.
+// The addressable memory space is divided into separate address spaces.
+//
+//   - system space for operating system code and data
+//
+//   - user space for unprivileged programs' code and data
+//
+//   - an I/O page for memory-mapped device-registers
+//
+// A memory controller mediates access to the address spaces from the CPU.
+//
+// ## Data Flow ##
+//
+// The memory controller is responsible for translating logical addresses in the memory space to
+// physical memory residing in RAM, CPU registers, or memory on external devices.
+//
+// To read or write to memory, the CPU puts the address into the address register (MAR) and the data
+// into the data register (MDR) and either calls Fetch or Store; the controller will read from the
+// address into its data register or write to memory from MDR, respectively.
+//
+// Admittedly, this is a strange design, at least from a software design perspective. We could
+// simply use function arguments and return values to pass values instead. Registers are used to
+// reflect the design of the LC-3 reference micro-architecture. For learning purposes, it helps to
+// make the data flow explicit and metaphorically represents the instruction's clock cycle. (Indeed,
+// the Go compiler will inline and optimize much of the code herein so data is kept in registers.)
+//
+// ## Access Control ##
+//
+// The controller also enforces access control to each address space. The system space contains the
+// code and data used for operating the machine and must only be accessed by privileged programs.
+// When the address register contains an address in the system space (or, is for a privileged
+// device) and the processor is running with user privileges, then memory access will raise an
+// access control violation (ACV) exception.
+//
+// ## Data and Stacks ##
+//
+// The user and system spaces are further divided into regions. Primarily, each space contains a
+// data region that includes global program data as well as the machine code for programs
+// themselves.
+//
+// Temporary program data is stored on a stack: one for the system, the other for the user. The top
+// of the current stack is pointed to by a stack pointer (SP, i.e. R6). The other stack is saved in
+// a special-purpose register while it is inactive. That is, the system stack value is saved in SSP
+// when running with user privileges; likewise, the user's in USP while with system privileges.
+//
+// Both stacks grow down; that is, when a word is pushed onto the stack, the address decreases and
+// will point at the new data on the top of the stack.
+//
+// ## Interrupt Vector Tables ##
+//
+// In addition to system data and code, the system space includes small but important tables
+// containing the addresses of service routines for I/O interrupts, traps, and exceptions. The
+// system loads these tables with addresses of handlers and jumps to these handlers.
+//
+// ## Figure ##
+//
+// Since ASCII art is worth a thousand words:
+//
+// +========+========+=================+    +-----------------+   +-----------------+
+// |        | 0xffff |  Memory-mapped  |    |                 |   |                 |
+// |        |   ...  |     I/O page    |--->|                 |-->|DSR              |
+// |        |   ...  |                 |--->|       MMIO      |-->|DDR    Device    |
+// |        |   ...  |                 |--->|    registers    |-->|KBSR  registers  |
+// |        | 0xfe00 |                 |--->|                 |-->|KBDR             |
+// +========+========+=================+    |                 |   |                 |
+// |        | 0xfdff |                 |    +-----------------+   +-----------------+
+// |        |        |                 |             |   |
+// |        |  ...   |   User stack    |             V   V
+// |        |        |                 |    +-----------------+
+// |        | 0x4568 |                 |<---|USP    MCR PSR   |
+// |        +--------------------------+    |                 |
+// |        | 0x4567 |                 |<---|R7 (RET)       R3|
+// |  User  |  ...   |   User data     |    |                 |
+// |  space | 0x3000 |                 |<---|R6 (SP)        R2|
+// +========+========+=================+    |      CPU ⚙️     |
+// |        | 0x2fff |                 |    |R5             R1|
+// |        |        |  	       |    |                 |
+// |        |   ...  |  System stack   |    |R4             R0|
+// |        |        |                 |    |                 |
+// |        | 0x2dad |                 |<---|SSP              |
+// |        +--------+-----------------+    +-----------------+
+// | System | 0x1234 |                 |
+// | space  |  ...   |  System data    |
+// |        | 0x0200 |                 |
+// |        +--------------------------+
+// |        | 0x01ff |    Interrupt    |
+// |        |  ...   |  vector table   |
+// |        | 0x0100 |                 |
+// +        +--------+-----------------+
+// |        | 0x00ff |      Trap       |
+// |        |   ...  |   vector table  |
+// |        | 0x0010 |                 |
+// +        +--------+-----------------+
+// |        | 0x000f |    Exception    |
+// |        |   ...  |      table      |
+// |        | 0x0000 |                 |
+// +========+========+=================+
 
 // Memory represents a memory controller for logical addresses.
 type Memory struct {
@@ -111,18 +126,11 @@ const (
 	MaxAddress Word = math.MaxUint16 // 65_536 addressable words.
 )
 
-// Address space regions.
-const (
-	UserSpaceAddr Word = 0x3000 // Start of user address space.
-	IOPageAddr    Word = 0xfe00 // I/O page address space.
-)
-
-// PhysicalMemory is (virtualized) physical memory. The top of the address
-// space is reserved for memory-mapped I/O.
+// PhysicalMemory is (virtualized) physical memory. The top of the logical address space is reserved
+// for the I/O page so the backing buffer is slightly smaller than the full logical address space.
 type PhysicalMemory [MaxAddress & IOPageAddr]Word
 
-// NewMemory initializes a memory controller. In addition to physical memory, it
-// has address and data registers and memory-mapped I/O
+// NewMemory initializes a memory controller.
 func NewMemory(psr *ProcessorStatus) Memory {
 	mem := Memory{
 		MAR: 0xffff,
@@ -131,10 +139,18 @@ func NewMemory(psr *ProcessorStatus) Memory {
 
 		cell:   PhysicalMemory{},
 		device: MMIO{},
+
+		Size: len(PhysicalMemory{}),
 	}
 
 	return mem
 }
+
+// Address space regions.
+const (
+	UserSpaceAddr Word = 0x3000 // Start of user address space.
+	IOPageAddr    Word = 0xfe00 // I/O page address space.
+)
 
 // Fetch loads the data register from the address in the address register.
 func (mem *Memory) Fetch() error {
@@ -143,35 +159,12 @@ func (mem *Memory) Fetch() error {
 		return &acv{interrupt{}}
 	}
 
-	if Word(mem.MAR) < IOPageAddr {
-		cell := mem.load(Word(mem.MAR))
-		mem.MDR = Register(cell)
-		fmt.Printf("MMU fetch addr: %s, word: %s\n", mem.MAR, mem.MDR)
-		return nil
-	}
-
-	err := mem.device.Load(Word(mem.MAR), &mem.MDR)
+	err := mem.load(Word(mem.MAR), &mem.MDR)
 	if err != nil {
 		panic(err)
 	}
 
 	return nil
-}
-
-// Privileged returns true if the address in MAR requires privileges to access.
-func (mem *Memory) privileged() bool {
-	return (Word(mem.MAR) < UserSpaceAddr ||
-		Word(mem.MAR) == MCRAddr ||
-		Word(mem.MDR) == PSRAddr)
-}
-
-// acv is an memory access control violation exception.
-type acv struct {
-	interrupt
-}
-
-func (acv *acv) Error() string {
-	return fmt.Sprintf("INT: ACV (%s:%s)", acv.table, acv.vec)
 }
 
 // Store writes the word in the data register to the word in the address
@@ -184,13 +177,7 @@ func (mem *Memory) Store() error {
 		}
 	}
 
-	if Word(mem.MAR) < IOPageAddr {
-		mem.cell[mem.MAR] = Word(mem.MDR)
-		fmt.Printf("MMU write addr: %s, word: %s\n", mem.MAR, mem.MDR)
-		return nil
-	}
-
-	err := mem.device.Store(Word(mem.MAR), mem.MDR)
+	err := mem.store(Word(mem.MAR), Word(mem.MDR))
 	if err != nil {
 		panic(err)
 	}
@@ -200,18 +187,43 @@ func (mem *Memory) Store() error {
 
 // Loads a word from a memory directly without using the address and data
 // registers.
-func (mem *Memory) load(addr Word) Word {
+func (mem *Memory) load(addr Word, reg *Register) error {
 	if addr >= IOPageAddr {
-		panic("bad addr")
+		return mem.device.Load(addr, reg)
 	}
-	return mem.cell[addr]
+
+	*reg = Register(mem.cell[addr])
+	fmt.Printf("MMU load addr: %s, word: %s\n", addr, *reg)
+
+	return nil
 }
 
 // Stores a word into memory directly without using the address and data
 // registers.
-func (mem *Memory) store(addr Word, cell Word) {
+func (mem *Memory) store(addr Word, cell Word) error {
 	if addr >= IOPageAddr {
-		panic("bad addr")
+		return mem.device.Store(addr, Register(cell))
 	}
+
+	fmt.Printf("MMU write addr: %s, word: %s\n", addr, cell)
 	mem.cell[addr] = cell
+
+	return nil
+
+}
+
+// Privileged returns true if the address in MAR requires system privileges to access.
+func (mem *Memory) privileged() bool {
+	return (Word(mem.MAR) < UserSpaceAddr ||
+		Word(mem.MAR) == MCRAddr ||
+		Word(mem.MDR) == PSRAddr)
+}
+
+// acv is an memory access control violation exception.
+type acv struct {
+	interrupt
+}
+
+func (acv *acv) Error() string {
+	return fmt.Sprintf("EXC: ACV (%s:%s)", acv.table, acv.vec)
 }

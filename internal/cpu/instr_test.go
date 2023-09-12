@@ -367,7 +367,12 @@ func TestInstructions(t *testing.T) {
 			t.Error(err)
 		}
 
-		t.Logf("mem: %0#v", cpu.Mem.load(Word(0x0402)))
+		var r Register
+		err = cpu.Mem.load(Word(0x0402), &r)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", r)
 
 		if op := cpu.IR.Opcode(); op != OpcodeLDI {
 			t.Errorf("IR: %s, want: %s, got: %s",
@@ -405,7 +410,12 @@ func TestInstructions(t *testing.T) {
 			t.Error(err)
 		}
 
-		t.Logf("mem: %0#v", cpu.Mem.load(addr))
+		var r Register
+		err = cpu.Mem.load(addr, &r)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", r)
 
 		if op := cpu.IR.Opcode(); op != OpcodeLDR {
 			t.Errorf("IR: %s, want: %s, got: %s",
@@ -475,7 +485,13 @@ func TestInstructions(t *testing.T) {
 				cpu.IR, OpcodeST, op)
 		}
 
-		val := cpu.Mem.load(Word(0x0481))
+		var val Register
+		err = cpu.Mem.load(Word(0x0481), &val)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", val)
+
 		if val != 0xcafe {
 			t.Errorf("Mem[%s] want: %s, got: %s",
 				Word(0x0481), Word(0xcafe), val)
@@ -515,8 +531,13 @@ func TestInstructions(t *testing.T) {
 			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
 				cpu.IR, OpcodeSTI, op)
 		}
+		var val Register
+		err = cpu.Mem.load(Word(0x0f00), &val)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", val)
 
-		val := cpu.Mem.load(Word(0x0f00))
 		if val != 0xcafe {
 			t.Errorf("Mem[%s] want: %s, got: %s",
 				Word(0x0f00), Word(0xcafe), val)
@@ -569,14 +590,27 @@ func TestInstructions(t *testing.T) {
 				Word(0x2ffe), cpu.Reg[SP])
 		}
 
-		if cpu.Mem.load(Word(cpu.Reg[SP])) != 0x4051 {
+		var val Register
+		err = cpu.Mem.load(Word(cpu.Reg[SP]), &val)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", val)
+
+		if val != 0x4051 {
 			t.Errorf("SP top want: %s <= PC, got: %s",
-				Register(0x4051), cpu.Mem.load(Word(cpu.Reg[SP])))
+				Register(0x4051), val)
 		}
 
-		if cpu.Mem.load(Word(cpu.Reg[SP]+1)) != 0x8002 {
+		err = cpu.Mem.load(Word(cpu.Reg[SP]+1), &val)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", val)
+
+		if val != 0x8002 {
 			t.Errorf("SP bottom want: %s <= PSR, got: %s",
-				StatusZero&^StatusPrivilege, ProcessorStatus(cpu.Mem.load(Word(cpu.Reg[SP]+1))))
+				StatusZero&^StatusPrivilege, ProcessorStatus(val))
 		}
 
 		if cpu.PSR.Privilege() != PrivilegeSystem {
@@ -627,15 +661,28 @@ func TestInstructions(t *testing.T) {
 				Word(0x1dfe), cpu.Reg[SP])
 		}
 
-		if cpu.Mem.load(Word(cpu.Reg[SP])) != 0x2100 {
+		var val Register
+		err = cpu.Mem.load(Word(cpu.Reg[SP]), &val)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", val)
+
+		if val != 0x2100 {
 			t.Errorf("SP top want: %s <= PC, got: %s",
-				Register(0x2100), cpu.Mem.load(Word(cpu.Reg[SP])))
+				Register(0x2100), val)
 		}
 
-		if cpu.Mem.load(Word(cpu.Reg[SP]+1)) != Word((^StatusUser&StatusPrivilege)|StatusNormal|StatusZero) {
+		err = cpu.Mem.load(Word(cpu.Reg[SP]+1), &val)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", val)
+
+		if Word(val) != Word((^StatusUser&StatusPrivilege)|StatusNormal|StatusZero) {
 			t.Errorf("SP bottom want PSR: %s, got: %s",
 				(^StatusUser&StatusPrivilege)|StatusNormal|StatusZero,
-				ProcessorStatus(cpu.Mem.load(Word(cpu.Reg[SP]+1))))
+				val)
 		}
 
 		if cpu.PSR.Privilege() != PrivilegeSystem {
@@ -695,13 +742,25 @@ func TestInstructions(t *testing.T) {
 				Word(0xfade), cpu.Reg[SP])
 		}
 
-		top := cpu.Mem.load(Word(cpu.Reg[SP]))
+		var top Register
+		err = cpu.Mem.load(Word(cpu.Reg[SP]), &top)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", top)
+
 		if top != 0xff00 {
 			t.Errorf("SP top want: %s, got: %s",
 				Word(0xff00), top)
 		}
 
-		bottom := cpu.Mem.load(Word(cpu.Reg[SP] + 1))
+		var bottom Register
+		err = cpu.Mem.load(Word(cpu.Reg[SP]+1), &bottom)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", bottom)
+
 		if bottom != 0x0ff0 {
 			t.Errorf("SP bottom want: %s, got: %s",
 				Word(0x0ff0), bottom)
@@ -766,13 +825,25 @@ func TestInstructions(t *testing.T) {
 				Word(0x3000), cpu.Reg[SP])
 		}
 
-		top := cpu.Mem.load(Word(cpu.Reg[SP]))
+		var top Register
+		err = cpu.Mem.load(Word(cpu.Reg[SP]), &top)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", top)
+
 		if top != 0x1111 {
 			t.Errorf("SP top want: %s, got: %s",
 				Word(0x1111), top)
 		}
 
-		bottom := cpu.Mem.load(Word(cpu.Reg[SP] + 1))
+		var bottom Register
+		err = cpu.Mem.load(Word(cpu.Reg[SP]+1), &bottom)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", top)
+
 		if bottom != 0x2222 {
 			t.Errorf("SP bottom want: %s, got: %s",
 				Word(0x2222), bottom)
@@ -830,14 +901,26 @@ func TestInstructions(t *testing.T) {
 				Word(0x1a18), cpu.Reg[SP])
 		}
 
-		top := cpu.Mem.load(Word(cpu.Reg[SP]))
+		var top Register
+		err = cpu.Mem.load(Word(cpu.Reg[SP]), &top)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", top)
+
 		if top != 0x3301 {
 			t.Errorf("SP top want: %s, got: %s",
 				Word(0x3301), top)
 		}
 
-		bottom := cpu.Mem.load(Word(cpu.Reg[SP] + 1))
-		if bottom != Word((StatusPrivilege&StatusUser)|StatusLow|StatusNegative) {
+		var bottom Register
+		err = cpu.Mem.load(Word(cpu.Reg[SP]+1), &bottom)
+		if err != nil {
+			t.Error(err)
+		}
+		t.Logf("mem: %0#v", bottom)
+
+		if Word(bottom) != Word((StatusPrivilege&StatusUser)|StatusLow|StatusNegative) {
 			t.Errorf("SP bottom want: %s, got: %s",
 				(StatusPrivilege&StatusUser)|StatusLow|StatusNegative, bottom)
 
