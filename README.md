@@ -96,8 +96,6 @@ Focus right now:
 
 Up next:
 
-- memory mapped I/O
-- exceptions
 - ISRs
 - I/O interrupts
 
@@ -122,6 +120,9 @@ Completed:
   - TRAP
   - RTI
   - RESV
+- exceptions
+- traps
+- memory mapped I/O
 
 ----
 
