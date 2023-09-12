@@ -90,14 +90,12 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 
 **IN DEVELOPMENT**
 
-Focus right now:
-
-- memory mapped i/o
+Focus right now: devices: KBD, DISPLAY.
 
 Up next:
 
-- ISRs
 - I/O interrupts
+- ISRs
 
 Completed:
 
