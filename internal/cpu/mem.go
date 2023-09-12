@@ -108,13 +108,18 @@ type Memory struct {
 
 // Logical memory address space.
 const (
-	MaxAddress  Word = math.MaxUint16
-	AdressSpace int  = int(MaxAddress) + 1
+	MaxAddress Word = math.MaxUint16
 )
 
-// PhysicalMemory is . The top of the address space is reserved for memory-mapped
-// I/O.
-type PhysicalMemory [MaxAddress & IOPageAddr]Word
+// Address space regions.
+const (
+	UserSpaceAddr Word = 0x3000 // Start of user address space.
+	IOPageAddr    Word = 0xfe00 // I/O page address space.
+)
+
+// PhysicalMemory is (virtualized) physical memory. The top of the address space
+// is reserved for memory-mapped I/O.
+type PhysicalMemory [MaxAddress&IOPageAddr + 1]Word
 
 func NewMemory(psr *ProcessorStatus) Memory {
 	mem := Memory{
@@ -188,13 +193,17 @@ func (mem *Memory) Map(devices MMIO) {
 	}
 }
 
-type MMIO map[Word]*Register
+// acv is an memory access control violation exception.
+type acv struct {
+	interrupt
+}
 
-// Address space regions.
-const (
-	UserSpaceAddr Word = 0x3000 // Start of user address space.
-	IOPageAddr    Word = 0xfe00 // I/O page address space.
-)
+func (acv *acv) Error() string {
+	return fmt.Sprintf("INT: ACV (%s:%s)", acv.table, acv.vec)
+}
+
+// MMIO controls memory-mapped I/O for device registers.
+type MMIO map[Word]*Register
 
 // Addresses of memory-mapped device registers.
 const (
@@ -205,11 +214,3 @@ const (
 	PSRAddr  Word = 0xfffc // Processor status register. Privileged.
 	MCRAddr  Word = 0xfffe // Machine control register. Privileged.
 )
-
-type acv struct {
-	interrupt
-}
-
-func (acv *acv) Error() string {
-	return fmt.Sprintf("INT: ACV (%s:%s)", acv.table, acv.vec)
-}

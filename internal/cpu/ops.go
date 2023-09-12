@@ -724,8 +724,7 @@ func (op *rti) Execute(cpu *LC3) error {
 	cpu.PSR = ProcessorStatus(cpu.Mem.MDR)
 
 	if cpu.PSR.Privilege() == PrivilegeUser {
-		// When changing back to user privileges, swap the system and
-		// user stack pointers.
+		// When dropping privileges, swap system and user stacks.
 		cpu.SSP = cpu.Reg[SP]
 		cpu.Reg[SP] = cpu.USP
 	}
