@@ -13,9 +13,9 @@ func TestInstructions(t *testing.T) {
 		cpu.PSR = (StatusSystem & StatusPrivilege) | StatusNormal | StatusNegative
 		cpu.Reg[SP] = 0x2ff0
 		cpu.SSP = 0x1200
-		cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
-		cpu.Mem.store(Word(0x0101), 0x1100)
-		cpu.Mem.store(Word(0x1100), 0x1110)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
+		_ = cpu.Mem.store(Word(0x0101), 0x1100)
+		_ = cpu.Mem.store(Word(0x1100), 0x1110)
 
 		err := cpu.Cycle()
 		if err != nil {
