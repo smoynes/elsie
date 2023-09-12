@@ -42,10 +42,13 @@ func New() *LC3 {
 	cpu.Mem = NewMemory(&cpu.PSR)
 
 	// Map CPU registers into address space.
-	cpu.Mem.device.Map(MMIO{
+	err := cpu.Mem.device.Map(MMIO{
 		MCRAddr: &cpu.MCR,
 		PSRAddr: &cpu.PSR,
 	})
+	if err != nil {
+		panic(err)
+	}
 
 	return &cpu
 }
