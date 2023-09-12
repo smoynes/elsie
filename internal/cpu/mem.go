@@ -97,7 +97,7 @@ type Memory struct {
 	MAR Register // Memory address register.
 	MDR Register // Memory data register.
 
-	PSR *ProcessorStatus // CPU status register.
+	PSR *ProcessorStatus // CPU status register. TODO: bit weird.
 
 	// Physical memory in a virtual machine for an imaginary CPU.
 	cell PhysicalMemory
@@ -108,7 +108,7 @@ type Memory struct {
 
 // Logical memory address space.
 const (
-	MaxAddress Word = math.MaxUint16
+	MaxAddress Word = math.MaxUint16 // 65_536 addressable words.
 )
 
 // Address space regions.
@@ -117,18 +117,20 @@ const (
 	IOPageAddr    Word = 0xfe00 // I/O page address space.
 )
 
-// PhysicalMemory is (virtualized) physical memory. The bottom of the address
+// PhysicalMemory is (virtualized) physical memory. The top of the address
 // space is reserved for memory-mapped I/O.
 type PhysicalMemory [MaxAddress & IOPageAddr]Word
 
+// NewMemory initializes a memory controller. In addition to physical memory, it
+// has address and data registers and memory-mapped I/O
 func NewMemory(psr *ProcessorStatus) Memory {
 	mem := Memory{
 		MAR: 0xffff,
 		MDR: 0x0000,
 		PSR: psr,
 
-		device: make(MMIO),
 		cell:   PhysicalMemory{},
+		device: MMIO{},
 	}
 
 	return mem
@@ -144,10 +146,11 @@ func (mem *Memory) Fetch() error {
 	if Word(mem.MAR) < IOPageAddr {
 		cell := mem.load(Word(mem.MAR))
 		mem.MDR = Register(cell)
+		fmt.Printf("MMU fetch addr: %s, word: %s\n", mem.MAR, mem.MDR)
 		return nil
 	}
 
-	err := mem.device.Load(Word(mem.MAR), mem.MDR)
+	err := mem.device.Load(Word(mem.MAR), &mem.MDR)
 	if err != nil {
 		panic(err)
 	}
@@ -183,6 +186,7 @@ func (mem *Memory) Store() error {
 
 	if Word(mem.MAR) < IOPageAddr {
 		mem.cell[mem.MAR] = Word(mem.MDR)
+		fmt.Printf("MMU write addr: %s, word: %s\n", mem.MAR, mem.MDR)
 		return nil
 	}
 
@@ -211,43 +215,3 @@ func (mem *Memory) store(addr Word, cell Word) {
 	}
 	mem.cell[addr] = cell
 }
-
-// Map attaches device registers to an address in the I/O page.
-func (mem *Memory) Map(devices MMIO) {
-	for addr, reg := range devices {
-		mem.device[addr] = reg
-	}
-}
-
-// MMIO controls memory-mapped I/O for device registers.
-type MMIO map[Word]*Register
-
-func (mem MMIO) Store(addr Word, reg Register) error {
-	if devReg, ok := mem[addr]; ok {
-		*devReg = reg
-	} else {
-		panic("mmio no device")
-	}
-
-	return nil
-}
-
-func (mem MMIO) Load(addr Word, reg Register) error {
-	if devReg, ok := mem[addr]; ok {
-		*devReg = reg
-	} else {
-		panic("mmio no device")
-	}
-
-	return nil
-}
-
-// Addresses of memory-mapped device registers.
-const (
-	KBSRAddr Word = 0xfe00 // Keyboard status and data registers.
-	KBDRAddr Word = 0xfe02
-	DSRAddr  Word = 0xfe04 // Display status and data registers.
-	DDRAddr  Word = 0xfe06
-	PSRAddr  Word = 0xfffc // Processor status register. Privileged.
-	MCRAddr  Word = 0xfffe // Machine control register. Privileged.
-)

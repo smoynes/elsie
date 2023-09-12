@@ -75,8 +75,12 @@ func (cpu *LC3) Cycle() error {
 	return err
 }
 
+// Run starts and executes the instruction cycle until the program halts.
 func (cpu *LC3) Run() error {
 	var err error
+	println(cpu.String())
+	println(cpu.Reg.String())
+
 	for {
 		if cpu.MCR == 0x0000 {
 			break
@@ -86,14 +90,14 @@ func (cpu *LC3) Run() error {
 		if err != nil {
 			return err
 		}
+
 		println()
-		println("Post cycle state:")
 		println(cpu.String())
 		println(cpu.Reg.String())
 	}
 
-	// HALT
 	println("System HALTED")
+
 	return nil
 }
 

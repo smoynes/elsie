@@ -7,33 +7,45 @@ import (
 
 // LC3 is a computer simulated in software.
 type LC3 struct {
-	MCR Register        // Master control register
 	PC  ProgramCounter  // Instruction Pointer
 	IR  Instruction     // Instruction Register
 	PSR ProcessorStatus // Processor Status Register
 	Reg RegisterFile    // General-purpose register file
 	USP Register        // User stack pointer
 	SSP Register        // System stack pointer
-	Mem Memory          // All the memory you'll ever need
+	MCR Register        // Master control register
+	Mem Memory          // All the memory you'll ever need.
 }
 
+// New initializes a minimal virtual machine state.
 func New() *LC3 {
+	// Set CPU registers to known values.
 	cpu := LC3{
 		PC:  0x0300,
 		IR:  0x0000,
 		PSR: initialStatus,
 		USP: Register(IOPageAddr),    // User stack grows down from the top of user space.
-		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where users end.
+		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where user's end.
 		MCR: Register(0x8000),
 	}
+
+	// Initialize general purpose registers to a pleasing pattern.
+	copy(cpu.Reg[:], []Register{
+		0xffff, 0x0000,
+		0xfff0, 0xf000,
+		0xff00, 0x0f00,
+		0xf000, 0x00f0,
+	})
+	cpu.Reg[SP] = cpu.USP
+
+	// Configure MMU.
 	cpu.Mem = NewMemory(&cpu.PSR)
-	cpu.Reg[SP] = Register(UserSpaceAddr)
 
-	devices := MMIO{
+	// Map CPU registers into address space.
+	cpu.Mem.device.Map(MMIO{
 		MCRAddr: &cpu.MCR,
-	}
-
-	cpu.Mem.Map(devices)
+		PSRAddr: &cpu.PSR,
+	})
 
 	return &cpu
 }
@@ -44,8 +56,10 @@ func New() *LC3 {
 const initialStatus = ProcessorStatus(StatusSystem | StatusNormal | StatusCondition)
 
 func (cpu *LC3) String() string {
-	return fmt.Sprintf("PC:  %s IR: %s \nPSR: %s\nUSP: %s SSP: %s MCR: %s",
-		cpu.PC, cpu.IR, cpu.PSR, cpu.USP, cpu.SSP, cpu.MCR)
+	return fmt.Sprintf("PC:  %s IR: %s \nPSR: %s\nUSP: %s SSP: %s MCR: %s\n"+
+		"MAR: %s MDR: %s\n",
+		cpu.PC, cpu.IR, cpu.PSR, cpu.USP, cpu.SSP, cpu.MCR,
+		cpu.Mem.MAR, cpu.Mem.MDR)
 }
 
 // PushStack pushes a word onto the current stack.

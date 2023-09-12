@@ -9,7 +9,6 @@ import (
 
 func main() {
 	machine := cpu.New()
-	copy(machine.Reg[:], []cpu.Register{0xffff, 0xface, 0xadad, 0xf001})
 
 	// TRAP HALT
 	program := cpu.Register(cpu.Word(cpu.OpcodeTRAP)<<12 | cpu.TrapHALT)
