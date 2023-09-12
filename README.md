@@ -88,7 +88,12 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 
 ## Status ##
 
+<details>
+<summary>
+
 **IN DEVELOPMENT**
+
+</summary>
 
 Focus right now: devices: KBD, DISPLAY.
 
@@ -121,6 +126,8 @@ Completed:
 - exceptions
 - traps
 - memory mapped I/O
+
+</details>
 
 ----
 
