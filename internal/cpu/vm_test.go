@@ -54,9 +54,9 @@ func TestInstructions(t *testing.T) {
 		println(cpu.PSR.String())
 		cpu.Reg[SP] = 0x2ff0
 		cpu.SSP = 0x1200
-		cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
-		cpu.Mem.store(Word(0x0101), 0x1100)
-		cpu.Mem.store(Word(0x1100), 0x1110)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
+		_ = cpu.Mem.store(Word(0x0101), 0x1100)
+		_ = cpu.Mem.store(Word(0x1100), 0x1110)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -89,7 +89,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("BR", func(t *testing.T) {
 		t.Parallel()
 		cpu := New()
-		cpu.Mem.store(Word(cpu.PC), 0b0000_010_0_0000_0111)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0000_010_0_0000_0111)
 		cpu.PSR = StatusZero
 
 		err := cpu.Cycle()
@@ -117,7 +117,7 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0100
-		cpu.Mem.store(Word(cpu.PC), 0b0000_111_1_1111_0111)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0000_111_1_1111_0111)
 		cpu.PSR.Set(0xf000)
 
 		err := cpu.Cycle()
@@ -145,7 +145,7 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.Reg[R0] = 0b0101_1010_1111_0000
-		cpu.Mem.store(Word(cpu.PC), 0b1001_000_000_111111)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1001_000_000_111111)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -168,7 +168,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("AND", func(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
-		cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_0_00_001)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_0_00_001)
 		cpu.Reg[R0] = 0x5aff
 		cpu.Reg[R1] = 0x00f0
 
@@ -191,7 +191,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("ANDIMM", func(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
-		cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_1_10101)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_1_10101)
 		cpu.Reg[R0] = 0b0101_1010_1111_1111
 
 		err := cpu.Cycle()
@@ -215,7 +215,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("ADD", func(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
-		cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_0_00001)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_0_00001)
 		cpu.Reg[R0] = 0
 		cpu.Reg[R1] = 1
 
@@ -243,7 +243,7 @@ func TestInstructions(t *testing.T) {
 	t.Run("ADDIMM", func(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
-		cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_1_10000)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_1_10000)
 		cpu.Reg[R0] = 0
 
 		err := cpu.Cycle()
@@ -275,8 +275,8 @@ func TestInstructions(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
 		cpu.Reg[R2] = 0xcafe
-		cpu.Mem.store(Word(cpu.PC), 0b0010_010_011000110)
-		cpu.Mem.store(Word(0x0100+0x00c6), 0x0f00)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0010_010_011000110)
+		_ = cpu.Mem.store(Word(0x0100+0x00c6), 0x0f00)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -303,7 +303,7 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
-		cpu.Mem.store(Word(cpu.PC), 0b1100_000_111_000000)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1100_000_111_000000)
 		cpu.Reg[R7] = 0x0010
 
 		err := cpu.Cycle()
@@ -326,7 +326,7 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
-		cpu.Mem.store(Word(cpu.PC), 0b0100_0_00_100_000000)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0100_0_00_100_000000)
 		cpu.Reg[R4] = 0x0300
 		err := cpu.Cycle()
 		if err != nil {
@@ -356,11 +356,11 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
-		cpu.Mem.store(Word(cpu.PC), 0xa001)
+		_ = cpu.Mem.store(Word(cpu.PC), 0xa001)
 		addr := Word(0x0402)
-		cpu.Mem.store(Word(addr), 0xdad0)
+		_ = cpu.Mem.store(Word(addr), 0xdad0)
 		cpu.Reg[R0] = 0xffff
-		cpu.Mem.store(Word(0xdad0), 0xcafe)
+		_ = cpu.Mem.store(Word(0xdad0), 0xcafe)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -401,9 +401,9 @@ func TestInstructions(t *testing.T) {
 		cpu.PC = 0x0400
 		cpu.Reg[R0] = 0xf0f0
 		cpu.Reg[R4] = 0x8000
-		cpu.Mem.store(Word(cpu.PC), 0b0110_000_100_00_0010)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0110_000_100_00_0010)
 		addr := Word(0x8000 + 0x0002)
-		cpu.Mem.store(Word(addr), 0xdad0)
+		_ = cpu.Mem.store(Word(addr), 0xdad0)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -442,8 +442,8 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
-		cpu.Mem.store(Word(cpu.PC), 0b1110_000_1_00000000)
-		cpu.Mem.store(Word(0x0301), 0xdead)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1110_000_1_00000000)
+		_ = cpu.Mem.store(Word(0x0301), 0xdead)
 		cpu.Reg[R0] = 0xff00
 
 		err := cpu.Cycle()
@@ -472,8 +472,8 @@ func TestInstructions(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Reg[R7] = 0xcafe
-		cpu.Mem.store(Word(cpu.PC), 0b0011_111_0_1000_0000)
-		cpu.Mem.store(Word(0x0481), 0x0f00)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0011_111_0_1000_0000)
+		_ = cpu.Mem.store(Word(0x0481), 0x0f00)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -518,9 +518,9 @@ func TestInstructions(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Reg[R7] = 0xcafe
-		cpu.Mem.store(Word(cpu.PC), 0b1011_111_0_0000_0001)
-		cpu.Mem.store(Word(cpu.PC)+2, 0x0f00)
-		cpu.Mem.store(Word(0x0f00), 0x0fff)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1011_111_0_0000_0001)
+		_ = cpu.Mem.store(Word(cpu.PC)+2, 0x0f00)
+		_ = cpu.Mem.store(Word(0x0f00), 0x0fff)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -557,8 +557,8 @@ func TestInstructions(t *testing.T) {
 		cpu.SSP = 0x3000
 		cpu.USP = 0xface
 		cpu.Reg[SP] = 0xfe00
-		cpu.Mem.store(Word(cpu.PC), 0b1111_0000_1000_0000)
-		cpu.Mem.store(Word(0x0080), 0xadad)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1111_0000_1000_0000)
+		_ = cpu.Mem.store(Word(0x0080), 0xadad)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -628,8 +628,8 @@ func TestInstructions(t *testing.T) {
 		cpu.USP = 0xffff
 		cpu.SSP = 0x1f00
 		cpu.Reg[SP] = 0x1e00
-		cpu.Mem.store(Word(cpu.PC), 0b1111_0000_1000_0000)
-		cpu.Mem.store(Word(0x0080), 0xadad)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1111_0000_1000_0000)
+		_ = cpu.Mem.store(Word(0x0080), 0xadad)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -695,18 +695,18 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0xadaf
-		cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
 		cpu.PSR = ^StatusUser | StatusNegative
 		cpu.SSP = 0xffff
 
 		cpu.Reg[SP] = 0x3000 - 2 // user PC, PSR on system stack
-		cpu.Mem.store(Word(cpu.Reg[SP]), 0x0401)
-		cpu.Mem.store(Word(cpu.Reg[SP]+1),
+		_ = cpu.Mem.store(Word(cpu.Reg[SP]), 0x0401)
+		_ = cpu.Mem.store(Word(cpu.Reg[SP]+1),
 			Word(StatusUser|StatusNegative))
 
 		cpu.USP = 0xfade // previous stored user stack
-		cpu.Mem.store(Word(cpu.USP), 0xff00)
-		cpu.Mem.store(Word(cpu.USP+1), 0x0ff0)
+		_ = cpu.Mem.store(Word(cpu.USP), 0xff00)
+		_ = cpu.Mem.store(Word(cpu.USP+1), 0x0ff0)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -772,23 +772,23 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0xadaf
-		cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
-		cpu.Mem.store(Word(0x0080), 0xcafe)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
+		_ = cpu.Mem.store(Word(0x0080), 0xcafe)
 		cpu.PSR = ^StatusUser | StatusNegative
 		cpu.SSP = 0xffff
 
 		cpu.Reg[SP] = 0x2f00 - 2 // system PC, PSR on system stack
-		cpu.Mem.store(Word(cpu.Reg[SP]), 0x0401)
-		cpu.Mem.store(Word(cpu.Reg[SP]+1),
+		_ = cpu.Mem.store(Word(cpu.Reg[SP]), 0x0401)
+		_ = cpu.Mem.store(Word(cpu.Reg[SP]+1),
 			Word(StatusSystem|StatusZero))
 
 		// Values on old system stack.
-		cpu.Mem.store(Word(cpu.Reg[SP]+2), 0x1111)
-		cpu.Mem.store(Word(cpu.Reg[SP]+3), 0x2222)
+		_ = cpu.Mem.store(Word(cpu.Reg[SP]+2), 0x1111)
+		_ = cpu.Mem.store(Word(cpu.Reg[SP]+3), 0x2222)
 
 		cpu.USP = 0x4200 // Previous stored user stack.
-		cpu.Mem.store(Word(cpu.USP), 0xff00)
-		cpu.Mem.store(Word(cpu.USP+1), 0x0ff0)
+		_ = cpu.Mem.store(Word(cpu.USP), 0xff00)
+		_ = cpu.Mem.store(Word(cpu.USP+1), 0x0ff0)
 
 		err := cpu.Cycle()
 		if err != nil {
@@ -855,16 +855,16 @@ func TestInstructions(t *testing.T) {
 		t.Parallel()
 		var cpu *LC3 = New()
 		cpu.PC = 0x3300 // User space PC
-		cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
 		cpu.PSR = StatusUser | StatusLow | StatusNegative
 		cpu.SSP = 0x1a1a
 
 		cpu.Reg[SP] = 0x2f00 - 2 // some data on stack
-		cpu.Mem.store(Word(cpu.Reg[SP]), 0x0001)
-		cpu.Mem.store(Word(cpu.Reg[SP]+1), 0xface)
+		_ = cpu.Mem.store(Word(cpu.Reg[SP]), 0x0001)
+		_ = cpu.Mem.store(Word(cpu.Reg[SP]+1), 0xface)
 
-		cpu.USP = 0xffff                    // Invalid user stack pointer
-		cpu.Mem.store(Word(0x0100), 0x1234) // PMV table points to handler
+		cpu.USP = 0xffff                        // Invalid user stack pointer
+		_ = cpu.Mem.store(Word(0x0100), 0x1234) // PMV table points to handler
 
 		err := cpu.Cycle()
 		if err != nil {

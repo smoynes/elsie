@@ -15,6 +15,7 @@ package cpu
 import (
 	"errors"
 	"fmt"
+	"log"
 )
 
 // MMIO is the memory-mapped I/O controller. It holds a pointers to registers in
@@ -57,7 +58,7 @@ func (mmio MMIO) Store(addr Word, mdr Register) error {
 		panic(fmt.Sprintf("unexpected register type: %T", dev))
 	}
 
-	fmt.Printf("MMIO write addr: %s, word: %s\n", addr, devp.(fmt.Stringer))
+	log.Printf("MMIO write addr: %s, word: %s\n", addr, devp.(fmt.Stringer))
 
 	return nil
 }
@@ -78,7 +79,7 @@ func (mmio MMIO) Load(addr Word, reg *Register) error {
 		panic(fmt.Sprintf("unexpected register type: %T", dev))
 	}
 
-	fmt.Printf("MMIO fetch addr: %s, word: %s\n", addr, devp.(fmt.Stringer))
+	log.Printf("MMIO fetch addr: %s, word: %s\n", addr, devp.(fmt.Stringer))
 
 	return nil
 }

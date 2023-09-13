@@ -8,6 +8,7 @@ import (
 )
 
 func main() {
+	log.SetFlags(log.Lmsgprefix | log.Lmicroseconds | log.Lshortfile)
 	log.Println("Initializing machine")
 	machine := cpu.New()
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Words are the base size of data at which the CPU operates. Registers, memory
+// Word is the base data type on which the CPU operates. Registers, memory
 // cells, I/O and instructions all work on 16-bit values.
 type Word uint16
 

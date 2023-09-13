@@ -4,6 +4,7 @@ package cpu
 
 import (
 	"fmt"
+	"log"
 )
 
 // Memory is where we keep our most precious things: programs and data.
@@ -188,7 +189,7 @@ func (mem *Memory) load(addr Word, reg *Register) error {
 	}
 
 	*reg = Register(mem.cell[addr])
-	fmt.Printf("MMU load addr: %s, word: %s\n", addr, *reg)
+	log.Printf("MMU load addr: %s, word: %s\n", addr, *reg)
 
 	return nil
 }
@@ -200,7 +201,7 @@ func (mem *Memory) store(addr Word, cell Word) error {
 		return mem.device.Store(addr, Register(cell))
 	}
 
-	fmt.Printf("MMU write addr: %s, word: %s\n", addr, cell)
+	log.Printf("MMU write addr: %s, word: %s\n", addr, cell)
 	mem.cell[addr] = cell
 
 	return nil
