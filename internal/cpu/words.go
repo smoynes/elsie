@@ -152,6 +152,7 @@ func (c ProcessorStatus) Priority() Priority {
 // Priority represents the priority level of a task.
 type Priority uint8
 
+// Task priorities.
 const (
 	PriorityLow    Priority = 0x00 // LOW
 	PriorityNormal Priority = 0x03 // NORM
@@ -172,10 +173,10 @@ const (
 	PrivilegeUser                    // User
 )
 
-// RegisterFile is the of general purpose registers.
+// RegisterFile is the set of general purpose registers.
 type RegisterFile [NumGPR]Register
 
-func (rf *RegisterFile) String() string {
+func (rf RegisterFile) String() string {
 	b := strings.Builder{}
 	for i := 0; i < len(rf)/2; i++ {
 		fmt.Fprintf(&b, "R%d: %s  R%d: %s\n",

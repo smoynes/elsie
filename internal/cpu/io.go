@@ -13,6 +13,7 @@ package cpu
 // cast to the register types that the MMIO supports.
 
 import (
+	"errors"
 	"fmt"
 )
 
@@ -34,6 +35,8 @@ func (mmio *MMIO) Map(devices MMIO) error {
 	return nil
 }
 
+var errMMIO = errors.New("mmio")
+
 // Store writes a word to a memory-mapped I/O address.
 func (mmio MMIO) Store(addr Word, mdr Register) error {
 	var (
@@ -42,7 +45,7 @@ func (mmio MMIO) Store(addr Word, mdr Register) error {
 	)
 
 	if devp, ok = mmio[addr]; !ok {
-		panic("mmio no device")
+		return fmt.Errorf("%w: %s: no mmio device", errMMIO, addr)
 	}
 
 	switch dev := devp.(type) {
@@ -63,7 +66,7 @@ func (mmio MMIO) Store(addr Word, mdr Register) error {
 func (mmio MMIO) Load(addr Word, reg *Register) error {
 	devp, ok := mmio[addr]
 	if !ok {
-		panic("mmio no device")
+		return fmt.Errorf("%w: %s: no mmio device", errMMIO, addr)
 	}
 
 	switch dev := devp.(type) {

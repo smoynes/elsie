@@ -5,7 +5,32 @@ package cpu
 import (
 	"errors"
 	"fmt"
+	"log"
 )
+
+// Run starts and executes the instruction cycle until the program halts.
+func (cpu *LC3) Run() error {
+	var err error
+
+	log.Printf("Initial state\n%s\n%s\n", cpu, cpu.Reg.String())
+
+	for {
+		if cpu.MCR == 0x0000 {
+			break
+		}
+
+		err = cpu.Cycle()
+		if err != nil {
+			return err
+		}
+
+		log.Printf("Instruction complete\n%s\n%s\n", cpu, cpu.Reg)
+	}
+
+	log.Println("System HALTED")
+
+	return nil
+}
 
 // Cycle runs a single instruction cycle to completion.
 //
@@ -57,12 +82,13 @@ func (cpu *LC3) Cycle() error {
 	}
 
 	if err != nil {
-		fmt.Printf("cycle error: %v\n", err)
-		fmt.Println(cpu)
+		log.Printf("ins: %s, error: %s\n", op, err)
+		log.Printf("\n%s", cpu.String())
 	}
 
 	switch intr := errors.Unwrap(err).(type) {
 	case interruptable:
+		log.Printf("Handling interrupt: %s", intr)
 		err = intr.Handle(cpu)
 	}
 
@@ -75,32 +101,6 @@ func (cpu *LC3) Cycle() error {
 	return err
 }
 
-// Run starts and executes the instruction cycle until the program halts.
-func (cpu *LC3) Run() error {
-	var err error
-	println(cpu.String())
-	println(cpu.Reg.String())
-
-	for {
-		if cpu.MCR == 0x0000 {
-			break
-		}
-
-		err = cpu.Cycle()
-		if err != nil {
-			return err
-		}
-
-		println()
-		println(cpu.String())
-		println(cpu.Reg.String())
-	}
-
-	println("System HALTED")
-
-	return nil
-}
-
 // Fetch loads the value addressed by PC into IR and increments PC.
 func (cpu *LC3) Fetch() error {
 	cpu.Mem.MAR = Register(cpu.PC)
@@ -110,6 +110,7 @@ func (cpu *LC3) Fetch() error {
 	}
 	cpu.IR = Instruction(cpu.Mem.MDR)
 	cpu.PC++
+	log.Printf("fetched IR: %s", cpu.IR)
 
 	return nil
 }
@@ -118,6 +119,7 @@ func (cpu *LC3) Fetch() error {
 // addressable.
 func (cpu *LC3) EvalAddress(op operation) error {
 	if op, ok := op.(addressable); ok {
+		log.Printf("evaluating: %#v", op)
 		op.EvalAddress(cpu)
 	}
 
@@ -129,6 +131,7 @@ func (cpu *LC3) FetchOperands(op operation) error {
 	var err error
 
 	if op, ok := op.(fetchable); ok {
+		log.Printf("fetching: %#v", op)
 		err = cpu.Mem.Fetch()
 		if err != nil {
 			return fmt.Errorf("operand: %w", err)
@@ -147,6 +150,7 @@ func (cpu *LC3) FetchOperands(op operation) error {
 func (cpu *LC3) Execute(op operation) error {
 	var err error
 	if op, ok := op.(executable); ok {
+		log.Printf("executing: %#v", op)
 		err = op.Execute(cpu)
 		if err != nil {
 			return fmt.Errorf("execute: %w", err)
@@ -160,6 +164,7 @@ func (cpu *LC3) Execute(op operation) error {
 func (cpu *LC3) StoreResult(op operation) error {
 	var err error
 	if op, ok := op.(storable); ok {
+		log.Printf("storing: %#v", op)
 		op.StoreResult(cpu)
 		err = cpu.Mem.Store()
 		if err != nil {

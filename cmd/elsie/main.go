@@ -8,18 +8,12 @@ import (
 )
 
 func main() {
+	log.Println("Initializing machine")
 	machine := cpu.New()
 
-	// TRAP HALT
-	program := cpu.Register(cpu.Word(cpu.OpcodeTRAP)<<12 | cpu.TrapHALT)
-	machine.Mem.MAR = cpu.Register(machine.PC)
-	machine.Mem.MDR = program
-	if err := machine.Mem.Store(); err != nil {
-		log.Fatal(err)
-	}
-
 	// TRAP HALT handler
-	program = cpu.Register(0x1000)
+	log.Println("Loading trap handlers")
+	program := cpu.Register(0x1000)
 	machine.Mem.MAR = cpu.Register(0x0025)
 	machine.Mem.MDR = program
 	if err := machine.Mem.Store(); err != nil {
@@ -34,25 +28,33 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// LDI R1,[0x1002]
-	program = cpu.Register(cpu.Word(cpu.OpcodeLDR) << 12)
+	// LEA R1,[MCR] ; load MCR addr into R1
+	program = cpu.Register(cpu.Word(cpu.OpcodeLEA)<<12 | 0x0201)
 	machine.Mem.MAR = cpu.Register(0x1001)
 	machine.Mem.MDR = program
 	if err := machine.Mem.Store(); err != nil {
 		log.Fatal(err)
 	}
 
-	// STI R0,0
-	program = cpu.Register(cpu.Word(cpu.OpcodeSTI) << 12)
-	machine.Mem.MAR = cpu.Register(0x1001)
-	machine.Mem.MDR = program
-	if err := machine.Mem.Store(); err != nil {
-		log.Fatal(err)
-	}
-
-	// MCR addr
+	// STR R0,R1,0
+	program = cpu.Register(cpu.Word(cpu.OpcodeSTR)<<12 | 0x0040)
 	machine.Mem.MAR = cpu.Register(0x1002)
+	machine.Mem.MDR = program
+	if err := machine.Mem.Store(); err != nil {
+		log.Fatal(err)
+	}
+
+	// Store MCR addr
+	machine.Mem.MAR = cpu.Register(0x1003)
 	machine.Mem.MDR = cpu.Register(0xfffe)
+	if err := machine.Mem.Store(); err != nil {
+		log.Fatal(err)
+	}
+
+	// TRAP HALT
+	program = cpu.Register(cpu.Word(cpu.OpcodeTRAP)<<12 | cpu.TrapHALT)
+	machine.Mem.MAR = cpu.Register(machine.PC)
+	machine.Mem.MDR = program
 	if err := machine.Mem.Store(); err != nil {
 		log.Fatal(err)
 	}

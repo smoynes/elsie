@@ -26,7 +26,7 @@ func New() *LC3 {
 		PSR: initialStatus,
 		USP: Register(IOPageAddr),    // User stack grows down from the top of user space.
 		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where user's end.
-		MCR: Register(0x8000),
+		MCR: Register(0x8000),        // Set the RUN flag.
 	}
 
 	// Initialize general purpose registers to a pleasing pattern.

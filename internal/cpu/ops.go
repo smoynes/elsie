@@ -302,6 +302,10 @@ func (op *ldi) Execute(cpu *LC3) error {
 	return nil
 }
 
+func (op *ldi) String() string {
+	return fmt.Sprintf("OP: LDI (%s+%s)", op.dr, op.offset)
+}
+
 // LDR: Load Relative
 //
 // | 0110 | DR | BASE | OFFSET6 |
@@ -468,9 +472,9 @@ func (op *sti) StoreResult(cpu *LC3) {}
 
 // STR: Store Relative.
 //
-// | 0111 | SR  | GPR | OFFSET6 |
-// |------+-----+-----+---------|
-// |15  12|11  9|8   6|5       0|
+// | 0111 | SR | GPR | OFFSET6 |
+// |------+----+-----+---------|
+// |15  12|11 9|8   6|5       0|
 type str struct {
 	sr     GPR
 	base   GPR
@@ -632,10 +636,6 @@ func (op *trap) opcode() Opcode {
 
 func (op *trap) String() string {
 	return fmt.Sprintf("TRAP: %s (%s)", op.vec, op.addr)
-}
-
-func (op *trap) Error() string {
-	return op.String()
 }
 
 var (
