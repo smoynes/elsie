@@ -1,4 +1,4 @@
-package cpu
+package vm
 
 // devices.go has devices and their drivers.
 

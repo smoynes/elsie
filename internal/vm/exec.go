@@ -1,4 +1,4 @@
-package cpu
+package vm
 
 // exec.go defines the CPU instruction cycle.
 

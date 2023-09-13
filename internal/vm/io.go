@@ -1,4 +1,4 @@
-package cpu
+package vm
 
 // io.go includes code for memory mapped I/O.
 

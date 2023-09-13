@@ -1,4 +1,4 @@
-package cpu
+package vm
 
 // words.go defines the basic data types of the CPU.
 

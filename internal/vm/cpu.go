@@ -1,5 +1,5 @@
-// Package cpu provides an emulated CPU.
-package cpu
+// Package vm provides an emulated CPU.
+package vm
 
 import (
 	"fmt"

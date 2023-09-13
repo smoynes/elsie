@@ -1,4 +1,4 @@
-package cpu
+package vm
 
 // mem.go contains the machine's memory controller.
 

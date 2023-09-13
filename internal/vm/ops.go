@@ -1,4 +1,4 @@
-package cpu
+package vm
 
 // ops.go defines the CPU operations and their semantics.
 
