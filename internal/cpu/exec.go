@@ -203,6 +203,7 @@ type fetchable interface {
 
 // executable operations update CPU state. Some instructions do not, surprisingly.
 type executable interface {
+	operation
 	Execute(cpu *LC3) error
 }
 

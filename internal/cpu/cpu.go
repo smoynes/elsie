@@ -41,10 +41,17 @@ func New() *LC3 {
 	// Configure MMU.
 	cpu.Mem = NewMemory(&cpu.PSR)
 
+	kbd := Keyboard{}
+	disp := Display{}
+
 	// Map CPU registers into address space.
 	err := cpu.Mem.device.Map(MMIO{
-		MCRAddr: &cpu.MCR,
-		PSRAddr: &cpu.PSR,
+		MCRAddr:  &cpu.MCR,
+		PSRAddr:  &cpu.PSR,
+		KBSRAddr: &kbd.status,
+		KBDRAddr: &kbd.data,
+		DSRAddr:  &disp.status,
+		DDRAddr:  &disp.data,
 	})
 	if err != nil {
 		panic(err)

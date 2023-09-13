@@ -1,16 +1,6 @@
 package cpu
 
 // io.go includes code for memory mapped I/O.
-//
-// The memory controller redirects accesses of addresses in the I/O page to the
-// MMIO controller. During boot, addresses are mapped to registers from elsewhere in
-// the CPU or external mdevices.
-//
-// Different kinds of devices have different types of registers, i.e., Register,
-// StatusRegister, KeyboardRegister, etc. However, in Go, pointer types are
-// unconvertible: we cannot convert from *StatusRegister to *Register, even
-// though they have the same underlying type. So, we keep any pointers and type
-// cast to the register types that the MMIO supports.
 
 import (
 	"errors"
@@ -18,23 +8,29 @@ import (
 	"log"
 )
 
-// MMIO is the memory-mapped I/O controller. It holds a pointers to registers in
-// a table indexed by logical address.
+// The memory controller redirects accesses of addresses in the I/O page to the
+// MMIO controller. During boot, addresses are mapped to registers in the CPU or
+// external devices.
+//
+// Different kinds of devices have different types of registers, i.e., Register,
+// StatusRegister, KeyboardRegister, etc. However, in Go, pointer types are
+// unconvertible: we cannot convert from *StatusRegister to *Register, even
+// though they have the same underlying type. So, we keep any pointers and type
+// cast to the register types that the MMIO supports.
+
+// MMIO is the memory-mapped I/O controller. It holds pointers to registers in a
+// table indexed by logical address.
 type MMIO map[Word]any
 
-// Map attaches device registers to an address in the I/O page.
-func (mmio *MMIO) Map(devices MMIO) error {
-	for addr, regp := range devices {
-		switch reg := regp.(type) {
-		case *ProcessorStatus, *Register:
-			(*mmio)[addr] = reg
-		default:
-			return fmt.Errorf("unsupported register type: %T", regp)
-		}
-	}
-
-	return nil
-}
+// Addresses of memory-mapped device registers.
+const (
+	KBSRAddr Word = 0xfe00 // Keyboard status and data registers.
+	KBDRAddr Word = 0xfe02
+	DSRAddr  Word = 0xfe04 // Display status and data registers.
+	DDRAddr  Word = 0xfe06
+	PSRAddr  Word = 0xfffc // Processor status register. Privileged.
+	MCRAddr  Word = 0xfffe // Machine control register. Privileged.
+)
 
 var errMMIO = errors.New("mmio")
 
@@ -84,12 +80,21 @@ func (mmio MMIO) Load(addr Word, reg *Register) error {
 	return nil
 }
 
-// Addresses of memory-mapped device registers.
-const (
-	KBSRAddr Word = 0xfe00 // Keyboard status and data registers.
-	KBDRAddr Word = 0xfe02
-	DSRAddr  Word = 0xfe04 // Display status and data registers.
-	DDRAddr  Word = 0xfe06
-	PSRAddr  Word = 0xfffc // Processor status register. Privileged.
-	MCRAddr  Word = 0xfffe // Machine control register. Privileged.
-)
+// Map attaches device registers to an address in the I/O page.
+func (mmio MMIO) Map(devices MMIO) error {
+	for addr, regp := range devices {
+		switch reg := regp.(type) {
+		case *ProcessorStatus,
+			*Register,
+			*KeyboardStatus,
+			*KeyboardData,
+			*DisplayStatus,
+			*DisplayData:
+			mmio[addr] = reg
+		default:
+			return fmt.Errorf("unsupported register type: %T", regp)
+		}
+	}
+
+	return nil
+}
