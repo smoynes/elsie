@@ -2,10 +2,13 @@ package cpu
 
 import (
 	"fmt"
+	"log"
 	"testing"
 )
 
 func TestInstructions(t *testing.T) {
+	log.SetOutput(&testLog{t})
+
 	t.Run("RESV as SYSTEM", func(t *testing.T) {
 		t.Parallel()
 
@@ -51,7 +54,7 @@ func TestInstructions(t *testing.T) {
 		cpu := New()
 		cpu.PC = 0x3000
 		cpu.PSR = StatusUser | StatusNormal | StatusNegative
-		println(cpu.PSR.String())
+		t.Log(cpu.PSR.String())
 		cpu.Reg[SP] = 0x2ff0
 		cpu.SSP = 0x1200
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
@@ -624,7 +627,7 @@ func TestInstructions(t *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x20ff
 		cpu.PSR = (^StatusUser & StatusPrivilege) | StatusNormal | StatusZero
-		println(cpu.PSR.String())
+		t.Log(cpu.PSR.String())
 		cpu.USP = 0xffff
 		cpu.SSP = 0x1f00
 		cpu.Reg[SP] = 0x1e00
@@ -1015,4 +1018,13 @@ func TestSext(t *testing.T) {
 			}
 		})
 	}
+}
+
+type testLog struct {
+	*testing.T
+}
+
+func (t *testLog) Write(b []byte) (n int, err error) {
+	t.Log(string(b))
+	return len(b), nil
 }
