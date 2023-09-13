@@ -2,12 +2,12 @@ package cpu
 
 import (
 	"fmt"
-	"log"
 	"testing"
 )
 
-func TestInstructions(t *testing.T) {
-	log.SetOutput(&testLog{t})
+func TestInstructions(tt *testing.T) {
+	t := testHarness{tt}
+	t.init()
 
 	t.Run("RESV as SYSTEM", func(t *testing.T) {
 		t.Parallel()
@@ -1018,13 +1018,4 @@ func TestSext(t *testing.T) {
 			}
 		})
 	}
-}
-
-type testLog struct {
-	*testing.T
-}
-
-func (t *testLog) Write(b []byte) (n int, err error) {
-	t.Log(string(b))
-	return len(b), nil
 }

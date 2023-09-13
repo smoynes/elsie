@@ -1,35 +1,99 @@
 package cpu
 
-// devices.go has device drivers.
+// devices.go has devices and their drivers.
 
-type Keyboard struct {
-	status KeyboardStatus
-	data   KeyboardData
+import (
+	"fmt"
+	"log"
+)
+
+type (
+	Device struct {
+		driver Driver
+		status DeviceRegister
+		data   DeviceRegister
+	}
+	DeviceRegister Register
+	Driver         interface{ driver() }
+	DeviceReader   interface {
+		Driver
+		Read(dev Device, addr Word) DeviceRegister
+	}
+	DeviceWriter interface {
+		Driver
+		Write(dev Device, addr Word, data DeviceRegister)
+	}
+
+	// Keyboard is a hardwired input device for typos.
+	Keyboard Device
+)
+
+func newDevice(drv Driver) Device {
+	return Device{
+		status: DeviceRegister(0x0000),
+		data:   DeviceRegister('!'),
+		driver: drv,
+	}
 }
-type KeyboardStatus Register
 
-func (k KeyboardStatus) String() string {
-	return Register(k).String()
+func (d Device) String() string {
+	return fmt.Sprintf("dev: status: %s, data: %s", d.status, d.data)
+}
+func (d DeviceRegister) String() string {
+	return Register(d).String()
 }
 
-type KeyboardData Register
+func (d Device) Read(addr Word) DeviceRegister {
+	log.Printf("dev: read: %T, %s", d.driver, addr)
 
-func (k KeyboardData) String() string {
-	return Register(k).String()
+	if driver, ok := d.driver.(DeviceReader); ok {
+		return driver.Read(d, addr)
+	}
+	panic(fmt.Sprintf("dev: read: %T", d.driver))
 }
 
-type Display struct {
-	status DisplayStatus
-	data   DisplayData
+func (d Device) Write(addr Word, word DeviceRegister) {
+	log.Printf("dev: read: %T, %s", d.driver, addr)
+
+	if driver, ok := d.driver.(DeviceWriter); ok {
+		driver.Write(d, addr, word)
+	} else {
+		panic(fmt.Sprintf("dev: write: %T", d.driver))
+	}
 }
-type DisplayStatus Register
 
-func (k DisplayStatus) String() string {
-	return Register(k).String()
+type KeyboardDriver struct{}
+
+func (KeyboardDriver) driver() {}
+
+type KeyboardStatus DeviceRegister
+type KeyboardData DeviceRegister
+
+const KeyboardReady = KeyboardStatus(1 << 15) // READY
+
+func (k KeyboardDriver) Read(dev Device, addr Word) DeviceRegister {
+	log.Printf("kbd: read: addr: %s, status: %s, data: %s", addr, dev.status, dev.data)
+
+	switch addr {
+	case KBSRAddr:
+		log.Printf("kbd: addr: %s, status: %s, data: %s\n", addr, dev.status, dev.data)
+		return DeviceRegister(dev.status)
+	case KBDRAddr:
+		dev.status = 0x0000
+		log.Printf("kbd: addr: %s, status: %s, data: %s\n", addr, dev.status, dev.data)
+		return DeviceRegister(dev.data)
+	default:
+		panic("kbd: read: bad addr: " + addr.String())
+	}
 }
 
-type DisplayData Register
+func (k KeyboardDriver) Write(dev Device, addr Word, word DeviceRegister) {
+	log.Printf("kbd: write: addr: %s, status: %s, data: %s", addr, dev.status, word)
 
-func (k DisplayData) String() string {
-	return Register(k).String()
+	switch addr {
+	case KBSRAddr:
+		dev.status = word
+	default:
+		panic("kbd: write: bad addr: " + addr.String())
+	}
 }

@@ -18,22 +18,23 @@ import (
 //
 //   - an I/O page for memory-mapped device-registers
 //
-// A memory controller mediates access to the address spaces from the CPU.
+// The memory controller, or MMU, mediates access to the address spaces from the CPU.
 //
 // ## Data Flow ##
 //
-// The memory controller is responsible for translating logical addresses in the memory space to
-// physical memory residing in RAM, CPU registers, or memory on external devices.
+// The MMU is responsible for translating logical addresses in the memory space to physical memory
+// residing in RAM, CPU registers, or memory on external devices.
 //
 // To read or write to memory, the CPU puts the address into the address register (MAR) and the data
 // into the data register (MDR) and either calls Fetch or Store; the controller will read from the
 // address into its data register or write to memory from MDR, respectively.
 //
 // Admittedly, this is a strange design, at least from a software design perspective. We could
-// simply use function arguments and return values to pass values instead. Registers are used to
-// reflect the design of the LC-3 reference micro-architecture. For learning purposes, it helps to
-// make the data flow explicit and metaphorically represents the instruction's clock cycle. (Indeed,
-// the Go compiler will inline and optimize much of the code herein so data is kept in registers.)
+// simply use function arguments and return values to pass values instead. However, we use registers
+// here in order to reflect the design of the LC-3 reference micro-architecture. For learning
+// purposes, it helps to make the data flow explicit and model a separate MMU. (Indeed, the Go
+// compiler will inline and optimize much of the code herein so data is kept in registers and on the
+// stack.)
 //
 // ## Access Control ##
 //
@@ -41,7 +42,7 @@ import (
 // code and data used for operating the machine and must only be accessed by privileged programs.
 // When the address register contains an address in the system space (or, is for a privileged
 // device) and the processor is running with user privileges, then memory access will raise an
-// access control violation (ACV) exception.
+// access control violation (ACV) exception and a fault handler is called.
 //
 // ## Data and Stacks ##
 //
