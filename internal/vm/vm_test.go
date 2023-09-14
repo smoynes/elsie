@@ -6,11 +6,10 @@ import (
 )
 
 func TestInstructions(tt *testing.T) {
-	t := testHarness{tt}
-	t.init()
 
-	t.Run("RESV as SYSTEM", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("RESV as SYSTEM", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
 
 		cpu := New()
 		cpu.PSR = (StatusSystem & StatusPrivilege) | StatusNormal | StatusNegative
@@ -48,8 +47,9 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("RESV as USER", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("RESV as USER", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
 
 		cpu := New()
 		cpu.PC = 0x3000
@@ -89,8 +89,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("BR", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("BR", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		cpu := New()
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0000_010_0_0000_0111)
 		cpu.PSR = StatusZero
@@ -116,8 +118,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("BRnzp", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("BRnzp", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x0100
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0000_111_1_1111_0111)
@@ -144,8 +148,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("NOT", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("NOT", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.Reg[R0] = 0b0101_1010_1111_0000
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1001_000_000_111111)
@@ -168,8 +174,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("AND", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("AND", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_0_00_001)
 		cpu.Reg[R0] = 0x5aff
@@ -191,8 +199,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("ANDIMM", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("ANDIMM", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_1_10101)
 		cpu.Reg[R0] = 0b0101_1010_1111_1111
@@ -215,8 +225,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("ADD", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("ADD", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_0_00001)
 		cpu.Reg[R0] = 0
@@ -243,8 +255,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("ADDIMM", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("ADDIMM", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_1_10000)
 		cpu.Reg[R0] = 0
@@ -273,8 +287,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("LD", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("LD", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
 		cpu.Reg[R2] = 0xcafe
@@ -302,8 +318,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("JMP", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("JMP", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1100_000_111_000000)
@@ -325,8 +343,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("JSRR", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("JSRR", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0100_0_00_100_000000)
@@ -355,8 +375,10 @@ func TestInstructions(tt *testing.T) {
 		t.Logf("oper: %#+v", oper)
 	})
 
-	t.Run("LDI", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("LDI", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		_ = cpu.Mem.store(Word(cpu.PC), 0xa001)
@@ -398,8 +420,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("LDR", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("LDR", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Reg[R0] = 0xf0f0
@@ -441,8 +465,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("LEA", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("LEA", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1110_000_1_00000000)
@@ -470,8 +496,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("ST", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("ST", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Reg[R7] = 0xcafe
@@ -516,8 +544,10 @@ func TestInstructions(tt *testing.T) {
 		t.Logf("oper: %#+v", oper)
 	})
 
-	t.Run("STI", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("STI", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Reg[R7] = 0xcafe
@@ -552,8 +582,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("TRAP USER", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("TRAP USER", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x4050
 		cpu.PSR = StatusUser | StatusZero
@@ -622,8 +654,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("TRAP SYSTEM", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("TRAP SYSTEM", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x20ff
 		cpu.PSR = (^StatusUser & StatusPrivilege) | StatusNormal | StatusZero
@@ -694,8 +728,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("RTI to USER", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("RTI to USER", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0xadaf
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
@@ -771,8 +807,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("RTI to SYSTEM", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("RTI to SYSTEM", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0xadaf
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
@@ -854,8 +892,10 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
-	t.Run("RTI as USER", func(t *testing.T) {
-		t.Parallel()
+	tt.Run("RTI as USER", func(tt *testing.T) {
+		t := testHarness{tt}
+		t.init()
+
 		var cpu *LC3 = New()
 		cpu.PC = 0x3300 // User space PC
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
@@ -932,7 +972,7 @@ func TestInstructions(tt *testing.T) {
 
 }
 
-func TestSext(t *testing.T) {
+func TestSext(tt *testing.T) {
 	tcs := []struct {
 		have uint16
 		bits uint8
@@ -1008,8 +1048,10 @@ func TestSext(t *testing.T) {
 	for _, tc := range tcs {
 		tc := tc
 		name := fmt.Sprintf("%0#4x %d", tc.have, tc.bits)
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
+		tt.Run(name, func(tt *testing.T) {
+			t := testHarness{tt}
+			t.init()
+
 			got := Word(tc.have)
 			got.Sext(tc.bits)
 

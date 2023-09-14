@@ -108,12 +108,11 @@ import (
 // |        | 0x0000 |                 |
 // +========+========+=================+
 
-// Memory represents a memory controller for logical addresses.
+// Memory represents a memory controller that translates logical addresses to registers in the
+// machine.
 type Memory struct {
 	MAR Register // Memory address register.
 	MDR Register // Memory data register.
-
-	PSR *ProcessorStatus // CPU status register. TODO: bit weird.
 
 	// Physical memory in a virtual machine for an imaginary CPU.
 	cell PhysicalMemory
@@ -140,7 +139,6 @@ func NewMemory(psr *ProcessorStatus) Memory {
 	mem := Memory{
 		MAR: 0xffff,
 		MDR: 0x0000,
-		PSR: psr,
 
 		cell:   PhysicalMemory{},
 		device: MMIO{},
@@ -151,8 +149,9 @@ func NewMemory(psr *ProcessorStatus) Memory {
 
 // Fetch loads the data register from the address in the address register.
 func (mem *Memory) Fetch() error {
-	if mem.PSR.Privilege() == PrivilegeUser && mem.privileged() {
-		mem.MDR = Register(*mem.PSR)
+	psr := mem.device.PSR()
+	if psr&StatusPrivilege == StatusUser && mem.privileged() {
+		mem.MDR = Register(psr)
 		return &acv{interrupt{}}
 	}
 
@@ -167,8 +166,10 @@ func (mem *Memory) Fetch() error {
 // Store writes the word in the data register to the word in the address
 // register.
 func (mem *Memory) Store() error {
-	if mem.PSR.Privilege() == PrivilegeUser && mem.privileged() {
-		mem.MDR = Register(*mem.PSR)
+	psr := mem.device.PSR()
+
+	if psr.Privilege() == PrivilegeUser && mem.privileged() {
+		mem.MDR = Register(psr)
 		return &acv{
 			interrupt{},
 		}

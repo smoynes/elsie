@@ -19,7 +19,7 @@ import (
 // cast to the register types that the MMIO supports.
 
 // MMIO is the memory-mapped I/O controller. It holds a table indexed by logical address and points
-// to either to registers or a device driver.
+// to either a register or a device driver.
 type MMIO map[Word]any
 
 // Addresses of memory-mapped device registers.
@@ -90,15 +90,13 @@ func (mmio MMIO) Load(addr Word, reg *Register) error {
 
 // Map attaches device registers to an address in the I/O page.
 func (mmio MMIO) Map(devices MMIO) error {
-	log.Printf("mmio: map: devices: %s", devices)
-
 	for addr, dev := range devices {
-		log.Printf("mmio: map: device: %T %s", dev, dev)
-		switch dev.(type) {
+		switch d := dev.(type) {
 		case *ProcessorStatus, *Register:
-			log.Printf("mmio: map: device: %s", dev)
+			log.Printf("mmio: map: device: %T %s", dev, addr)
 			mmio[addr] = dev
 		case *Device:
+			log.Printf("mmio: map: device: %#v, addr: %s", d.driver, addr)
 			mmio[addr] = dev
 		default:
 			return fmt.Errorf("%w: map: unsupported device: %T", errMMIO, dev)
@@ -106,4 +104,13 @@ func (mmio MMIO) Map(devices MMIO) error {
 	}
 
 	return nil
+}
+
+// PSR returns the value of the status register, if it has been mapped.
+func (mmio MMIO) PSR() ProcessorStatus {
+	if reg, ok := mmio[PSRAddr].(*ProcessorStatus); ok {
+		return *reg
+	}
+
+	return ProcessorStatus(0x0000)
 }

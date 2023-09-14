@@ -63,7 +63,7 @@ func New() *LC3 {
 
 // initial value of PSR at boot is undefined. At least, I haven't found it in the ISA reference.
 // We'll start the machine with system privileges, normal priority, and with all condition flags
-// set.
+// set. The machine boot sequence has to initialize the system and then drop privileges.
 const initialStatus = ProcessorStatus(StatusSystem | StatusNormal | StatusCondition)
 
 func (cpu *LC3) String() string {
