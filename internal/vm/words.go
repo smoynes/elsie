@@ -161,7 +161,7 @@ const (
 
 // Privilege returns the privilege of the current task.
 func (c ProcessorStatus) Privilege() Privilege {
-	return Privilege(c >> 15)
+	return Privilege(c & StatusPrivilege >> 15)
 }
 
 // Privilege represents the privilege level of a task.

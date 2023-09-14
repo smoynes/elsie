@@ -9,6 +9,9 @@ import (
 type interruptable interface {
 	error
 
+	// For the sake of debugging.
+	fmt.Stringer
+
 	// Handle changes the execution context to the interrupt's service
 	// routine.
 	Handle(cpu *LC3) error
@@ -33,6 +36,8 @@ type interruptable interface {
 //
 //   - jumping to the service routine address
 type interrupt struct {
+	fmt.Stringer
+
 	table Word            // Address of vector table.
 	vec   Word            // Vector in interrupt vector table.
 	pc    ProgramCounter  // Program counter of the caller.
@@ -71,10 +76,10 @@ func (i *interrupt) String() string {
 
 // Exception vector table and defined vectors in the table.
 const (
-	ExceptionTable = Word(0x0100)
-	ExceptionPMV   = Word(0x00)
-	ExceptionXOP   = Word(0x01)
-	ExceptionACV   = Word(0x02)
+	ExceptionTable = Word(0x0100) // TABLE
+	ExceptionPMV   = Word(0x00)   // PMV
+	ExceptionXOP   = Word(0x01)   // XOP
+	ExceptionACV   = Word(0x02)   // ACV
 )
 
 // Trap handler table and defined vectors in the table.

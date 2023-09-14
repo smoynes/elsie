@@ -11,37 +11,51 @@ import (
 // exception.
 type Opcode uint8
 
+type mo struct { // no, mo is a monad. ( ._.)
+	vm  *LC3
+	err error
+}
+
+func (op mo) Err() error      { return op.err }
+func (op *mo) Fail(err error) { op.err = err }
+
+func (op mo) String() string {
+	return fmt.Sprintf("ins: %s", op.vm.IR.Opcode())
+}
+
 // BR: Conditional branch
 //
 // | 0000 | NZP | OFFSET9 |
 // |------+-----+---------|
 // |15  12|11  9|8       0|
 type br struct {
+	mo
 	cond   Condition
 	offset Word
+}
+
+func (op br) String() string {
+	return fmt.Sprintf("%s[cond:%s offset:%s]", op.mo.String(), op.cond.String(), op.offset.String())
 }
 
 const OpcodeBR = Opcode(0b0000) // BR
 
 var (
-	_ decodable  = &br{}
 	_ executable = &br{}
 )
 
-func (br *br) opcode() Opcode {
-	return OpcodeBR
-}
-
-func (br *br) Decode(ins Instruction) {
-	br.cond = ins.Cond()
-	br.offset = ins.Offset(OFFSET9)
-}
-
-func (br *br) Execute(cpu *LC3) error {
-	if cpu.PSR.Any(br.cond) {
-		cpu.PC = ProgramCounter(int16(cpu.PC) + int16(br.offset))
+func (op *br) Decode(vm *LC3) {
+	*op = br{
+		mo:     mo{vm: vm},
+		cond:   vm.IR.Cond(),
+		offset: vm.IR.Offset(OFFSET9),
 	}
-	return nil
+}
+
+func (op *br) Execute() {
+	if op.vm.PSR.Any(op.cond) {
+		op.vm.PC = ProgramCounter(int16(op.vm.PC) + int16(op.offset))
+	}
 }
 
 // NOT: Bitwise complement operation
@@ -50,31 +64,28 @@ func (br *br) Execute(cpu *LC3) error {
 // |------+----+----+---+--------|
 // |15  12|11 9|8  6| 5 |4      0|
 type not struct {
-	src  GPR
-	dest GPR
+	mo
+	dr GPR
+	sr GPR
 }
 
 const OpcodeNOT = Opcode(0b1001) // NOT
 
 var (
-	_ decodable = &not{}
+	_ executable = &not{}
 )
 
-func (n *not) opcode() Opcode {
-	return OpcodeNOT
-}
-
-func (n *not) Decode(ins Instruction) {
-	*n = not{
-		src:  ins.SR1(),
-		dest: ins.DR(),
+func (op *not) Decode(vm *LC3) {
+	*op = not{
+		mo: mo{vm: vm},
+		sr: vm.IR.SR1(),
+		dr: vm.IR.DR(),
 	}
 }
 
-func (n *not) Execute(cpu *LC3) error {
-	cpu.Reg[n.dest] = cpu.Reg[n.src] ^ 0xffff
-	cpu.PSR.Set(cpu.Reg[n.dest])
-	return nil
+func (op *not) Execute() {
+	op.vm.Reg[op.dr] = op.vm.Reg[op.sr] ^ 0xffff
+	op.vm.PSR.Set(op.vm.Reg[op.dr])
 }
 
 // AND: Bitwise AND binary operator (register mode)
@@ -83,6 +94,7 @@ func (n *not) Execute(cpu *LC3) error {
 // |------+----+-----+---+----+-----|
 // |15  12|11 9|8   6| 5 |4  3|2   0|
 type and struct {
+	mo
 	dest GPR
 	sr1  GPR
 	sr2  GPR
@@ -90,25 +102,23 @@ type and struct {
 
 const OpcodeAND = Opcode(0b0101) // AND
 
-var (
-	_ decodable = &and{}
-)
-
-func (a *and) opcode() Opcode {
-	return OpcodeAND
+func (op *and) String() string {
+	return fmt.Sprintf("%s[dr:%s sr1:%s sr2: %v]", op.mo.String(), op.dest.String(), op.sr1, op.sr2)
 }
 
-func (a *and) Decode(ins Instruction) {
-	a.dest = ins.DR()
-	a.sr1 = ins.SR1()
-	a.sr2 = ins.SR2()
+func (a *and) Decode(vm *LC3) {
+	*a = and{
+		mo:   mo{vm: vm},
+		dest: vm.IR.DR(),
+		sr1:  vm.IR.SR1(),
+		sr2:  vm.IR.SR2(),
+	}
 }
 
-func (a *and) Execute(cpu *LC3) error {
-	cpu.Reg[a.dest] = cpu.Reg[a.sr1]
-	cpu.Reg[a.dest] &= cpu.Reg[a.sr2]
-	cpu.PSR.Set(cpu.Reg[a.dest])
-	return nil
+func (op *and) Execute() {
+	op.vm.Reg[op.dest] = op.vm.Reg[op.sr1]
+	op.vm.Reg[op.dest] &= op.vm.Reg[op.sr2]
+	op.vm.PSR.Set(op.vm.Reg[op.dest])
 }
 
 // AND: Bitwise AND binary operator (immediate mode)
@@ -117,31 +127,28 @@ func (a *and) Execute(cpu *LC3) error {
 // |------+-----+----+---+------|
 // |15  12|11  9|8  6| 5 |4    0|
 type andImm struct {
+	mo
 	dr  GPR
 	sr  GPR
 	lit Word
 }
 
-func (a *andImm) opcode() Opcode {
-	return OpcodeAND
+func (op *andImm) String() string {
+	return fmt.Sprintf("%s[dr:%s sr:%s lit: %v]", op.mo.String(), op.dr.String(), op.sr, op.lit)
 }
 
-var (
-	_ decodable = &andImm{}
-)
-
-func (a *andImm) Decode(ins Instruction) {
+func (a *andImm) Decode(vm *LC3) {
 	*a = andImm{
-		dr:  ins.DR(),
-		sr:  ins.SR1(),
-		lit: ins.Literal(IMM5),
+		mo:  mo{vm: vm},
+		dr:  vm.IR.DR(),
+		sr:  vm.IR.SR1(),
+		lit: vm.IR.Literal(IMM5),
 	}
 }
 
-func (a *andImm) Execute(cpu *LC3) error {
-	cpu.Reg[a.dr] = cpu.Reg[a.sr] & Register(a.lit)
-	cpu.PSR.Set(cpu.Reg[a.dr])
-	return nil
+func (op *andImm) Execute() {
+	op.vm.Reg[op.dr] = op.vm.Reg[op.sr] & Register(op.lit)
+	op.vm.PSR.Set(op.vm.Reg[op.dr])
 }
 
 // ADD: Arithmetic addition operator (register mode)
@@ -150,6 +157,7 @@ func (a *andImm) Execute(cpu *LC3) error {
 // |------+----+-----+-----+-----|
 // |15  12|11 9|8   6| 5  3|2   0|
 type add struct {
+	mo
 	dr  GPR
 	sr1 GPR
 	sr2 GPR
@@ -157,26 +165,22 @@ type add struct {
 
 const OpcodeADD = Opcode(0b0001) // ADD
 
-func (a *add) opcode() Opcode {
-	return OpcodeADD
-}
-
 var (
-	_ decodable = &add{}
+	_ executable = &add{}
 )
 
-func (a *add) Decode(ins Instruction) {
-	*a = add{
-		dr:  ins.DR(),
-		sr1: ins.SR1(),
-		sr2: ins.SR2(),
+func (op *add) Decode(vm *LC3) {
+	*op = add{
+		mo:  mo{vm: vm},
+		dr:  vm.IR.DR(),
+		sr1: vm.IR.SR1(),
+		sr2: vm.IR.SR2(),
 	}
 }
 
-func (a *add) Execute(cpu *LC3) error {
-	cpu.Reg[a.dr] = Register(int16(cpu.Reg[a.sr1]) + int16(cpu.Reg[a.sr2]))
-	cpu.PSR.Set(cpu.Reg[a.dr])
-	return nil
+func (op *add) Execute() {
+	op.vm.Reg[op.dr] = Register(int16(op.vm.Reg[op.sr1]) + int16(op.vm.Reg[op.sr2]))
+	op.vm.PSR.Set(op.vm.Reg[op.dr])
 }
 
 // ADD: Arithmetic addition operator (immediate mode)
@@ -185,31 +189,28 @@ func (a *add) Execute(cpu *LC3) error {
 // |------+-----+----+---+-------|
 // |15  12|11  9|8  6| 5 |4     0|
 type addImm struct {
+	mo
 	dr  GPR
 	sr  GPR
 	lit Word
 }
 
-func (a *addImm) opcode() Opcode {
-	return OpcodeADD
-}
-
 var (
-	_ decodable = &addImm{}
+	_ executable = &addImm{}
 )
 
-func (a *addImm) Decode(ins Instruction) {
-	*a = addImm{
-		dr:  ins.DR(),
-		sr:  ins.SR1(),
-		lit: ins.Literal(IMM5),
+func (op *addImm) Decode(vm *LC3) {
+	*op = addImm{
+		mo:  mo{vm: vm},
+		dr:  vm.IR.DR(),
+		sr:  vm.IR.SR1(),
+		lit: vm.IR.Literal(IMM5),
 	}
 }
 
-func (a *addImm) Execute(cpu *LC3) error {
-	cpu.Reg[a.dr] = Register(int16(cpu.Reg[a.sr]) + int16(a.lit))
-	cpu.PSR.Set(cpu.Reg[a.dr])
-	return nil
+func (op *addImm) Execute() {
+	op.vm.Reg[op.dr] = Register(int16(op.vm.Reg[op.sr]) + int16(op.lit))
+	op.vm.PSR.Set(op.vm.Reg[op.dr])
 }
 
 // LD: Load word from memory.
@@ -218,41 +219,36 @@ func (a *addImm) Execute(cpu *LC3) error {
 // |------+-----+---------|
 // |15  12|11  9|8       0|
 type ld struct {
+	mo
 	dr     GPR
 	offset Word
 }
 
 var (
-	_ decodable   = &ld{}
 	_ addressable = &ld{}
 	_ fetchable   = &ld{}
 )
 
 const OpcodeLD = Opcode(0b0010) // LD
 
-func (ld) opcode() Opcode {
-	return OpcodeLD
-}
-
-func (op *ld) Decode(ins Instruction) {
+func (op *ld) Decode(vm *LC3) {
 	*op = ld{
-		dr:     ins.DR(),
-		offset: ins.Offset(OFFSET9),
+		mo:     mo{vm: vm},
+		dr:     vm.IR.DR(),
+		offset: vm.IR.Offset(OFFSET9),
 	}
 }
 
-func (op *ld) EvalAddress(cpu *LC3) {
-	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
+func (op *ld) EvalAddress() {
+	op.vm.Mem.MAR = Register(int16(op.vm.PC) + int16(op.offset))
 }
 
-func (op *ld) FetchOperands(cpu *LC3) error {
-	cpu.Reg[op.dr] = cpu.Mem.MDR
-	return nil
+func (op *ld) FetchOperands() {
+	op.vm.Reg[op.dr] = op.vm.Mem.MDR
 }
 
-func (op *ld) Execute(cpu *LC3) error {
-	cpu.PSR.Set(cpu.Reg[op.dr])
-	return nil
+func (op *ld) Execute() {
+	op.vm.PSR.Set(op.vm.Reg[op.dr])
 }
 
 // LDI: Load indirect
@@ -261,6 +257,7 @@ func (op *ld) Execute(cpu *LC3) error {
 // |------+--------------|
 // |15  12|11 9|8       0|
 type ldi struct {
+	mo
 	dr     GPR
 	offset Word
 }
@@ -268,38 +265,36 @@ type ldi struct {
 const OpcodeLDI = Opcode(0b1010) // LDI
 
 var (
-	_ decodable   = &ldi{}
 	_ addressable = &ldi{}
 	_ fetchable   = &ldi{}
 )
 
-func (op *ldi) opcode() Opcode { return OpcodeLDI }
-
-func (op *ldi) Decode(ins Instruction) {
+func (op *ldi) Decode(vm *LC3) {
 	*op = ldi{
-		dr:     ins.DR(),
-		offset: ins.Offset(OFFSET9),
+		mo:     mo{vm: vm},
+		dr:     vm.IR.DR(),
+		offset: vm.IR.Offset(OFFSET9),
 	}
 }
 
-func (op *ldi) EvalAddress(cpu *LC3) {
-	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
+func (op *ldi) EvalAddress() {
+	op.vm.Mem.MAR = Register(int16(op.vm.PC) + int16(op.offset))
 }
 
-func (op *ldi) FetchOperands(cpu *LC3) error {
-	cpu.Mem.MAR = cpu.Mem.MDR
-	err := cpu.Mem.Fetch()
-	if err != nil {
-		return err
+func (op *ldi) FetchOperands() {
+	op.vm.Mem.MAR = op.vm.Mem.MDR
+
+	if err := op.vm.Mem.Fetch(); err != nil {
+		op.Fail(err)
+		return
 	}
-	cpu.Reg[op.dr] = cpu.Mem.MDR
 
-	return nil
+	op.vm.Reg[op.dr] = op.vm.Mem.MDR
+
 }
 
-func (op *ldi) Execute(cpu *LC3) error {
-	cpu.PSR.Set(cpu.Mem.MDR)
-	return nil
+func (op *ldi) Execute() {
+	op.vm.PSR.Set(op.vm.Mem.MDR)
 }
 
 func (op *ldi) String() string {
@@ -312,6 +307,7 @@ func (op *ldi) String() string {
 // |------+----+------+---------|
 // |15  12|11 9|8    6|5       0|
 type ldr struct {
+	mo
 	dr     GPR
 	base   GPR
 	offset Word
@@ -320,33 +316,29 @@ type ldr struct {
 const OpcodeLDR = Opcode(0b0110) // LDR
 
 var (
-	_ decodable   = &ldr{}
 	_ addressable = &ldr{}
 	_ fetchable   = &ldr{}
 )
 
-func (op *ldr) opcode() Opcode { return OpcodeLDR }
-
-func (op *ldr) Decode(ins Instruction) {
+func (op *ldr) Decode(vm *LC3) {
 	*op = ldr{
-		dr:     ins.DR(),
-		base:   ins.SR1(),
-		offset: ins.Offset(OFFSET6),
+		mo:     mo{vm: vm},
+		dr:     vm.IR.DR(),
+		base:   vm.IR.SR1(),
+		offset: vm.IR.Offset(OFFSET6),
 	}
 }
 
-func (op *ldr) EvalAddress(cpu *LC3) {
-	cpu.Mem.MAR = Register(int16(cpu.Reg[op.base]) + int16(op.offset))
+func (op *ldr) EvalAddress() {
+	op.vm.Mem.MAR = Register(int16(op.vm.Reg[op.base]) + int16(op.offset))
 }
 
-func (op *ldr) FetchOperands(cpu *LC3) error {
-	cpu.Reg[op.dr] = cpu.Mem.MDR
-	return nil
+func (op *ldr) FetchOperands() {
+	op.vm.Reg[op.dr] = op.vm.Mem.MDR
 }
 
-func (op *ldr) Execute(cpu *LC3) error {
-	cpu.PSR.Set(cpu.Reg[op.dr])
-	return nil
+func (op *ldr) Execute() {
+	op.vm.PSR.Set(op.vm.Reg[op.dr])
 }
 
 // LEA: Load effective address
@@ -355,6 +347,7 @@ func (op *ldr) Execute(cpu *LC3) error {
 // |------+--------------|
 // |15  12|11 9|8       0|
 type lea struct {
+	mo
 	dr     GPR
 	offset Word
 }
@@ -362,26 +355,23 @@ type lea struct {
 const OpcodeLEA = Opcode(0b1110) // LEA
 
 var (
-	_ decodable = &lea{}
 	_ fetchable = &lea{}
 )
 
-func (op *lea) opcode() Opcode { return OpcodeLEA }
-
-func (op *lea) Decode(ins Instruction) {
+func (op *lea) Decode(vm *LC3) {
 	*op = lea{
-		dr:     ins.DR(),
-		offset: ins.Offset(OFFSET9),
+		mo:     mo{vm: vm},
+		dr:     vm.IR.DR(),
+		offset: vm.IR.Offset(OFFSET9),
 	}
 }
 
-func (op *lea) EvalAddress(cpu *LC3) {
-	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
+func (op *lea) EvalAddress() {
+	op.vm.Mem.MAR = Register(int16(op.vm.PC) + int16(op.offset))
 }
 
-func (op *lea) FetchOperands(cpu *LC3) error {
-	cpu.Reg[op.dr] = cpu.Mem.MDR
-	return nil
+func (op *lea) FetchOperands() {
+	op.vm.Reg[op.dr] = op.vm.Mem.MDR
 }
 
 // ST: Store word in memory.
@@ -390,39 +380,35 @@ func (op *lea) FetchOperands(cpu *LC3) error {
 // |------+-----+---------|
 // |15  12|11  9|8       0|
 type st struct {
+	mo
 	sr     GPR
 	offset Word
 }
 
 var (
-	_ decodable   = &st{}
 	_ addressable = &st{}
 	_ storable    = &st{}
 )
 
 const OpcodeST = Opcode(0b0011) // ST
 
-func (st) opcode() Opcode {
-	return OpcodeST
-}
-
-func (op *st) Decode(ins Instruction) {
+func (op *st) Decode(vm *LC3) {
 	*op = st{
-		sr:     ins.SR(),
-		offset: ins.Offset(OFFSET9),
+		mo:     mo{vm: vm},
+		sr:     vm.IR.SR(),
+		offset: vm.IR.Offset(OFFSET9),
 	}
 }
 
-func (op *st) EvalAddress(cpu *LC3) {
-	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
+func (op *st) EvalAddress() {
+	op.vm.Mem.MAR = Register(int16(op.vm.PC) + int16(op.offset))
 }
 
-func (op *st) Execute(cpu *LC3) error {
-	cpu.Mem.MDR = cpu.Reg[op.sr]
-	return nil
+func (op *st) Execute() {
+	op.vm.Mem.MDR = op.vm.Reg[op.sr]
 }
 
-func (op *st) StoreResult(cpu *LC3) {} // ?
+func (op *st) StoreResult() {} // ?
 
 // STI: Store Indirect.
 //
@@ -430,12 +416,12 @@ func (op *st) StoreResult(cpu *LC3) {} // ?
 // |------+-----+---------|
 // |15  12|11  9|8       0|
 type sti struct {
+	mo
 	sr     GPR
 	offset Word
 }
 
 var (
-	_ decodable   = &sti{}
 	_ addressable = &sti{}
 	_ fetchable   = &sti{}
 	_ storable    = &sti{}
@@ -443,32 +429,27 @@ var (
 
 const OpcodeSTI = Opcode(0b1011) // STI
 
-func (sti) opcode() Opcode {
-	return OpcodeSTI
-}
-
-func (op *sti) Decode(ins Instruction) {
+func (op *sti) Decode(vm *LC3) {
 	*op = sti{
-		sr:     ins.SR(),
-		offset: ins.Offset(OFFSET9),
+		mo:     mo{vm: vm},
+		sr:     vm.IR.SR(),
+		offset: vm.IR.Offset(OFFSET9),
 	}
 }
 
-func (op *sti) EvalAddress(cpu *LC3) {
-	cpu.Mem.MAR = Register(int16(cpu.PC) + int16(op.offset))
+func (op *sti) EvalAddress() {
+	op.vm.Mem.MAR = Register(int16(op.vm.PC) + int16(op.offset))
 }
 
-func (op *sti) FetchOperands(cpu *LC3) error {
-	cpu.Mem.MAR = cpu.Mem.MDR
-	return nil
+func (op *sti) FetchOperands() {
+	op.vm.Mem.MAR = op.vm.Mem.MDR
 }
 
-func (op *sti) Execute(cpu *LC3) error {
-	cpu.Mem.MDR = cpu.Reg[op.sr]
-	return nil
+func (op *sti) Execute() {
+	op.vm.Mem.MDR = op.vm.Reg[op.sr]
 }
 
-func (op *sti) StoreResult(cpu *LC3) {}
+func (op *sti) StoreResult() {}
 
 // STR: Store Relative.
 //
@@ -476,41 +457,37 @@ func (op *sti) StoreResult(cpu *LC3) {}
 // |------+----+-----+---------|
 // |15  12|11 9|8   6|5       0|
 type str struct {
+	mo
 	sr     GPR
 	base   GPR
 	offset Word
 }
 
 var (
-	_ decodable   = &str{}
 	_ addressable = &str{}
 	_ storable    = &str{}
 )
 
 const OpcodeSTR = Opcode(0b0111) // STR
 
-func (str) opcode() Opcode {
-	return OpcodeSTR
-}
-
-func (op *str) Decode(ins Instruction) {
+func (op *str) Decode(vm *LC3) {
 	*op = str{
-		sr:     ins.SR(),
-		base:   ins.SR1(),
-		offset: ins.Offset(OFFSET6),
+		mo:     mo{vm: vm},
+		sr:     vm.IR.SR(),
+		base:   vm.IR.SR1(),
+		offset: vm.IR.Offset(OFFSET6),
 	}
 }
 
-func (op *str) EvalAddress(cpu *LC3) {
-	cpu.Mem.MAR = Register(int16(cpu.Reg[op.base]) + int16(op.offset))
+func (op *str) EvalAddress() {
+	op.vm.Mem.MAR = Register(int16(op.vm.Reg[op.base]) + int16(op.offset))
 }
 
-func (op *str) Execute(cpu *LC3) error {
-	cpu.Mem.MDR = cpu.Reg[op.sr]
-	return nil
+func (op *str) Execute() {
+	op.vm.Mem.MDR = op.vm.Reg[op.sr]
 }
 
-func (op *str) StoreResult(cpu *LC3) {}
+func (op *str) StoreResult() {}
 
 // JMP: Unconditional branch
 //
@@ -523,6 +500,7 @@ func (op *str) StoreResult(cpu *LC3) {}
 // |------+-----+----+----------|
 // |15  12|11  9|8  6|5        0|
 type jmp struct {
+	mo
 	sr GPR
 }
 
@@ -532,27 +510,19 @@ const (
 )
 
 var (
-	_ decodable = &jmp{}
+	_ executable = &jmp{}
 )
 
-func (j jmp) opcode() Opcode {
-	if j.sr == R7 {
-		return OpcodeRET
-	} else {
-		return OpcodeJMP
-	}
-}
-
-func (op *jmp) Decode(ins Instruction) {
+func (op *jmp) Decode(vm *LC3) {
 	*op = jmp{
-		sr: GPR(ins & 0x01e0 >> 6),
+		mo: mo{vm: vm},
+		// TODO
+		sr: GPR(vm.IR & 0x01e0 >> 6),
 	}
 }
 
-func (op *jmp) Execute(cpu *LC3) error {
-	pc := ProgramCounter(cpu.Reg[op.sr])
-	cpu.PC = pc
-	return nil
+func (op *jmp) Execute() {
+	op.vm.PC = ProgramCounter(op.vm.Reg[op.sr])
 }
 
 // JSR: Jump to subroutine (relative mode)
@@ -561,30 +531,27 @@ func (op *jmp) Execute(cpu *LC3) error {
 // |------+----+----------|
 // |15  12| 11 |10       0|
 type jsr struct {
+	mo
 	offset Word
 }
 
 const OpcodeJSR = Opcode(0b0100) // JSR
 
 var (
-	_ decodable = &jsr{}
+	_ executable = &jsr{}
 )
 
-func (op *jsr) opcode() Opcode { return OpcodeJSR }
-
-func (op *jsr) Decode(ins Instruction) {
+func (op *jsr) Decode(vm *LC3) {
 	*op = jsr{
-		offset: Word(ins & 0x07ff),
+		mo:     mo{vm: vm},
+		offset: Word(vm.IR & 0x07ff),
 	}
 	op.offset.Sext(11)
 }
 
-func (op *jsr) Execute(cpu *LC3) error {
-	ret := Word(cpu.PC)
-	pc := ProgramCounter(int16(cpu.PC) + int16(op.offset))
-	cpu.PC = pc
-	cpu.Reg[RET] = Register(ret)
-	return nil
+func (op *jsr) Execute() {
+	op.vm.Reg[RET] = Register(op.vm.PC)
+	op.vm.PC = ProgramCounter(int16(op.vm.PC) + int16(op.offset))
 }
 
 // JSRR: Jump to subroutine (register mode)
@@ -593,29 +560,26 @@ func (op *jsr) Execute(cpu *LC3) error {
 // |------+----+----+---------|
 // |15  12| 11 |8  6|5       0|
 type jsrr struct {
+	mo
 	sr GPR
 }
 
 const OpcodeJSRR = Opcode(0xfe) // JSRR
 
 var (
-	_ decodable = &jsrr{}
+	_ executable = &jsrr{}
 )
 
-func (op *jsrr) opcode() Opcode { return OpcodeJSRR }
-
-func (op *jsrr) Decode(ins Instruction) {
+func (op *jsrr) Decode(vm *LC3) {
 	*op = jsrr{
-		sr: ins.SR1(),
+		mo: mo{vm: vm},
+		sr: vm.IR.SR1(),
 	}
 }
 
-func (op *jsrr) Execute(cpu *LC3) error {
-	ret := Word(cpu.PC)
-	pc := ProgramCounter(cpu.Reg[op.sr])
-	cpu.PC = pc
-	cpu.Reg[RET] = Register(ret)
-	return nil
+func (op *jsrr) Execute() {
+	op.vm.Reg[RET] = Register(op.vm.PC)
+	op.vm.PC = ProgramCounter(op.vm.Reg[op.sr])
 }
 
 // TRAP: System call or software interrupt.
@@ -624,28 +588,25 @@ func (op *jsrr) Execute(cpu *LC3) error {
 // |------+------+---------|
 // |15  12|11   8|7       0|
 type trap struct {
+	mo
 	vec  Word
 	addr Word
 }
 
 const OpcodeTRAP = Opcode(0b1111) // TRAP
 
-func (op *trap) opcode() Opcode {
-	return OpcodeTRAP
-}
-
 func (op *trap) String() string {
 	return fmt.Sprintf("TRAP: %s (%s)", op.vec, op.addr)
 }
 
 var (
-	_ decodable  = &trap{}
 	_ executable = &trap{}
 )
 
-func (op *trap) Decode(ins Instruction) {
+func (op *trap) Decode(vm *LC3) {
 	*op = trap{
-		vec: ins.Vector(VECTOR8),
+		mo:  mo{vm: vm},
+		vec: vm.IR.Vector(VECTOR8),
 	}
 }
 
@@ -653,13 +614,13 @@ type trapErr struct {
 	interrupt
 }
 
-func (op *trap) Execute(cpu *LC3) error {
-	return &trapErr{
+func (op *trap) Execute() {
+	op.err = &trapErr{
 		interrupt{
 			table: TrapTable,
 			vec:   op.vec,
-			pc:    cpu.PC,
-			psr:   cpu.PSR,
+			pc:    op.vm.PC,
+			psr:   op.vm.PSR,
 		},
 	}
 }
@@ -685,51 +646,52 @@ func (err *trapErr) Handle(cpu *LC3) error {
 // | 1000 | 0000 0000 0000 |
 // |------+----------------|
 // |15  12|11             0|
-type rti struct {
-}
+type rti struct{ mo }
 
 const OpcodeRTI = Opcode(0b1000) // RTI
-
-func (op *rti) opcode() Opcode {
-	return OpcodeRTI
-}
 
 var (
 	_ executable = &rti{}
 )
 
-func (op *rti) Execute(cpu *LC3) error {
-	if cpu.PSR.Privilege() == PrivilegeUser {
-		return &pmv{
+func (op *rti) Decode(vm *LC3) {
+	op.vm = vm
+}
+
+func (op *rti) Execute() {
+	if op.vm.PSR.Privilege() == PrivilegeUser {
+		op.err = &pmv{
 			interrupt{
 				table: ExceptionTable,
 				vec:   ExceptionPMV,
-				pc:    cpu.PC,
-				psr:   cpu.PSR,
+				pc:    op.vm.PC,
+				psr:   op.vm.PSR,
 			},
 		}
+		return
 	}
 
-	// Restore program counter and status register.
-	err := cpu.PopStack()
-	if err != nil {
-		panic(err)
+	// Restore program counter and status register. Popping might fail if the stack is empty.
+	if err := op.vm.PopStack(); err != nil {
+		//panic(err)
+		op.err = err
+		return
 	}
-	cpu.PC = ProgramCounter(cpu.Mem.MDR)
 
-	err = cpu.PopStack()
-	if err != nil {
-		panic(err)
+	op.vm.PC = ProgramCounter(op.vm.Mem.MDR)
+
+	if err := op.vm.PopStack(); err != nil {
+		//panic(err)
+		op.err = err
+		return
 	}
-	cpu.PSR = ProcessorStatus(cpu.Mem.MDR)
+	op.vm.PSR = ProcessorStatus(op.vm.Mem.MDR)
 
-	if cpu.PSR.Privilege() == PrivilegeUser {
+	if op.vm.PSR.Privilege() == PrivilegeUser {
 		// When dropping privileges, swap system and user stacks.
-		cpu.SSP = cpu.Reg[SP]
-		cpu.Reg[SP] = cpu.USP
+		op.vm.SSP = op.vm.Reg[SP]
+		op.vm.Reg[SP] = op.vm.USP
 	}
-
-	return nil
 }
 
 type pmv struct {
@@ -754,23 +716,23 @@ func (pmv *pmv) Handle(cpu *LC3) error {
 // | 1101 | 0000 0000 0000 |
 // |------+----------------|
 // |15  12|11             0|
-type resv struct{}
+type resv struct{ mo }
 
 const OpcodeRESV = Opcode(0b1101) // RESV
 
 var _ executable = &resv{}
 
-func (r *resv) opcode() Opcode {
-	return OpcodeRESV
+func (op *resv) Decode(vm *LC3) {
+	op.vm = vm
 }
 
-func (*resv) Execute(cpu *LC3) error {
-	return &xop{
+func (op *resv) Execute() {
+	op.err = &xop{
 		interrupt{
 			table: ExceptionTable,
 			vec:   ExceptionXOP,
-			pc:    cpu.PC,
-			psr:   cpu.PSR,
+			pc:    op.vm.PC,
+			psr:   op.vm.PSR,
 		},
 	}
 }

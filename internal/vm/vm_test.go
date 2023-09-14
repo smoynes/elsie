@@ -243,7 +243,7 @@ func TestInstructions(tt *testing.T) {
 			t.Errorf("instr: %s, want: %04b, got: %04b", cpu.IR, OpcodeAND, op)
 		}
 
-		oper := cpu.IR.Decode()
+		oper := cpu.Decode()
 		t.Logf("oper: %#+v", oper)
 
 		if cpu.Reg[R0] != 1 {
@@ -273,7 +273,7 @@ func TestInstructions(tt *testing.T) {
 				cpu.IR, OpcodeAND, op)
 		}
 
-		oper := cpu.IR.Decode()
+		oper := cpu.Decode()
 		t.Logf("oper: %#+v", oper)
 
 		if cpu.Reg[R0] != 0xfff0 {
@@ -370,9 +370,6 @@ func TestInstructions(tt *testing.T) {
 			t.Errorf("R7 incorrect, want: %s, got: %s",
 				Register(0x0401), cpu.PC)
 		}
-
-		oper := cpu.IR.Decode().(*jsrr)
-		t.Logf("oper: %#+v", oper)
 	})
 
 	tt.Run("LDI", func(tt *testing.T) {
@@ -538,9 +535,9 @@ func TestInstructions(tt *testing.T) {
 				StatusZero, cpu.PSR)
 		}
 
-		oper := cpu.IR.Decode().(*st)
-		oper.EvalAddress(cpu)
-		oper.StoreResult(cpu)
+		oper := cpu.Decode().(*st)
+		oper.EvalAddress()
+		oper.StoreResult()
 		t.Logf("oper: %#+v", oper)
 	})
 
@@ -550,7 +547,7 @@ func TestInstructions(tt *testing.T) {
 
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
-		cpu.Reg[R7] = 0xcafe
+		cpu.Reg[RET] = 0xcafe
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1011_111_0_0000_0001)
 		_ = cpu.Mem.store(Word(cpu.PC)+2, 0x0f00)
 		_ = cpu.Mem.store(Word(0x0f00), 0x0fff)
@@ -569,7 +566,7 @@ func TestInstructions(tt *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		t.Logf("mem: %0#v", val)
+		t.Logf("mem: %s", val)
 
 		if val != 0xcafe {
 			t.Errorf("Mem[%s] want: %s, got: %s",
@@ -899,7 +896,7 @@ func TestInstructions(tt *testing.T) {
 		var cpu *LC3 = New()
 		cpu.PC = 0x3300 // User space PC
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
-		cpu.PSR = StatusUser | StatusLow | StatusNegative
+		cpu.PSR = StatusUser | StatusNormal | StatusNegative
 		cpu.SSP = 0x1a1a
 
 		cpu.Reg[SP] = 0x2f00 - 2 // some data on stack
@@ -924,7 +921,7 @@ func TestInstructions(tt *testing.T) {
 				ProgramCounter(0x1234), cpu.PC)
 		}
 
-		if cpu.PSR != (StatusPrivilege^StatusUser)|StatusLow|StatusNegative {
+		if cpu.PSR != (StatusPrivilege^StatusUser)|StatusNormal|StatusNegative {
 			t.Errorf("PSR want: %s, got: %s",
 				ProcessorStatus(0x0004), cpu.PSR)
 		}
@@ -963,7 +960,7 @@ func TestInstructions(tt *testing.T) {
 		}
 		t.Logf("mem: %0#v", bottom)
 
-		if Word(bottom) != Word((StatusPrivilege&StatusUser)|StatusLow|StatusNegative) {
+		if Word(bottom) != Word((StatusPrivilege&StatusUser)|StatusNormal|StatusNegative) {
 			t.Errorf("SP bottom want: %s, got: %s",
 				(StatusPrivilege&StatusUser)|StatusLow|StatusNegative, bottom)
 
