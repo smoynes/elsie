@@ -4,7 +4,7 @@ package main
 import (
 	"log"
 
-	vm "github.com/smoynes/elsie/internal/vm"
+	"github.com/smoynes/elsie/internal/vm"
 )
 
 func main() {

@@ -5,9 +5,9 @@ import (
 )
 
 var (
-	_ Driver       = KeyboardDriver{}
-	_ DeviceReader = KeyboardDriver{}
-	_ DeviceWriter = KeyboardDriver{}
+	_ Driver       = &Keyboard{} // A keyboard drives itself.
+	_ DeviceReader = &Keyboard{}
+	_ DeviceWriter = &Keyboard{}
 )
 
 func TestKeyboardDriver(tt *testing.T) {
@@ -16,12 +16,13 @@ func TestKeyboardDriver(tt *testing.T) {
 
 	var (
 		have = Device{
-			status: 0x0000,
+			status: 0x8000,
 			data:   DeviceRegister('X'),
-			driver: KeyboardDriver{},
+			driver: &Keyboard{},
 		}
 		want = Device{
-			data: 0x0058,
+			data:   0x0058,
+			status: 0x0000,
 		}
 	)
 
@@ -40,29 +41,29 @@ func TestKeyboardDriver(tt *testing.T) {
 
 	if err := mmio.Load(KBSRAddr, &got); err != nil {
 		t.Error(err)
-	} else if KeyboardStatus(got) != KeyboardStatus(have.status) {
-		t.Errorf("Status have: %s, got: %s", want.status, got)
+	} else if DeviceRegister(got) != have.status {
+		t.Errorf("read: status have: %s, got: %s", want.status, got)
 	}
 
 	got = Register(0xdad0)
 
 	if err := mmio.Load(KBDRAddr, &got); err != nil {
 		t.Error(err)
-	} else if KeyboardData(got) != KeyboardData(want.data) {
-		t.Errorf("Data want: %s, got: %s", want.data, got)
+	} else if DeviceRegister(got) != want.data {
+		t.Errorf("read: data want: %s, got: %s", want.data, got)
 	}
 
 	if err := mmio.Load(KBSRAddr, &got); err != nil {
 		t.Error(err)
-	} else if KeyboardData(got) != KeyboardData(want.status) {
-		t.Errorf("Data want: %s, got: %s", want.data, got)
+	} else if DeviceRegister(got) != want.status {
+		t.Errorf("read: status want: %s, got: %s", want.status, got)
 	}
 
 	defer func() {
 		if perr := recover(); perr != nil {
-			t.Errorf("Store panicked: %s", perr)
+			t.Errorf("status: store panicked: %s", perr)
 		} else {
-			t.Logf("Store did not panic: %s", have)
+			t.Logf("status: store did not panic: %s", have)
 		}
 
 	}()
