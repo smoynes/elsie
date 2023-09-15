@@ -48,7 +48,6 @@ func TestKeyboardDriver(tt *testing.T) {
 
 	got := Register(0xface)
 
-	have.driver.(*Keyboard).WithLogger(t.log)
 	if err := mmio.Load(KBSRAddr, &got); err != nil {
 		t.Error(err)
 	} else if DeviceRegister(got) != have.status {
@@ -76,7 +75,6 @@ func TestKeyboardDriver(tt *testing.T) {
 		} else {
 			t.Logf("status: store did not panic: %s", have)
 		}
-
 	}()
 
 	if err := mmio.Store(KBSRAddr, 0xf001); err != nil {

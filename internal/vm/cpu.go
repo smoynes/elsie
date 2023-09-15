@@ -30,7 +30,6 @@ func WithLogger(log logger) OptionFn {
 
 // New initializes a virtual machine state.
 func New(opts ...OptionFn) *LC3 {
-
 	// Initialize processor status...
 	var status ProcessorStatus
 
@@ -114,6 +113,7 @@ func (cpu *LC3) PushStack(w Word) error {
 	cpu.Reg[SP]--
 	cpu.Mem.MAR = cpu.Reg[SP]
 	cpu.Mem.MDR = Register(w)
+
 	return cpu.Mem.Store()
 }
 
@@ -121,5 +121,6 @@ func (cpu *LC3) PushStack(w Word) error {
 func (cpu *LC3) PopStack() error {
 	cpu.Reg[SP]++
 	cpu.Mem.MAR = cpu.Reg[SP] - 1
+
 	return cpu.Mem.Fetch()
 }

@@ -981,7 +981,6 @@ func TestInstructions(tt *testing.T) {
 
 		}
 	})
-
 }
 
 func TestSext(tt *testing.T) {

@@ -43,6 +43,7 @@ func makeTestLogger(t *testing.T, out io.Writer) logger {
 	flag := log.Lshortfile | log.Lmsgprefix
 	s := strings.Split(t.Name(), "/")
 	logPrefix := s[len(s)-1] + ": "
+
 	return log.New(out, logPrefix, flag)
 }
 

@@ -57,6 +57,7 @@ func (i Instruction) Relative() bool {
 func (i Instruction) Offset(n offset) Word {
 	w := Word(i)
 	w.Sext(uint8(n))
+
 	return w
 }
 
@@ -64,6 +65,7 @@ func (i Instruction) Offset(n offset) Word {
 func (i Instruction) Literal(n literal) Word {
 	w := Word(i)
 	w.Sext(uint8(n))
+
 	return w
 }
 
@@ -71,6 +73,7 @@ func (i Instruction) Literal(n literal) Word {
 func (i Instruction) Vector(n vector) Word {
 	w := Word(i)
 	w.Zext(uint8(n))
+
 	return w
 }
 

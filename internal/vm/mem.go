@@ -176,6 +176,7 @@ func (mem *Memory) Store() error {
 
 	if psr.Privilege() == PrivilegeUser && mem.privileged() {
 		mem.MDR = Register(psr)
+
 		return &acv{
 			interrupt{},
 		}
@@ -213,7 +214,6 @@ func (mem *Memory) store(addr Word, cell Word) error {
 	mem.cell[addr] = cell
 
 	return nil
-
 }
 
 // Privileged returns true if the address in MAR requires system privileges to access.

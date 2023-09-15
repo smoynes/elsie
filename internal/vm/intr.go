@@ -57,6 +57,7 @@ func (i *interrupt) Handle(cpu *LC3) error {
 
 	cpu.Mem.MAR = Register(i.table | i.vec)
 	err = cpu.Mem.Fetch()
+
 	if err != nil {
 		return err
 	}

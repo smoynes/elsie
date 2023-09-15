@@ -302,7 +302,6 @@ func (op *ldi) FetchOperands() {
 	}
 
 	op.vm.Reg[op.dr] = op.vm.Mem.MDR
-
 }
 
 func (op *ldi) Execute() {
@@ -659,6 +658,7 @@ func (op *rti) Execute() {
 				psr:   op.vm.PSR,
 			},
 		}
+
 		return
 	}
 
@@ -674,6 +674,7 @@ func (op *rti) Execute() {
 		op.Fail(err)
 		return
 	}
+
 	op.vm.PSR = ProcessorStatus(op.vm.Mem.MDR)
 
 	if op.vm.PSR.Privilege() == PrivilegeUser {
@@ -697,6 +698,7 @@ func (pmv *pmv) Handle(cpu *LC3) error {
 	cpu.USP = cpu.Reg[SP]
 	cpu.Reg[SP] = cpu.SSP
 	cpu.PSR ^= StatusUser
+
 	return pmv.interrupt.Handle(cpu)
 }
 

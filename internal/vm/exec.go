@@ -65,6 +65,7 @@ func (vm *LC3) Cycle() error {
 	switch int := op.Err().(type) {
 	case interruptable:
 		vm.log.Printf("step: interrupt: %s", op.Err())
+
 		if err := int.Handle(vm); err != nil {
 			return fmt.Errorf("step: interrupt: %w", err)
 		}
@@ -82,10 +83,11 @@ func (vm *LC3) Cycle() error {
 // Fetch loads the value addressed by PC into IR and increments PC.
 func (vm *LC3) Fetch() error {
 	vm.Mem.MAR = Register(vm.PC)
-	err := vm.Mem.Fetch()
-	if err != nil {
+
+	if err := vm.Mem.Fetch(); err != nil {
 		return fmt.Errorf("fetch: %w", err)
 	}
+
 	vm.IR = Instruction(vm.Mem.MDR)
 	vm.PC++
 
@@ -161,7 +163,6 @@ func (vm *LC3) EvalAddress(op operation) {
 // FetchOperands reads from memory into a CPU register if the operation is fetchable.
 func (vm *LC3) FetchOperands(op operation) {
 	if op, ok := op.(fetchable); ok && op.Err() == nil {
-
 		if err := vm.Mem.Fetch(); err != nil {
 			op.Fail(fmt.Errorf("operand: %w", err))
 			return

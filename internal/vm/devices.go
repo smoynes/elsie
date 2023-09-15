@@ -136,6 +136,7 @@ func (k *Keyboard) Read(dev *Device, addr Word) (DeviceRegister, error) {
 	case KBDRAddr:
 		k.status ^= kbdStatusReady
 		k.Logf("kbd: read: addr: %s, status: %s, data: %s\n", addr, dev.status, dev.data)
+
 		return DeviceRegister(dev.data), nil
 	default:
 		return 0, fmt.Errorf("kbd: read: bad addr: %s", addr) // TODO

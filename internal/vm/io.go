@@ -55,14 +55,15 @@ func (mmio MMIO) Store(addr Word, mdr Register) error {
 
 	switch dev := dev.(type) {
 	case *Device:
-		dev.Write(addr, DeviceRegister(mdr))
+		if err := dev.Write(addr, DeviceRegister(mdr)); err != nil {
+			return fmt.Errorf("mmio: %w", err)
+		}
 	case *ProcessorStatus:
 		*dev = ProcessorStatus(mdr)
 	case *Register:
 		*dev = mdr
 	case nil:
-		mmio.log.Panicf("%s: addr: %s", ErrNoDevice, addr)
-		// return fmt.Errorf("%w: addr: %s", ErrNoDevice, addr)
+		return fmt.Errorf("%w: addr: %s", ErrNoDevice, addr)
 	default:
 		mmio.log.Panicf("%s: addr: %s: %s", ErrNoDevice, addr, dev)
 	}
@@ -80,6 +81,7 @@ func (mmio MMIO) Load(addr Word, reg *Register) error {
 	case *Device:
 		d, err := dev.Read(addr)
 		*reg = Register(d)
+
 		if err != nil {
 			return fmt.Errorf("io: %w", err)
 		}
