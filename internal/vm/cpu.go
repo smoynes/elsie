@@ -15,17 +15,8 @@ type LC3 struct {
 	SSP Register        // System stack pointer
 	MCR ControlRegister // Master control register
 	Mem Memory          // All the memory you'll ever need.
-	log logger          // A log of where we've been.
-}
 
-// An OptionFn is modifies the machine during late initialization. That is, the
-// function is called after all resources are initialized but before any are used.
-type OptionFn func(*LC3)
-
-func WithLogger(log logger) OptionFn {
-	return func(vm *LC3) {
-		vm.withLogger(log)
-	}
+	log logger // A log of where we've been.
 }
 
 // New initializes a virtual machine state.
@@ -124,3 +115,7 @@ func (cpu *LC3) PopStack() error {
 
 	return cpu.Mem.Fetch()
 }
+
+// An OptionFn is modifies the machine during late initialization. That is, the
+// function is called after all resources are initialized but before any are used.
+type OptionFn func(*LC3)

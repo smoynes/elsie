@@ -29,3 +29,9 @@ func (mmio *MMIO) WithLogger(l logger) {
 		}
 	}
 }
+
+func WithLogger(log logger) OptionFn {
+	return func(vm *LC3) {
+		vm.withLogger(log)
+	}
+}
