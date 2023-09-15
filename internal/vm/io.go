@@ -5,22 +5,32 @@ package vm
 import (
 	"errors"
 	"fmt"
-	"log"
 )
 
-// The memory controller redirects accesses of addresses in the I/O page to the
-// MMIO controller. During boot, addresses are mapped to registers in the CPU or
-// external devices.
+// The memory controller redirects accesses of addresses in the I/O page to the MMIO controller.
+// During boot, addresses are mapped to registers in the CPU or external devices.
 //
-// Different kinds of devices have different types of registers, i.e., Register,
-// StatusRegister, KeyboardRegister, etc. However, in Go, pointer types are
-// unconvertible: we cannot convert from *StatusRegister to *Register, even
-// though they have the same underlying type. So, we keep any pointers and type
-// cast to the register types that the MMIO supports.
+// Different kinds of devices have different types of registers, i.e., Register, StatusRegister,
+// KeyboardRegister, etc. However, in Go, pointer types are unconvertible: we cannot convert from
+// *StatusRegister to *Register, even though they have the same underlying type. So, we keep any
+// pointers and type cast to the register types that the MMIO supports.
 
 // MMIO is the memory-mapped I/O controller. It holds a table indexed by logical address and points
 // to either a register or a device driver.
-type MMIO map[Word]any
+type MMIO struct {
+	devs map[Word]any
+	log  logger
+}
+
+// NewMMIO creates a memory-mapped I/O controller with default configuration.
+func NewMMIO() *MMIO {
+	m := MMIO{
+		devs: make(map[Word]any),
+		log:  defaultLogger(),
+	}
+
+	return &m
+}
 
 // Addresses of memory-mapped device registers.
 const (
@@ -32,19 +42,16 @@ const (
 	MCRAddr  Word = 0xfffe // Machine control register. Privileged.
 )
 
-// errMMIO is a wrapped error.
-var errMMIO = errors.New("mmio")
+var (
+	errMMIO = errors.New("mmio")
+
+	// ErrNoDevice is returned when reading or writing to an unmapped address.
+	ErrNoDevice = fmt.Errorf("%w: no device", errMMIO)
+)
 
 // Store writes a word to a memory-mapped I/O address.
 func (mmio MMIO) Store(addr Word, mdr Register) error {
-	var (
-		dev any
-		ok  bool
-	)
-
-	if dev, ok = mmio[addr]; !ok {
-		return fmt.Errorf("%w: store: %s: no mmio device", errMMIO, addr)
-	}
+	dev := mmio.devs[addr]
 
 	switch dev := dev.(type) {
 	case *Device:
@@ -53,51 +60,58 @@ func (mmio MMIO) Store(addr Word, mdr Register) error {
 		*dev = ProcessorStatus(mdr)
 	case *Register:
 		*dev = mdr
+	case nil:
+		mmio.log.Panicf("%s: addr: %s", ErrNoDevice, addr)
+		// return fmt.Errorf("%w: addr: %s", ErrNoDevice, addr)
 	default:
-		panic(fmt.Sprintf("unexpected device: %s, type: %T", dev, dev))
+		mmio.log.Panicf("%s: addr: %s: %s", ErrNoDevice, addr, dev)
 	}
 
-	log.Printf("MMIO write addr: %s, word: %s\n", addr, dev.(fmt.Stringer))
+	mmio.log.Printf("mmio: store: %s := %s\n", addr, mdr)
 
 	return nil
 }
 
 // Load fetches a word from a memory-mapped I/O address.
 func (mmio MMIO) Load(addr Word, reg *Register) error {
-	log.Printf("%s: load: %+v", errMMIO, mmio)
-
-	dev, ok := mmio[addr]
-	if !ok {
-		return fmt.Errorf("%w: load: %s: no mmio device", errMMIO, addr)
-	}
+	dev := mmio.devs[addr]
 
 	switch dev := dev.(type) {
 	case *Device:
-		var d DeviceRegister = dev.Read(addr)
+		d, err := dev.Read(addr)
 		*reg = Register(d)
+		if err != nil {
+			return fmt.Errorf("io: %w", err)
+		}
 	case *ProcessorStatus:
 		*reg = Register(*dev)
 	case *Register:
 		*reg = Register(*dev)
+	case nil:
+		mmio.log.Panicf("%s: addr: %s", ErrNoDevice, addr)
+		//return fmt.Errorf("%w: addr: %s", ErrNoDevice, addr)
 	default:
-		panic(fmt.Sprintf("unexpected register type: %T", dev))
+		mmio.log.Panicf("%s: addr: %s", ErrNoDevice, addr)
 	}
 
-	log.Printf("MMIO fetch addr: %s, word: %s\n", addr, reg)
+	mmio.log.Printf("%s: load: %s", errMMIO, addr)
 
 	return nil
 }
 
-// Map attaches device registers to an address in the I/O page.
-func (mmio MMIO) Map(devices MMIO) error {
+// Map configures the memory mapping for device I/O. Keys in the map are addresses and values are
+// devices or registers.
+func (mmio MMIO) Map(devices map[Word]any) error {
 	for addr, dev := range devices {
-		switch d := dev.(type) {
-		case *ProcessorStatus, *Register:
-			log.Printf("mmio: map: device: %T %s", dev, addr)
-			mmio[addr] = dev
+		dev := dev
+
+		switch dev := dev.(type) {
 		case *Device:
-			log.Printf("mmio: map: device: %#v, addr: %s", d.driver, addr)
-			mmio[addr] = dev
+			mmio.log.Printf("mmio: map: addr: %s, device: %s", addr, dev)
+			mmio.devs[addr] = dev
+		case *ProcessorStatus, *Register:
+			mmio.log.Printf("mmio: map: register: %s %#T, ", addr, dev)
+			mmio.devs[addr] = dev
 		default:
 			return fmt.Errorf("%w: map: unsupported device: %T", errMMIO, dev)
 		}
@@ -108,9 +122,11 @@ func (mmio MMIO) Map(devices MMIO) error {
 
 // PSR returns the value of the status register, if it has been mapped.
 func (mmio MMIO) PSR() ProcessorStatus {
-	if reg, ok := mmio[PSRAddr].(*ProcessorStatus); ok {
-		return *reg
+	var psr ProcessorStatus
+
+	if dev := mmio.devs[PSRAddr]; dev != nil {
+		psr = *(dev.(*ProcessorStatus)) // \\((* * \\)) - praise punctuation!
 	}
 
-	return ProcessorStatus(0x0000)
+	return psr
 }

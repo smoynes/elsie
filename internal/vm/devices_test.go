@@ -11,27 +11,36 @@ var (
 )
 
 func TestKeyboardDriver(tt *testing.T) {
-	t := testHarness{tt}
-	t.init()
+	t := NewTestHarness(tt)
+	vm := t.Make()
 
 	var (
-		have = Device{
-			status: 0x8000,
-			data:   DeviceRegister('X'),
-			driver: &Keyboard{},
+		kbd = &Keyboard{
+			Device: Device{
+				data:   '?',
+				status: 0x8000,
+			},
 		}
+	)
+
+	var (
+		have = newDevice(vm, kbd, nil)
 		want = Device{
-			data:   0x0058,
+			data:   0x003f,
 			status: 0x0000,
 		}
 	)
 
-	mmio := MMIO{}
+	have.driver.(*Keyboard).WithLogger(t.log)
+
+	mmio := NewMMIO()
+	mmio.WithLogger(t.log)
 
 	err := mmio.Map(map[Word]any{
 		KBSRAddr: &have,
 		KBDRAddr: &have,
 	})
+
 	if err != nil {
 		t.Error(err)
 		t.FailNow()
@@ -39,6 +48,7 @@ func TestKeyboardDriver(tt *testing.T) {
 
 	got := Register(0xface)
 
+	have.driver.(*Keyboard).WithLogger(t.log)
 	if err := mmio.Load(KBSRAddr, &got); err != nil {
 		t.Error(err)
 	} else if DeviceRegister(got) != have.status {
@@ -51,6 +61,7 @@ func TestKeyboardDriver(tt *testing.T) {
 		t.Error(err)
 	} else if DeviceRegister(got) != want.data {
 		t.Errorf("read: data want: %s, got: %s", want.data, got)
+		t.log.Panicf("load: data: kbd: %s", kbd)
 	}
 
 	if err := mmio.Load(KBSRAddr, &got); err != nil {

@@ -4,14 +4,13 @@ package vm
 
 import (
 	"fmt"
-	"log"
 )
 
 // Run starts and executes the instruction cycle until the program halts.
 func (vm *LC3) Run() error {
 	var err error
 
-	log.Printf("Initial state\n%s\n%s\n", vm, vm.Reg.String())
+	vm.log.Printf("Initial state\n%s\n%s\n", vm, vm.Reg.String())
 
 	for {
 		if vm.MCR == 0x0000 {
@@ -23,10 +22,10 @@ func (vm *LC3) Run() error {
 			break
 		}
 
-		log.Printf("Instruction complete\n%s\n%s\n", vm, vm.Reg)
+		vm.log.Printf("Instruction complete\n%s\n%s\n", vm, vm.Reg)
 	}
 
-	log.Println("System HALTED")
+	vm.log.Println("System HALTED")
 
 	return err
 }
@@ -52,10 +51,8 @@ func (vm *LC3) Run() error {
 //
 // Each of these steps is optional: an instruction implements methods according
 // to its semantics.
-func (vm *LC3) Cycle() (err error) {
-	err = vm.Fetch()
-
-	if err != nil {
+func (vm *LC3) Cycle() error {
+	if err := vm.Fetch(); err != nil {
 		return fmt.Errorf("step: %w", err)
 	}
 
@@ -65,26 +62,21 @@ func (vm *LC3) Cycle() (err error) {
 	vm.Execute(op)
 	vm.StoreResult(op)
 
-	if op.Err() == nil {
-		log.Printf("step: executed: %+v", op)
-		return nil
-	}
-
-	switch intr := op.Err().(type) {
+	switch int := op.Err().(type) {
 	case interruptable:
-		log.Printf("step: interrupt: %s", intr.String())
-		err = intr.Handle(vm)
+		vm.log.Printf("step: interrupt: %s", op.Err())
+		if err := int.Handle(vm); err != nil {
+			return fmt.Errorf("step: interrupt: %w", err)
+		}
+	case nil: // success ☺️
+		vm.log.Printf("step: executed: %+v", op)
+		return nil
 	default:
-		panic(err)
+		vm.log.Panicf("step: error: %s", op.Err())
+		return nil // unreachable
 	}
 
-	if err != nil {
-		// Invoking the interrupt handler failed.
-		log.Printf("step: error: %v", err)
-		return // fmt.Errorf("step: %w", err)
-	}
-
-	return
+	return nil
 }
 
 // Fetch loads the value addressed by PC into IR and increments PC.
@@ -97,7 +89,7 @@ func (vm *LC3) Fetch() error {
 	vm.IR = Instruction(vm.Mem.MDR)
 	vm.PC++
 
-	log.Printf("fetched IR: %s", vm.IR)
+	vm.log.Printf("fetched IR: %s", vm.IR)
 
 	return nil
 }

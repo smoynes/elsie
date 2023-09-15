@@ -4,7 +4,6 @@ package vm
 
 import (
 	"fmt"
-	"log"
 )
 
 // Memory is where we keep our most precious things: programs and data.
@@ -119,6 +118,8 @@ type Memory struct {
 
 	// Memory-mapped device registers.
 	device MMIO
+
+	log logger
 }
 
 // Regions of address space. Each region begins at the address and grows upwards towards the next.
@@ -140,8 +141,13 @@ func NewMemory(psr *ProcessorStatus) Memory {
 		MAR: 0xffff,
 		MDR: 0x0000,
 
-		cell:   PhysicalMemory{},
-		device: MMIO{},
+		cell: PhysicalMemory{},
+		device: MMIO{
+			devs: make(map[Word]any),
+			log:  defaultLogger(),
+		},
+
+		log: defaultLogger(),
 	}
 
 	return mem
@@ -157,7 +163,7 @@ func (mem *Memory) Fetch() error {
 
 	err := mem.load(Word(mem.MAR), &mem.MDR)
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("mem: fetch: %w", err)
 	}
 
 	return nil
@@ -177,7 +183,7 @@ func (mem *Memory) Store() error {
 
 	err := mem.store(Word(mem.MAR), Word(mem.MDR))
 	if err != nil {
-		panic(err)
+		return fmt.Errorf("mem: store: %w", err)
 	}
 
 	return nil
@@ -191,7 +197,7 @@ func (mem *Memory) load(addr Word, reg *Register) error {
 	}
 
 	*reg = Register(mem.cell[addr])
-	log.Printf("MMU load addr: %s, word: %s\n", addr, *reg)
+	mem.log.Printf("load: %s:%s", addr, *reg)
 
 	return nil
 }
@@ -203,7 +209,7 @@ func (mem *Memory) store(addr Word, cell Word) error {
 		return mem.device.Store(addr, Register(cell))
 	}
 
-	log.Printf("MMU write addr: %s, word: %s\n", addr, cell)
+	mem.log.Printf("store: %s:%s", addr, cell)
 	mem.cell[addr] = cell
 
 	return nil

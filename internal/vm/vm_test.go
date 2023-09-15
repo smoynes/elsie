@@ -2,56 +2,58 @@ package vm
 
 import (
 	"fmt"
+
 	"testing"
 )
 
+func TestRESV(tt *testing.T) {
+	var (
+		t   = NewTestHarness(tt)
+		cpu = t.Make()
+	)
+
+	cpu.PSR = (StatusSystem & StatusPrivilege) | StatusNormal | StatusNegative
+	cpu.Reg[SP] = 0x2ff0
+	cpu.SSP = 0x1200
+	_ = cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
+	_ = cpu.Mem.store(Word(0x0101), 0x1100)
+	_ = cpu.Mem.store(Word(0x1100), 0x1110)
+
+	err := cpu.Cycle()
+	if err != nil {
+		t.Error(err)
+	}
+
+	if cpu.IR.Opcode() != RESV {
+		t.Errorf("instr: %s, want: %s, got: %s",
+			cpu.IR, RESV, cpu.IR.Opcode())
+	}
+
+	if cpu.PC != 0x1100 {
+		t.Errorf("PC want: %0#x, got: %s", 0x1000, cpu.PC)
+	}
+
+	if cpu.Reg[SP] != Register(0x2ff0-2) {
+		t.Errorf("SP want: %s, got: %s", Word(0x2fee)-2, cpu.Reg[SP])
+	}
+
+	if cpu.USP != 0xfe00 {
+		t.Errorf("USP want: %s, got: %s", Word(0xfe00), cpu.USP)
+	}
+
+	if cpu.PSR != StatusSystem|StatusNormal|StatusNegative {
+		t.Errorf("PSR want: %s, got: %s",
+			StatusSystem|StatusNormal|StatusNegative, cpu.PSR)
+	}
+}
+
 func TestInstructions(tt *testing.T) {
-
-	tt.Run("RESV as SYSTEM", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
-
-		cpu := New()
-		cpu.PSR = (StatusSystem & StatusPrivilege) | StatusNormal | StatusNegative
-		cpu.Reg[SP] = 0x2ff0
-		cpu.SSP = 0x1200
-		_ = cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
-		_ = cpu.Mem.store(Word(0x0101), 0x1100)
-		_ = cpu.Mem.store(Word(0x1100), 0x1110)
-
-		err := cpu.Cycle()
-		if err != nil {
-			t.Error(err)
-		}
-
-		if cpu.IR.Opcode() != RESV {
-			t.Errorf("instr: %s, want: %s, got: %s",
-				cpu.IR, RESV, cpu.IR.Opcode())
-		}
-
-		if cpu.PC != 0x1100 {
-			t.Errorf("PC want: %0#x, got: %s", 0x1000, cpu.PC)
-		}
-
-		if cpu.Reg[SP] != Register(0x2ff0-2) {
-			t.Errorf("SP want: %s, got: %s", Word(0x2fee)-2, cpu.Reg[SP])
-		}
-
-		if cpu.USP != 0xfe00 {
-			t.Errorf("USP want: %s, got: %s", Word(0xfe00), cpu.USP)
-		}
-
-		if cpu.PSR != StatusSystem|StatusNormal|StatusNegative {
-			t.Errorf("PSR want: %s, got: %s",
-				StatusSystem|StatusNormal|StatusNegative, cpu.PSR)
-		}
-	})
-
 	tt.Run("RESV as USER", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		cpu := New()
 		cpu.PC = 0x3000
 		cpu.PSR = StatusUser | StatusNormal | StatusNegative
 		t.Log(cpu.PSR.String())
@@ -90,10 +92,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("BR", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		cpu := New()
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0000_010_0_0000_0111)
 		cpu.PSR = StatusZero
 
@@ -119,10 +122,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("BRnzp", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x0100
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0000_111_1_1111_0111)
 		cpu.PSR.Set(0xf000)
@@ -149,10 +153,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("NOT", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.Reg[R0] = 0b0101_1010_1111_0000
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1001_000_000_111111)
 
@@ -175,10 +180,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("AND", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_0_00_001)
 		cpu.Reg[R0] = 0x5aff
 		cpu.Reg[R1] = 0x00f0
@@ -200,10 +206,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("ANDIMM", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_1_10101)
 		cpu.Reg[R0] = 0b0101_1010_1111_1111
 
@@ -226,10 +233,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("ADD", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_0_00001)
 		cpu.Reg[R0] = 0
 		cpu.Reg[R1] = 1
@@ -256,10 +264,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("ADDIMM", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_1_10000)
 		cpu.Reg[R0] = 0
 
@@ -288,10 +297,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("LD", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
 		cpu.Reg[R2] = 0xcafe
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0010_010_011000110)
@@ -319,10 +329,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("JMP", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x00ff
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1100_000_111_000000)
 		cpu.Reg[R7] = 0x0010
@@ -344,10 +355,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("JSRR", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0100_0_00_100_000000)
 		cpu.Reg[R4] = 0x0300
@@ -373,10 +385,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("LDI", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		_ = cpu.Mem.store(Word(cpu.PC), 0xa001)
 		addr := Word(0x0402)
@@ -418,10 +431,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("LDR", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Reg[R0] = 0xf0f0
 		cpu.Reg[R4] = 0x8000
@@ -463,10 +477,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("LEA", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1110_000_1_00000000)
 		_ = cpu.Mem.store(Word(0x0301), 0xdead)
@@ -493,10 +508,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("ST", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Reg[R7] = 0xcafe
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0011_111_0_1000_0000)
@@ -517,7 +533,6 @@ func TestInstructions(tt *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		t.Logf("mem: %0#v", val)
 
 		if val != 0xcafe {
 			t.Errorf("Mem[%s] want: %s, got: %s",
@@ -533,18 +548,14 @@ func TestInstructions(tt *testing.T) {
 			t.Errorf("cond incorrect, want: %s, got: %s",
 				StatusZero, cpu.PSR)
 		}
-
-		oper := cpu.Decode().(*st)
-		oper.EvalAddress()
-		oper.StoreResult()
-		t.Logf("oper: %#+v", oper)
 	})
 
 	tt.Run("STI", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x0400
 		cpu.Reg[RETP] = 0xcafe
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1011_111_0_0000_0001)
@@ -579,10 +590,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("TRAP USER", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x4050
 		cpu.PSR = StatusUser | StatusZero
 		cpu.SSP = 0x3000
@@ -651,10 +663,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("TRAP SYSTEM", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x20ff
 		cpu.PSR = (^StatusUser & StatusPrivilege) | StatusNormal | StatusZero
 		t.Log(cpu.PSR.String())
@@ -725,10 +738,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("RTI to USER", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0xadaf
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
 		cpu.PSR = ^StatusUser | StatusNegative
@@ -804,10 +818,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("RTI to SYSTEM", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0xadaf
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
 		_ = cpu.Mem.store(Word(0x0080), 0xcafe)
@@ -889,10 +904,11 @@ func TestInstructions(tt *testing.T) {
 	})
 
 	tt.Run("RTI as USER", func(tt *testing.T) {
-		t := testHarness{tt}
-		t.init()
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
 
-		var cpu *LC3 = New()
 		cpu.PC = 0x3300 // User space PC
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1000_0000_0000_0000)
 		cpu.PSR = StatusUser | StatusNormal | StatusNegative
@@ -1045,8 +1061,7 @@ func TestSext(tt *testing.T) {
 		tc := tc
 		name := fmt.Sprintf("%0#4x %d", tc.have, tc.bits)
 		tt.Run(name, func(tt *testing.T) {
-			t := testHarness{tt}
-			t.init()
+			t := NewTestHarness(tt)
 
 			got := Word(tc.have)
 			got.Sext(tc.bits)

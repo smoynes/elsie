@@ -664,16 +664,14 @@ func (op *rti) Execute() {
 
 	// Restore program counter and status register. Popping might fail if the stack is empty.
 	if err := op.vm.PopStack(); err != nil {
-		//panic(err)
-		op.err = err
+		op.Fail(err)
 		return
 	}
 
 	op.vm.PC = ProgramCounter(op.vm.Mem.MDR)
 
 	if err := op.vm.PopStack(); err != nil {
-		//panic(err)
-		op.err = err
+		op.Fail(err)
 		return
 	}
 	op.vm.PSR = ProcessorStatus(op.vm.Mem.MDR)

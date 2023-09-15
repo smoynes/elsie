@@ -15,18 +15,45 @@ type LC3 struct {
 	SSP Register        // System stack pointer
 	MCR Register        // Master control register
 	Mem Memory          // All the memory you'll ever need.
+	log logger          // A log of where we've been.
 }
 
-// New initializes a minimal virtual machine state.
-func New() *LC3 {
+// An OptionFn is modifies the machine during late initialization. That is, the
+// function is called after all resources are initialized but before any are used.
+type OptionFn func(*LC3)
+
+func WithLogger(log logger) OptionFn {
+	return func(vm *LC3) {
+		vm.withLogger(log)
+	}
+}
+
+// New initializes a virtual machine state.
+func New(opts ...OptionFn) *LC3 {
+
+	// Initialize processor status...
+	var status ProcessorStatus
+
+	// Start with system privileges so we can access privileged memory and
+	// configure devices. Privileges are dropped after late initialization.
+	status |= (StatusPrivilege & StatusSystem)
+
+	// Don't rush things, priority normal.
+	status |= (StatusPriority & StatusNormal)
+
+	// All condition codes are set.
+	status |= StatusCondition
+
 	// Set CPU registers to known values.
 	cpu := LC3{
 		PC:  0x0300,
 		IR:  0x0000,
-		PSR: initialStatus,
+		PSR: status,
 		USP: Register(IOPageAddr),    // User stack grows down from the top of user space.
-		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where user's end.
-		MCR: Register(0x8000),        // Set the RUN flag.
+		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where user space ends.
+		MCR: Register(0x8000),        // Set the RUN flag. 🤾
+
+		log: defaultLogger(),
 	}
 
 	// Initialize general purpose registers to a pleasing pattern.
@@ -34,37 +61,46 @@ func New() *LC3 {
 		0xffff, 0x0000,
 		0xfff0, 0xf000,
 		0xff00, 0x0f00,
-		0xf000, 0x00f0,
+		cpu.USP, 0x00f0,
 	})
-	cpu.Reg[SP] = cpu.USP
+
+	cpu.Reg[SP] = cpu.USP // Initial stack is user.
 
 	// Configure MMU.
 	cpu.Mem = NewMemory(&cpu.PSR)
 
-	var kbd Device = newDevice(&cpu, &Keyboard{}, []Word{KBSRAddr, KBDRAddr})
-	var disp Device = newDevice(&cpu, nil, []Word{DSRAddr, KBDRAddr})
-
-	// Map CPU registers into address space.
-	err := cpu.Mem.device.Map(MMIO{
+	kbd := newDevice(&cpu, &Keyboard{}, []Word{KBSRAddr, KBDRAddr})
+	disp := newDevice(&cpu, nil, []Word{DSRAddr, KBDRAddr})
+	devs := map[Word]any{
 		MCRAddr:  &cpu.MCR,
 		PSRAddr:  &cpu.PSR,
 		KBSRAddr: &kbd,
 		KBDRAddr: &kbd,
 		DSRAddr:  &disp,
 		DDRAddr:  &disp,
-	})
+	}
+
+	// Run early init.
+	for _, fn := range opts {
+		fn(&cpu)
+	}
+
+	err := cpu.Mem.device.Map(devs)
 
 	if err != nil {
-		panic(err)
+		cpu.log.Panic(err)
+	}
+
+	// Drop privileges and execute as user.
+	cpu.PSR &^= (StatusPrivilege & StatusUser)
+
+	// Run late init..
+	for _, fn := range opts {
+		fn(&cpu)
 	}
 
 	return &cpu
 }
-
-// initial value of PSR at boot is undefined. At least, I haven't found it in the ISA reference.
-// We'll start the machine with system privileges, normal priority, and with all condition flags
-// set. The machine boot sequence has to initialize the system and then drop privileges.
-const initialStatus = ProcessorStatus(StatusSystem | StatusNormal | StatusCondition)
 
 func (cpu *LC3) String() string {
 	return fmt.Sprintf("PC:  %s IR: %s \nPSR: %s\nUSP: %s SSP: %s MCR: %s\n"+
