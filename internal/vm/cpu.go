@@ -95,7 +95,7 @@ func New(opts ...OptionFn) *LC3 {
 func (cpu *LC3) String() string {
 	return fmt.Sprintf("PC:  %s IR:  %s \nPSR: %s\nUSP: %s SSP: %s MCR: %s\n"+
 		"MAR: %s MDR: %s\n",
-		cpu.PC, cpu.IR, cpu.PSR, cpu.USP, cpu.SSP, cpu.MCR,
+		cpu.PC.String(), cpu.IR.String(), cpu.PSR, cpu.USP, cpu.SSP, cpu.MCR,
 		cpu.Mem.MAR, cpu.Mem.MDR)
 }
 
@@ -119,3 +119,9 @@ func (cpu *LC3) PopStack() error {
 // An OptionFn is modifies the machine during late initialization. That is, the
 // function is called after all resources are initialized but before any are used.
 type OptionFn func(*LC3)
+
+func WithSystemPrivileges() OptionFn {
+	return func(vm *LC3) {
+		vm.PSR &^= (StatusPrivilege & StatusUser)
+	}
+}

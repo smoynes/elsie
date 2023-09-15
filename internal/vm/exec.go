@@ -3,17 +3,20 @@ package vm
 // exec.go defines the CPU instruction cycle.
 
 import (
+	"context"
 	"fmt"
 )
 
 // Run starts and executes the instruction cycle until the program halts.
-func (vm *LC3) Run() error {
+func (vm *LC3) Run(ctx context.Context) error {
 	var err error
 
 	vm.log.Printf("Initial state\n%s\n%s\n", vm, vm.Reg.String())
 
 	for {
-		if !vm.MCR.Running() {
+		if err := ctx.Err(); err != nil {
+			return err
+		} else if !vm.MCR.Running() {
 			break
 		}
 
@@ -22,7 +25,7 @@ func (vm *LC3) Run() error {
 			break
 		}
 
-		vm.log.Printf("Instruction complete\n%s\n%s\n", vm, vm.Reg)
+		vm.log.Printf("Instruction complete\n%s\n%s\n", vm.String(), vm.Reg.String())
 	}
 
 	vm.log.Println("System HALTED")

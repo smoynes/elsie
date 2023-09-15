@@ -33,12 +33,6 @@ func (t *testHarness) Make() *LC3 {
 	return vm
 }
 
-func WithSystemPrivileges() OptionFn {
-	return func(vm *LC3) {
-		vm.PSR &^= (StatusPrivilege & StatusUser)
-	}
-}
-
 func makeTestLogger(t *testing.T, out io.Writer) logger {
 	flag := log.Lshortfile | log.Lmsgprefix
 	s := strings.Split(t.Name(), "/")

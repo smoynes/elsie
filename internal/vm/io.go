@@ -90,7 +90,7 @@ func (mmio MMIO) Load(addr Word, reg *Register) error {
 	case *ControlRegister:
 		*reg = Register(*dev)
 	case nil:
-		return fmt.Errorf("%s: addr: %s", ErrNoDevice, addr)
+		return fmt.Errorf("%w: addr: %s", ErrNoDevice, addr)
 	default:
 		mmio.log.Panicf("%s: addr: %s", ErrNoDevice, addr)
 	}

@@ -2,12 +2,15 @@
 package main
 
 import (
+	"context"
 	"log"
 
 	"github.com/smoynes/elsie/internal/vm"
 )
 
 func main() {
+	ctx := context.Background()
+
 	var program vm.Register
 
 	log.SetFlags(log.Lmsgprefix | log.Lmicroseconds | log.Lshortfile)
@@ -70,7 +73,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := machine.Run(); err != nil {
+	if err := machine.Run(ctx); err != nil {
 		log.Fatal(err)
 	}
 }
