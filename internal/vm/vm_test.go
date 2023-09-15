@@ -24,9 +24,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if cpu.IR.Opcode() != OpcodeRESV {
-			t.Errorf("instr: %s, want: %b, got: %04b",
-				cpu.IR, OpcodeRESV, cpu.IR.Opcode())
+		if cpu.IR.Opcode() != RESV {
+			t.Errorf("instr: %s, want: %s, got: %s",
+				cpu.IR, RESV, cpu.IR.Opcode())
 		}
 
 		if cpu.PC != 0x1100 {
@@ -66,9 +66,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if cpu.IR.Opcode() != OpcodeRESV {
-			t.Errorf("instr: %s, want: %b, got: %04b",
-				cpu.IR, OpcodeRESV, cpu.IR.Opcode())
+		if cpu.IR.Opcode() != RESV {
+			t.Errorf("instr: %s(%0#x), want: %s, got: %s(%v)",
+				cpu.IR, cpu.IR, RESV, cpu.IR.Opcode(), cpu.IR.Opcode())
 		}
 
 		if cpu.PC != 0x1100 {
@@ -102,9 +102,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeBR {
+		if op := cpu.IR.Opcode(); op != BR {
 			t.Errorf("instr: %s, want: %s, got: %s",
-				cpu.IR, OpcodeBR, op)
+				cpu.IR, BR, op)
 		}
 
 		if cpu.PC != 0x0300+0x0008 {
@@ -132,9 +132,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeBR {
+		if op := cpu.IR.Opcode(); op != BR {
 			t.Errorf("instr: %s, want: %s, got: %s",
-				cpu.IR, OpcodeBR, op)
+				cpu.IR, BR, op)
 		}
 
 		if cpu.PC != 0x00f8 {
@@ -161,8 +161,8 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeNOT {
-			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, OpcodeNOT, op)
+		if op := cpu.IR.Opcode(); op != NOT {
+			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, NOT, op)
 		}
 
 		if cpu.Reg[R0] != 0b1010_0101_0000_1111 {
@@ -212,8 +212,8 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeAND {
-			t.Errorf("instr: %s, want: %04b, got: %04b", cpu.IR, OpcodeAND, op)
+		if op := cpu.IR.Opcode(); op != AND {
+			t.Errorf("instr: %s, want: %04b, got: %04b", cpu.IR, AND, op)
 		}
 
 		if cpu.Reg[R0] != 0x5af5 {
@@ -239,8 +239,8 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeADD {
-			t.Errorf("instr: %s, want: %04b, got: %04b", cpu.IR, OpcodeAND, op)
+		if op := cpu.IR.Opcode(); op != ADD {
+			t.Errorf("instr: %s, want: %04b, got: %04b", cpu.IR, AND, op)
 		}
 
 		oper := cpu.Decode()
@@ -268,9 +268,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeADD {
+		if op := cpu.IR.Opcode(); op != ADD {
 			t.Errorf("instr: %s, want: %04b, got: %04b",
-				cpu.IR, OpcodeAND, op)
+				cpu.IR, AND, op)
 		}
 
 		oper := cpu.Decode()
@@ -302,9 +302,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeLD {
+		if op := cpu.IR.Opcode(); op != LD {
 			t.Errorf("instr: %s, want: %04b, got: %04b",
-				cpu.IR, OpcodeLD, op)
+				cpu.IR, LD, op)
 		}
 
 		if cpu.Reg[R2] != 0x0f00 {
@@ -332,9 +332,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeJMP {
+		if op := cpu.IR.Opcode(); op != JMP {
 			t.Errorf("instr: %s, want: %s, got: %s",
-				cpu.IR, OpcodeJMP, op)
+				cpu.IR, JMP, op)
 		}
 
 		if cpu.PC != 0x0010 {
@@ -356,9 +356,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeJSR {
+		if op := cpu.IR.Opcode(); op != JSR {
 			t.Errorf("instr: %s, want: %s, got: %s",
-				cpu.IR, OpcodeJSR, op)
+				cpu.IR, JSR, op)
 		}
 
 		if cpu.PC != 0x0300 {
@@ -396,9 +396,9 @@ func TestInstructions(tt *testing.T) {
 		}
 		t.Logf("mem: %0#v", r)
 
-		if op := cpu.IR.Opcode(); op != OpcodeLDI {
+		if op := cpu.IR.Opcode(); op != LDI {
 			t.Errorf("IR: %s, want: %s, got: %s",
-				cpu.IR.String(), OpcodeLDI, op)
+				cpu.IR.String(), LDI, op)
 		}
 
 		if cpu.PC != 0x0401 {
@@ -441,9 +441,9 @@ func TestInstructions(tt *testing.T) {
 		}
 		t.Logf("mem: %0#v", r)
 
-		if op := cpu.IR.Opcode(); op != OpcodeLDR {
+		if op := cpu.IR.Opcode(); op != LDR {
 			t.Errorf("IR: %s, want: %s, got: %s",
-				cpu.IR.String(), OpcodeLDR, op)
+				cpu.IR.String(), LDR, op)
 		}
 
 		if cpu.PC != 0x0401 {
@@ -477,9 +477,8 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeLEA {
-			t.Errorf("IR: %s, want: %s, got: %s",
-				cpu.IR.String(), OpcodeLEA, op)
+		if op := cpu.IR.Opcode(); op != LEA {
+			t.Errorf("IR: %s, want: %s, got: %s", cpu.IR.String(), LEA, op)
 		}
 
 		if cpu.Reg[R0] != 0xdead {
@@ -508,9 +507,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeST {
+		if op := cpu.IR.Opcode(); op != ST {
 			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
-				cpu.IR, OpcodeST, op)
+				cpu.IR, ST, op)
 		}
 
 		var val Register
@@ -547,7 +546,7 @@ func TestInstructions(tt *testing.T) {
 
 		var cpu *LC3 = New()
 		cpu.PC = 0x0400
-		cpu.Reg[RET] = 0xcafe
+		cpu.Reg[RETP] = 0xcafe
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1011_111_0_0000_0001)
 		_ = cpu.Mem.store(Word(cpu.PC)+2, 0x0f00)
 		_ = cpu.Mem.store(Word(0x0f00), 0x0fff)
@@ -557,9 +556,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeSTI {
+		if op := cpu.IR.Opcode(); op != STI {
 			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
-				cpu.IR, OpcodeSTI, op)
+				cpu.IR, STI, op)
 		}
 		var val Register
 		err = cpu.Mem.load(Word(0x0f00), &val)
@@ -597,9 +596,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeTRAP {
+		if op := cpu.IR.Opcode(); op != TRAP {
 			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
-				cpu.IR, OpcodeTRAP, op)
+				cpu.IR, TRAP, op)
 		}
 
 		if cpu.PC != 0xadad {
@@ -670,9 +669,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeTRAP {
+		if op := cpu.IR.Opcode(); op != TRAP {
 			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
-				cpu.IR, OpcodeTRAP, op)
+				cpu.IR, TRAP, op)
 		}
 
 		if cpu.PC != 0xadad {
@@ -749,9 +748,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeRTI {
+		if op := cpu.IR.Opcode(); op != RTI {
 			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
-				cpu.IR, OpcodeRTI, op)
+				cpu.IR, RTI, op)
 		}
 
 		if cpu.PC != 0x0401 {
@@ -833,9 +832,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeRTI {
+		if op := cpu.IR.Opcode(); op != RTI {
 			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
-				cpu.IR, OpcodeRTI, op)
+				cpu.IR, RTI, op)
 		}
 
 		if cpu.PC != 0x0401 {
@@ -911,9 +910,9 @@ func TestInstructions(tt *testing.T) {
 			t.Error(err)
 		}
 
-		if op := cpu.IR.Opcode(); op != OpcodeRTI {
+		if op := cpu.IR.Opcode(); op != RTI {
 			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
-				cpu.IR, OpcodeRTI, op)
+				cpu.IR, RTI, op)
 		}
 
 		if cpu.PC != 0x1234 {

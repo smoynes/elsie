@@ -8,46 +8,54 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[OpcodeBR-0]
-	_ = x[OpcodeNOT-9]
-	_ = x[OpcodeAND-5]
-	_ = x[OpcodeADD-1]
-	_ = x[OpcodeLD-2]
-	_ = x[OpcodeLDI-10]
-	_ = x[OpcodeLDR-6]
-	_ = x[OpcodeLEA-14]
-	_ = x[OpcodeST-3]
-	_ = x[OpcodeSTI-11]
-	_ = x[OpcodeSTR-7]
-	_ = x[OpcodeJMP-12]
-	_ = x[OpcodeRET-255]
-	_ = x[OpcodeJSR-4]
-	_ = x[OpcodeJSRR-254]
-	_ = x[OpcodeTRAP-15]
-	_ = x[OpcodeRTI-8]
-	_ = x[OpcodeRESV-13]
+	_ = x[BR-0]
+	_ = x[ADD-4096]
+	_ = x[LD-8192]
+	_ = x[ST-12288]
+	_ = x[JSR-16384]
+	_ = x[AND-20480]
+	_ = x[LDR-24576]
+	_ = x[STR-28672]
+	_ = x[RTI-32768]
+	_ = x[NOT-36864]
+	_ = x[LDI-40960]
+	_ = x[STI-45056]
+	_ = x[JMP-49152]
+	_ = x[RESV-53248]
+	_ = x[LEA-57344]
+	_ = x[TRAP-61440]
+	_ = x[JSRR-20224]
+	_ = x[RET-52992]
 }
 
-const (
-	_Opcode_name_0 = "BRADDLDSTJSRANDLDRSTRRTINOTLDISTIJMPRESVLEATRAP"
-	_Opcode_name_1 = "JSRRRET"
-)
+const _Opcode_name = "BRADDLDSTJSRJSRRANDLDRSTRRTINOTLDISTIJMPRETRESVLEATRAP"
 
-var (
-	_Opcode_index_0 = [...]uint8{0, 2, 5, 7, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 40, 43, 47}
-	_Opcode_index_1 = [...]uint8{0, 4, 7}
-)
+var _Opcode_map = map[Opcode]string{
+	0:     _Opcode_name[0:2],
+	4096:  _Opcode_name[2:5],
+	8192:  _Opcode_name[5:7],
+	12288: _Opcode_name[7:9],
+	16384: _Opcode_name[9:12],
+	20224: _Opcode_name[12:16],
+	20480: _Opcode_name[16:19],
+	24576: _Opcode_name[19:22],
+	28672: _Opcode_name[22:25],
+	32768: _Opcode_name[25:28],
+	36864: _Opcode_name[28:31],
+	40960: _Opcode_name[31:34],
+	45056: _Opcode_name[34:37],
+	49152: _Opcode_name[37:40],
+	52992: _Opcode_name[40:43],
+	53248: _Opcode_name[43:47],
+	57344: _Opcode_name[47:50],
+	61440: _Opcode_name[50:54],
+}
 
 func (i Opcode) String() string {
-	switch {
-	case i <= 15:
-		return _Opcode_name_0[_Opcode_index_0[i]:_Opcode_index_0[i+1]]
-	case 254 <= i && i <= 255:
-		i -= 254
-		return _Opcode_name_1[_Opcode_index_1[i]:_Opcode_index_1[i+1]]
-	default:
-		return "Opcode(" + strconv.FormatInt(int64(i), 10) + ")"
+	if str, ok := _Opcode_map[i]; ok {
+		return str
 	}
+	return "Opcode(" + strconv.FormatInt(int64(i), 10) + ")"
 }
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
@@ -62,7 +70,7 @@ func _() {
 	_ = x[R6-6]
 	_ = x[R7-7]
 	_ = x[NumGPR-8]
-	_ = x[RET-7]
+	_ = x[RETP-7]
 	_ = x[SP-6]
 }
 

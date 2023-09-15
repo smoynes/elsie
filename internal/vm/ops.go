@@ -6,12 +6,35 @@ import (
 	"fmt"
 )
 
-// An Opcode identifies the operation to be executed by the CPU. The ISA has 15
-// distinct opcodes and one reserved value that is undefined and causes an
-// exception.
-type Opcode uint8
+// An Opcode identifies the instruction to be executed by the CPU. The ISA has
+// 15 distinct opcodes, plus one reserved value that is undefined.
+type Opcode uint16
 
-type mo struct { // no, mo is a monad. ( ._.)
+// Opcode constants.
+const (
+	BR Opcode = iota << 12
+	ADD
+	LD
+	ST
+	JSR
+	AND
+	LDR
+	STR
+	RTI
+	NOT
+	LDI
+	STI
+	JMP
+	RESV
+	LEA
+	TRAP
+
+	// Two synthetic opcodes used for printing special cases of the above.
+	JSRR = Opcode(JSR | 0x0f00)
+	RET  = Opcode(JMP | 0x0f00)
+)
+
+type mo struct { // no, mo is NOT a monad. ( ._.)
 	vm  *LC3
 	err error
 }
@@ -37,8 +60,6 @@ type br struct {
 func (op br) String() string {
 	return fmt.Sprintf("%s[cond:%s offset:%s]", op.mo.String(), op.cond.String(), op.offset.String())
 }
-
-const OpcodeBR = Opcode(0b0000) // BR
 
 var (
 	_ executable = &br{}
@@ -68,8 +89,6 @@ type not struct {
 	dr GPR
 	sr GPR
 }
-
-const OpcodeNOT = Opcode(0b1001) // NOT
 
 var (
 	_ executable = &not{}
@@ -103,8 +122,6 @@ type and struct {
 	sr1  GPR
 	sr2  GPR
 }
-
-const OpcodeAND = Opcode(0b0101) // AND
 
 func (op *and) String() string {
 	return fmt.Sprintf("%s[dr:%s sr1:%s sr2: %v]", op.mo.String(), op.dest.String(), op.sr1, op.sr2)
@@ -169,8 +186,6 @@ type add struct {
 	sr2 GPR
 }
 
-const OpcodeADD = Opcode(0b0001) // ADD
-
 var (
 	_ executable = &add{}
 )
@@ -230,8 +245,6 @@ var (
 	_ fetchable   = &ld{}
 )
 
-const OpcodeLD = Opcode(0b0010) // LD
-
 func (op *ld) Decode(vm *LC3) {
 	*op = ld{
 		mo:     mo{vm: vm},
@@ -262,8 +275,6 @@ type ldi struct {
 	dr     GPR
 	offset Word
 }
-
-const OpcodeLDI = Opcode(0b1010) // LDI
 
 var (
 	_ addressable = &ldi{}
@@ -314,8 +325,6 @@ type ldr struct {
 	offset Word
 }
 
-const OpcodeLDR = Opcode(0b0110) // LDR
-
 var (
 	_ addressable = &ldr{}
 	_ fetchable   = &ldr{}
@@ -353,8 +362,6 @@ type lea struct {
 	offset Word
 }
 
-const OpcodeLEA = Opcode(0b1110) // LEA
-
 var (
 	_ fetchable = &lea{}
 )
@@ -391,8 +398,6 @@ var (
 	_ storable    = &st{}
 )
 
-const OpcodeST = Opcode(0b0011) // ST
-
 func (op *st) Decode(vm *LC3) {
 	*op = st{
 		mo:     mo{vm: vm},
@@ -427,8 +432,6 @@ var (
 	_ fetchable   = &sti{}
 	_ storable    = &sti{}
 )
-
-const OpcodeSTI = Opcode(0b1011) // STI
 
 func (op *sti) Decode(vm *LC3) {
 	*op = sti{
@@ -469,8 +472,6 @@ var (
 	_ storable    = &str{}
 )
 
-const OpcodeSTR = Opcode(0b0111) // STR
-
 func (op *str) Decode(vm *LC3) {
 	*op = str{
 		mo:     mo{vm: vm},
@@ -505,11 +506,6 @@ type jmp struct {
 	sr GPR
 }
 
-const (
-	OpcodeJMP = Opcode(0b1100) // JMP
-	OpcodeRET = Opcode(0xff)   // RET
-)
-
 var (
 	_ executable = &jmp{}
 )
@@ -531,12 +527,17 @@ func (op *jmp) Execute() {
 // | 0100 |  1 | OFFSET11 |
 // |------+----+----------|
 // |15  12| 11 |10       0|
+//
+// JSRR: Jump to subroutine (register mode)
+//
+// | 0100 |  0 | SR | 00 0000 |
+// |------+----+----+---------|
+// |15  12| 11 |8  6|5       0|
+// .
 type jsr struct {
 	mo
 	offset Word
 }
-
-const OpcodeJSR = Opcode(0b0100) // JSR
 
 var (
 	_ executable = &jsr{}
@@ -551,21 +552,14 @@ func (op *jsr) Decode(vm *LC3) {
 }
 
 func (op *jsr) Execute() {
-	op.vm.Reg[RET] = Register(op.vm.PC)
+	op.vm.Reg[RETP] = Register(op.vm.PC)
 	op.vm.PC = ProgramCounter(int16(op.vm.PC) + int16(op.offset))
 }
 
-// JSRR: Jump to subroutine (register mode)
-//
-// | 0100 |  0 | SR | 00 0000 |
-// |------+----+----+---------|
-// |15  12| 11 |8  6|5       0|
 type jsrr struct {
 	mo
 	sr GPR
 }
-
-const OpcodeJSRR = Opcode(0xfe) // JSRR
 
 var (
 	_ executable = &jsrr{}
@@ -579,7 +573,7 @@ func (op *jsrr) Decode(vm *LC3) {
 }
 
 func (op *jsrr) Execute() {
-	op.vm.Reg[RET] = Register(op.vm.PC)
+	op.vm.Reg[RETP] = Register(op.vm.PC)
 	op.vm.PC = ProgramCounter(op.vm.Reg[op.sr])
 }
 
@@ -593,8 +587,6 @@ type trap struct {
 	vec  Word
 	addr Word
 }
-
-const OpcodeTRAP = Opcode(0b1111) // TRAP
 
 func (op *trap) String() string {
 	return fmt.Sprintf("TRAP: %s (%s)", op.vec, op.addr)
@@ -648,8 +640,6 @@ func (err *trapErr) Handle(cpu *LC3) error {
 // |------+----------------|
 // |15  12|11             0|
 type rti struct{ mo }
-
-const OpcodeRTI = Opcode(0b1000) // RTI
 
 var (
 	_ executable = &rti{}
@@ -718,8 +708,6 @@ func (pmv *pmv) Handle(cpu *LC3) error {
 // |------+----------------|
 // |15  12|11             0|
 type resv struct{ mo }
-
-const OpcodeRESV = Opcode(0b1101) // RESV
 
 var _ executable = &resv{}
 

@@ -13,9 +13,9 @@ func (i Instruction) String() string {
 	return fmt.Sprintf("%s (OP: %s)", Word(i), i.Opcode())
 }
 
-// Opcode returns the instruction opcode.
+// Opcode returns the instruction opcode which is stored in the top four bits of the instruction.
 func (i Instruction) Opcode() Opcode {
-	return Opcode(i >> 12)
+	return Opcode(i & 0xf000)
 }
 
 // Cond returns the condition flags from the instruction.
@@ -45,7 +45,12 @@ func (i Instruction) SR2() GPR {
 
 // Imm returns true if the immediate-mode flag is set in the instruction
 func (i Instruction) Imm() bool {
-	return i&0x020 != 0
+	return i&0x0020 != 0
+}
+
+// Relative returns true if the register-mode flag is set in the instruction.
+func (i Instruction) Relative() bool {
+	return i&0x0800 != 0
 }
 
 // Offset returns the PC-relative offset from the instruction.

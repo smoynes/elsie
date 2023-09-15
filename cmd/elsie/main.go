@@ -22,7 +22,7 @@ func main() {
 	}
 
 	// AND R0,R0,0 ; clear R0
-	program = vm.Register(vm.Word(vm.OpcodeAND)<<12 | 0x0020)
+	program = vm.Register(vm.Word(vm.AND) | 0x0020)
 	machine.Mem.MAR = vm.Register(0x1000)
 	machine.Mem.MDR = program
 	if err := machine.Mem.Store(); err != nil {
@@ -30,7 +30,7 @@ func main() {
 	}
 
 	// LEA R1,[MCR] ; load MCR addr into R1
-	program = vm.Register(vm.Word(vm.OpcodeLEA)<<12 | 0x0201)
+	program = vm.Register(vm.Word(vm.LEA) | 0x0201)
 	machine.Mem.MAR = vm.Register(0x1001)
 	machine.Mem.MDR = program
 	if err := machine.Mem.Store(); err != nil {
@@ -38,7 +38,7 @@ func main() {
 	}
 
 	// STR R0,R1,0
-	program = vm.Register(vm.Word(vm.OpcodeSTR)<<12 | 0x0040)
+	program = vm.Register(vm.Word(vm.STR) | 0x0040)
 	machine.Mem.MAR = vm.Register(0x1002)
 	machine.Mem.MDR = program
 	if err := machine.Mem.Store(); err != nil {
@@ -53,7 +53,7 @@ func main() {
 	}
 
 	// TRAP HALT
-	program = vm.Register(vm.Word(vm.OpcodeTRAP)<<12 | vm.TrapHALT)
+	program = vm.Register(vm.Word(vm.TRAP) | vm.TrapHALT)
 	machine.Mem.MAR = vm.Register(machine.PC)
 	machine.Mem.MDR = program
 	if err := machine.Mem.Store(); err != nil {

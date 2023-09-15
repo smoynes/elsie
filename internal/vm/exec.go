@@ -107,50 +107,49 @@ func (vm *LC3) Decode() operation {
 	var oper operation
 
 	switch vm.IR.Opcode() {
-	case OpcodeBR:
+	case BR:
 		oper = &br{}
-	case OpcodeAND:
+	case AND:
 		if vm.IR.Imm() {
 			oper = &andImm{}
 		} else {
 			oper = &and{}
 		}
-	case OpcodeADD:
+	case ADD:
 		if vm.IR.Imm() {
 			oper = &addImm{}
 		} else {
 			oper = &add{}
 		}
-	case OpcodeNOT:
+	case NOT:
 		oper = &not{}
-	case OpcodeLD:
+	case LD:
 		oper = &ld{}
-	case OpcodeLDI:
+	case LDI:
 		oper = &ldi{}
-	case OpcodeLDR:
+	case LDR:
 		oper = &ldr{}
-	case OpcodeLEA:
+	case LEA:
 		oper = &lea{}
-	case OpcodeST:
+	case ST:
 		oper = &st{}
-	case OpcodeSTI:
+	case STI:
 		oper = &sti{}
-	case OpcodeSTR:
+	case STR:
 		oper = &str{}
-	case OpcodeJMP, OpcodeRET:
+	case JMP, RET:
 		oper = &jmp{}
-	case OpcodeJSR, OpcodeJSRR:
-		// TODO
-		if (vm.IR & 0x0800) == 0 {
-			oper = &jsrr{}
-		} else {
+	case JSR, JSRR:
+		if vm.IR.Relative() {
 			oper = &jsr{}
+		} else {
+			oper = &jsrr{}
 		}
-	case OpcodeTRAP:
+	case TRAP:
 		oper = &trap{}
-	case OpcodeRTI:
+	case RTI:
 		oper = &rti{}
-	case OpcodeRESV:
+	case RESV:
 		oper = &resv{}
 	}
 

@@ -189,8 +189,8 @@ func (rf RegisterFile) String() string {
 // GPR is the ID of a general purpose register
 type GPR uint8
 
+// General purpose registers.
 const (
-	// General purpose registers.
 	R0 GPR = iota
 	R1
 	R2
@@ -200,12 +200,12 @@ const (
 	R6
 	R7
 
-	// Count of general purpose registers.
+	// NumGPR is the count of general purpose registers.
 	NumGPR
 
-	// ABI: Subroutine return address is in R7
-	RET GPR = R7
+	// Subroutine return address is in R7
+	RETP GPR = R7
 
-	// ABI: Current stack is in R6
+	// Current stack is in R6.
 	SP GPR = R6
 )
