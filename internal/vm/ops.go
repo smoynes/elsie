@@ -88,11 +88,15 @@ func (op *not) Execute() {
 	op.vm.PSR.Set(op.vm.Reg[op.dr])
 }
 
-// AND: Bitwise AND binary operator (register mode)
+// AND: Bitwise AND binary operator (registers)
 //
 // | 0101 | DR | SR1 | 0 | 00 | SR2 |
 // |------+----+-----+---+----+-----|
 // |15  12|11 9|8   6| 5 |4  3|2   0|
+//
+// | 0101 | DR  | SR | 1 | IMM5 | (immediate)
+// |------+-----+----+---+------|
+// |15  12|11  9|8  6| 5 |4    0|
 type and struct {
 	mo
 	dest GPR
@@ -121,11 +125,6 @@ func (op *and) Execute() {
 	op.vm.PSR.Set(op.vm.Reg[op.dest])
 }
 
-// AND: Bitwise AND binary operator (immediate mode)
-//
-// | 0101 | DR  | SR | 1 | IMM5 |
-// |------+-----+----+---+------|
-// |15  12|11  9|8  6| 5 |4    0|
 type andImm struct {
 	mo
 	dr  GPR
@@ -151,11 +150,18 @@ func (op *andImm) Execute() {
 	op.vm.PSR.Set(op.vm.Reg[op.dr])
 }
 
-// ADD: Arithmetic addition operator (register mode)
+// ADD: Arithmetic addition operator
 //
-// | 0001 | DR | SR1 | 000 | SR2 |
+// | 0001 | DR | SR1 | 000 | SR2 |  (register mode)
 // |------+----+-----+-----+-----|
 // |15  12|11 9|8   6| 5  3|2   0|
+//
+// ADD: Arithmetic addition operator (immediate mode)
+//
+// | 0001 | DR  | SR | 1 | 11111 |
+// |------+-----+----+---+-------|
+// |15  12|11  9|8  6| 5 |4     0|
+// .
 type add struct {
 	mo
 	dr  GPR
@@ -183,11 +189,6 @@ func (op *add) Execute() {
 	op.vm.PSR.Set(op.vm.Reg[op.dr])
 }
 
-// ADD: Arithmetic addition operator (immediate mode)
-//
-// | 0001 | DR  | SR | 1 | 11111 |
-// |------+-----+----+---+-------|
-// |15  12|11  9|8  6| 5 |4     0|
 type addImm struct {
 	mo
 	dr  GPR
