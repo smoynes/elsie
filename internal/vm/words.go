@@ -213,10 +213,19 @@ const (
 // ControlRegister is the master control register.
 type ControlRegister Register
 
+const (
+	ControlRunning ControlRegister = 1 << 15
+)
+
 func (c ControlRegister) Running() bool {
-	return c&0x8000 != 0
+	return c&ControlRunning != 0
 }
 
 func (c ControlRegister) String() string {
-	return fmt.Sprintf("MCR: %s (RUN: %t)", Register(c).String(), c.Running())
+	run := "RUN"
+	if !c.Running() {
+		run = "STOP"
+	}
+
+	return fmt.Sprintf("%s (%s)", Register(c).String(), run)
 }
