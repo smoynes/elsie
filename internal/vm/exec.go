@@ -13,7 +13,7 @@ func (vm *LC3) Run() error {
 	vm.log.Printf("Initial state\n%s\n%s\n", vm, vm.Reg.String())
 
 	for {
-		if vm.MCR == 0x0000 {
+		if !vm.MCR.Running() {
 			break
 		}
 

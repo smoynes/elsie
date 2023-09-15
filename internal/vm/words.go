@@ -209,3 +209,14 @@ const (
 	// Current stack is in R6.
 	SP GPR = R6
 )
+
+// ControlRegister is the master control register.
+type ControlRegister Register
+
+func (c ControlRegister) Running() bool {
+	return c&0x8000 != 0
+}
+
+func (c ControlRegister) String() string {
+	return fmt.Sprintf("MCR: %s (RUN: %t)", Register(c).String(), c.Running())
+}

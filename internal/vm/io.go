@@ -60,8 +60,8 @@ func (mmio MMIO) Store(addr Word, mdr Register) error {
 		}
 	case *ProcessorStatus:
 		*dev = ProcessorStatus(mdr)
-	case *Register:
-		*dev = mdr
+	case *ControlRegister:
+		*dev = ControlRegister(mdr)
 	case nil:
 		return fmt.Errorf("%w: addr: %s", ErrNoDevice, addr)
 	default:
@@ -87,11 +87,10 @@ func (mmio MMIO) Load(addr Word, reg *Register) error {
 		}
 	case *ProcessorStatus:
 		*reg = Register(*dev)
-	case *Register:
+	case *ControlRegister:
 		*reg = Register(*dev)
 	case nil:
-		mmio.log.Panicf("%s: addr: %s", ErrNoDevice, addr)
-		//return fmt.Errorf("%w: addr: %s", ErrNoDevice, addr)
+		return fmt.Errorf("%s: addr: %s", ErrNoDevice, addr)
 	default:
 		mmio.log.Panicf("%s: addr: %s", ErrNoDevice, addr)
 	}
@@ -111,7 +110,7 @@ func (mmio MMIO) Map(devices map[Word]any) error {
 		case *Device:
 			mmio.log.Printf("mmio: map: addr: %s, device: %s", addr, dev)
 			mmio.devs[addr] = dev
-		case *ProcessorStatus, *Register:
+		case *ProcessorStatus, *ControlRegister:
 			mmio.log.Printf("mmio: map: register: %s %#T, ", addr, dev)
 			mmio.devs[addr] = dev
 		default:

@@ -13,7 +13,7 @@ type LC3 struct {
 	Reg RegisterFile    // General-purpose register file
 	USP Register        // User stack pointer
 	SSP Register        // System stack pointer
-	MCR Register        // Master control register
+	MCR ControlRegister // Master control register
 	Mem Memory          // All the memory you'll ever need.
 	log logger          // A log of where we've been.
 }
@@ -50,7 +50,7 @@ func New(opts ...OptionFn) *LC3 {
 		PSR: status,
 		USP: Register(IOPageAddr),    // User stack grows down from the top of user space.
 		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where user space ends.
-		MCR: Register(0x8000),        // Set the RUN flag. 🤾
+		MCR: ControlRegister(0x8000), // Set the RUN flag. 🤾
 
 		log: defaultLogger(),
 	}
