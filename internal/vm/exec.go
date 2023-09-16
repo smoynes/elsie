@@ -20,7 +20,7 @@ func (vm *LC3) Run(ctx context.Context) error {
 			break
 		}
 
-		err = vm.Cycle()
+		err = vm.Step()
 		if err != nil {
 			break
 		}
@@ -33,7 +33,7 @@ func (vm *LC3) Run(ctx context.Context) error {
 	return err
 }
 
-// Cycle runs a single instruction cycle to completion.
+// Step runs a single instruction cycle to completion.
 //
 // Each cycle has six steps:
 //
@@ -54,7 +54,7 @@ func (vm *LC3) Run(ctx context.Context) error {
 //
 // Each of these steps is optional: an instruction implements methods according
 // to its semantics.
-func (vm *LC3) Cycle() error {
+func (vm *LC3) Step() error {
 	if err :=
 		vm.Fetch(); err != nil {
 		return fmt.Errorf("step: %w", err)

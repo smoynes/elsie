@@ -19,7 +19,7 @@ func TestRESV(tt *testing.T) {
 	_ = cpu.Mem.store(Word(0x0101), 0x1100)
 	_ = cpu.Mem.store(Word(0x1100), 0x1110)
 
-	err := cpu.Cycle()
+	err := cpu.Step()
 	if err != nil {
 		t.Error(err)
 	}
@@ -63,7 +63,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(0x0101), 0x1100)
 		_ = cpu.Mem.store(Word(0x1100), 0x1110)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -100,7 +100,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0000_010_0_0000_0111)
 		cpu.PSR = StatusZero
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -131,7 +131,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0000_111_1_1111_0111)
 		cpu.PSR.Set(0xf000)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -161,7 +161,7 @@ func TestInstructions(tt *testing.T) {
 		cpu.Reg[R0] = 0b0101_1010_1111_0000
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1001_000_000_111111)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -189,7 +189,7 @@ func TestInstructions(tt *testing.T) {
 		cpu.Reg[R0] = 0x5aff
 		cpu.Reg[R1] = 0x00f0
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -214,7 +214,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_1_10101)
 		cpu.Reg[R0] = 0b0101_1010_1111_1111
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -242,7 +242,7 @@ func TestInstructions(tt *testing.T) {
 		cpu.Reg[R0] = 0
 		cpu.Reg[R1] = 1
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -272,7 +272,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_1_10000)
 		cpu.Reg[R0] = 0
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -307,7 +307,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0010_010_011000110)
 		_ = cpu.Mem.store(Word(0x0100+0x00c6), 0x0f00)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -338,7 +338,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1100_000_111_000000)
 		cpu.Reg[R7] = 0x0010
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -363,7 +363,7 @@ func TestInstructions(tt *testing.T) {
 		cpu.PC = 0x0400
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0100_0_00_100_000000)
 		cpu.Reg[R4] = 0x0300
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -397,7 +397,7 @@ func TestInstructions(tt *testing.T) {
 		cpu.Reg[R0] = 0xffff
 		_ = cpu.Mem.store(Word(0xdad0), 0xcafe)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -443,7 +443,7 @@ func TestInstructions(tt *testing.T) {
 		addr := Word(0x8000 + 0x0002)
 		_ = cpu.Mem.store(Word(addr), 0xdad0)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -487,7 +487,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(0x0301), 0xdead)
 		cpu.Reg[R0] = 0xff00
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -518,7 +518,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0011_111_0_1000_0000)
 		_ = cpu.Mem.store(Word(0x0481), 0x0f00)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -562,7 +562,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC)+2, 0x0f00)
 		_ = cpu.Mem.store(Word(0x0f00), 0x0fff)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -603,7 +603,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1111_0000_1000_0000)
 		_ = cpu.Mem.store(Word(0x0080), 0xadad)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -677,7 +677,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1111_0000_1000_0000)
 		_ = cpu.Mem.store(Word(0x0080), 0xadad)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -757,7 +757,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.USP), 0xff00)
 		_ = cpu.Mem.store(Word(cpu.USP+1), 0x0ff0)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -842,7 +842,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.USP), 0xff00)
 		_ = cpu.Mem.store(Word(cpu.USP+1), 0x0ff0)
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
@@ -921,7 +921,7 @@ func TestInstructions(tt *testing.T) {
 		cpu.USP = 0xffff                        // Invalid user stack pointer
 		_ = cpu.Mem.store(Word(0x0100), 0x1234) // PMV table points to handler
 
-		err := cpu.Cycle()
+		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
