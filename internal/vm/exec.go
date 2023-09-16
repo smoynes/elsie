@@ -55,7 +55,8 @@ func (vm *LC3) Run(ctx context.Context) error {
 // Each of these steps is optional: an instruction implements methods according
 // to its semantics.
 func (vm *LC3) Cycle() error {
-	if err := vm.Fetch(); err != nil {
+	if err :=
+		vm.Fetch(); err != nil {
 		return fmt.Errorf("step: %w", err)
 	}
 

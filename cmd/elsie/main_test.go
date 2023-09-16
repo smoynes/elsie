@@ -72,5 +72,4 @@ loop:
 	}
 
 	t.Logf("took %s", time.Since(start))
-	t.Fail()
 }
