@@ -53,19 +53,17 @@ var (
 func (mmio MMIO) Store(addr Word, mdr Register) error {
 	dev := mmio.devs[addr]
 
-	switch dev := dev.(type) {
-	case *Device:
-		if err := dev.Write(addr, DeviceRegister(mdr)); err != nil {
-			return fmt.Errorf("mmio: %w", err)
+	if dev == nil {
+		return fmt.Errorf("%w: write: addr: %s %v", ErrNoDevice, addr, mmio.devs)
+	} else if reg, ok := dev.(IODevice); ok && reg != nil {
+		reg.Put(mdr)
+	} else if driver, ok := dev.(DeviceWriter); ok && driver != nil {
+		err := driver.Write(addr, mdr)
+		if err != nil {
+			return fmt.Errorf("mmio: write: %s:%s: %w", addr, dev, err)
 		}
-	case *ProcessorStatus:
-		*dev = ProcessorStatus(mdr)
-	case *ControlRegister:
-		*dev = ControlRegister(mdr)
-	case nil:
-		return fmt.Errorf("%w: addr: %s", ErrNoDevice, addr)
-	default:
-		mmio.log.Panicf("%s: addr: %s: %s", ErrNoDevice, addr, dev)
+	} else {
+		mmio.log.Panicf("%s: addr: %s: %T", ErrNoDevice, addr, dev)
 	}
 
 	mmio.log.Printf("mmio: store: %s := %s\n", addr, mdr)
@@ -74,49 +72,55 @@ func (mmio MMIO) Store(addr Word, mdr Register) error {
 }
 
 // Load fetches a word from a memory-mapped I/O address.
-func (mmio MMIO) Load(addr Word, reg *Register) error {
+func (mmio MMIO) Load(addr Word) (Register, error) {
+	var value Word
+
 	dev := mmio.devs[addr]
 
-	switch dev := dev.(type) {
-	case *Device:
-		d, err := dev.Read(addr)
-		*reg = Register(d)
+	if dev == nil {
+		return Register(0xffff), fmt.Errorf("%w: write: addr: %s", ErrNoDevice, addr)
+	} else if reg, ok := dev.(IODevice); ok {
+		value = Word(reg.Get())
+	} else if driver, ok := dev.(DeviceReader); ok {
+		var err error
+		value, err = driver.Read(addr)
 
 		if err != nil {
-			return fmt.Errorf("io: %w", err)
+			return Register(0xffff), fmt.Errorf("mmio: write: %s:%s: %w", addr, dev, err)
 		}
-	case *ProcessorStatus:
-		*reg = Register(*dev)
-	case *ControlRegister:
-		*reg = Register(*dev)
-	case nil:
-		return fmt.Errorf("%w: addr: %s", ErrNoDevice, addr)
-	default:
-		mmio.log.Panicf("%s: addr: %s", ErrNoDevice, addr)
+	} else {
+		mmio.log.Panicf("%s: addr: %s: %T", ErrNoDevice, addr, dev)
 	}
 
-	mmio.log.Printf("%s: load: %s", errMMIO, addr)
+	mmio.log.Printf("mmio: store: %s := %s\n", addr, value)
 
-	return nil
+	return Register(value), nil
 }
 
-// Map configures the memory mapping for device I/O. Keys in the map are addresses and values are
-// devices or registers.
-func (mmio MMIO) Map(devices map[Word]any) error {
-	for addr, dev := range devices {
-		dev := dev
+var _ DrivableDevice = &Keyboard{}
 
-		switch dev := dev.(type) {
-		case *Device:
-			mmio.log.Printf("mmio: map: addr: %s, device: %s", addr, dev)
-			mmio.devs[addr] = dev
-		case *ProcessorStatus, *ControlRegister:
-			mmio.log.Printf("mmio: map: register: %s %#T, ", addr, dev)
-			mmio.devs[addr] = dev
-		default:
-			return fmt.Errorf("%w: map: unsupported device: %T", errMMIO, dev)
+// Map configures the memory mapping for device I/O. Keys in the map are addresses and values are
+// device drivers or registers.
+func (mmio *MMIO) Map(devices map[Word]any) error {
+	updated := make(map[Word]any)
+
+	for addr, dev := range devices {
+		if dev == nil {
+			return fmt.Errorf("%w: map: bad device: %s, %T", errMMIO, addr, dev)
+		} else if dd, ok := dev.(DrivableDevice); ok && dd != nil {
+			mmio.log.Printf("mmio: map: %s:%s", addr.String(), dd.String())
+			updated[addr] = dd
+		} else if dd, ok := dev.(IODevice); ok && dd != nil {
+			mmio.log.Printf("mmio: map: %s:%s (%T)", addr.String(), dd.String(), dev)
+			updated[addr] = dd
+		} else {
+			mmio.log.Printf("mmio: map: unsupported device: %s %T %#v", dev, dev, dev)
+			return fmt.Errorf("%w: map: unsupported device: %s %T", errMMIO, addr, dev)
 		}
 	}
+
+	// Update mapping only if all devices are valid.
+	mmio.devs = updated
 
 	return nil
 }

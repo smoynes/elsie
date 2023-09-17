@@ -15,61 +15,97 @@ func init() {
 	log.Default().SetOutput(io.Discard)
 }
 
-const timeout = time.Second
+type testHarness struct {
+	*testing.T
+}
 
-func TestMain(t *testing.T) {
-	ctx := context.Background()
-	mach := vm.New(
+func (testHarness) Make() *vm.LC3 {
+	return vm.New(
 		vm.WithLogger(log.Default()),
 	)
+}
 
-	ctx, cancel := context.WithTimeoutCause(ctx, timeout, errors.New("bad"))
-	defer cancel()
+// Context creates a test context. The context is cancelled after a timeout.
+func (testHarness) Context() (context.Context, context.CancelFunc) {
+	return context.WithTimeoutCause(context.Background(), timeout, errTestTimeout)
+}
+
+var (
+	// timeout is how long to wait for the machine to stop running. It is very likely to take
+	// less than 100 ms.
+	timeout = time.Second
+
+	// errTestTimeout is the cause of a context cancellation for a timeout.
+	errTestTimeout = errors.New("test: timeout")
+)
+
+func TestMain(tt *testing.T) {
+	t := testHarness{tt}
+	ctx, done := t.Context()
+	defer done()
+
+	machine := t.Make()
 
 	go func() {
 		t.Logf("running")
-		err := mach.Run(ctx)
+
+		err := machine.Run(ctx)
 
 		if !errors.Is(err, vm.ErrNoDevice) {
 			t.Error(err)
 		}
+		time.Sleep(2 * time.Second)
+
+		done()
 
 		t.Logf("ranned: err: %s, ctx: %v", err, ctx.Err())
-
-		cancel()
 	}()
 
 	start := time.Now()
 
 loop:
 	for {
-		t.Log(mach.String())
-		t.Log(mach.Reg.String())
-		t.Log(mach.PC.String())
-		t.Log(mach.IR.String())
-		t.Log(mach.MCR.String())
-		t.Log(mach.Mem.MAR.String())
-		t.Log(mach.Mem.MDR.String())
-		t.Log(mach.SSP.String())
-		t.Log(mach.USP.String())
-		t.Log("")
 		select {
-		case <-time.After(100 * time.Millisecond):
+		case <-time.After(20 * time.Millisecond):
 		case <-ctx.Done():
 			break loop
 		}
+
+		// This seems... racy.
+		t.Log(machine.String())
+		t.Log(machine.Reg.String())
+		t.Log(machine.PC.String())
+		t.Log(machine.IR.String())
+		t.Log(machine.MCR.String())
+		t.Log(machine.Mem.MAR.String())
+		t.Log(machine.Mem.MDR.String())
+		t.Log(machine.SSP.String())
+		t.Log(machine.USP.String())
+		t.Log("")
 	}
 
-	cause, err := context.Cause(ctx), ctx.Err()
+	elapsed := time.Since(start)
+	err := context.Cause(ctx)
+
 	switch {
-	case errors.Is(cause, context.Canceled):
-		// ok
+	case errors.Is(err, context.Canceled):
+		t.Log(machine.String())
+		t.Log(machine.Reg.String())
+		t.Log(machine.PC.String())
+		t.Log(machine.IR.String())
+		t.Log(machine.MCR.String())
+		t.Log(machine.Mem.MAR.String())
+		t.Log(machine.Mem.MDR.String())
+		t.Log(machine.SSP.String())
+		t.Log(machine.USP.String())
+		t.Log("")
+	case errors.Is(err, errTestTimeout):
+		t.Error(errTestTimeout)
 	case errors.Is(err, context.DeadlineExceeded):
-		// too slow
-		t.Errorf("run took more than %v", timeout)
+		t.Errorf("%s: elapsed: %s", err, elapsed)
 	default:
 		t.Errorf("unexpected error: %s", err)
 	}
 
-	t.Logf("took %s", time.Since(start))
+	t.Logf("test: elapsed: %s", elapsed)
 }

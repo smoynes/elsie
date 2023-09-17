@@ -1,23 +1,26 @@
 package vm
 
 import (
+	"io"
 	"log"
 )
 
 type logger = *log.Logger
 
-var defaultLogger = makeLogger
+var (
+	defaultLogger = makeLogger
+	_             = io.Discard
+)
 
 func makeLogger() logger {
 	l := log.Default()
-	//l := log.New(io.Discard, "", 0)
 	return l
 }
 
 func (vm *LC3) withLogger(l logger) {
 	vm.log = l
 	vm.Mem.log = l
-	vm.Mem.device.log = l
+	vm.Mem.Devices.log = l
 }
 
 func (mmio *MMIO) WithLogger(l logger) {

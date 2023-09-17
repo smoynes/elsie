@@ -4,80 +4,111 @@ import (
 	"testing"
 )
 
+// Type assertions for expected devices.
 var (
-	_ Driver       = &Keyboard{} // A keyboard drives itself.
-	_ DeviceReader = &Keyboard{}
-	_ DeviceWriter = &Keyboard{}
+	// CPU registers are simple I/O devices.
+	_ IODevice = (*ProcessorStatus)(nil)
+	_ IODevice = (*ControlRegister)(nil)
+
+	// Display has a driver.
+	d                = &DisplayDriver{}
+	_ Driver         = d
+	_ DeviceWriter   = d
+	_ DeviceReader   = d
+	_ DrivableDevice = d
+
+	// Keyboard is its own driver.
+	k                = &Keyboard{}
+	_ Driver         = k
+	_ DrivableDevice = k
+	_ DeviceWriter   = d
+	_ DeviceReader   = d
 )
+
+var uninitializedRegister = Register(0x0101)
 
 func TestKeyboardDriver(tt *testing.T) {
 	t := NewTestHarness(tt)
 	vm := t.Make()
 
 	var (
-		kbd = &Keyboard{
-			Device: Device{
-				data:   '?',
-				status: 0x8000,
-			},
+		kbd = Keyboard{
+			KBSR: uninitializedRegister,
+			KBDR: uninitializedRegister,
 		}
+		driver Driver       = &kbd
+		reader DeviceReader = &kbd
+		writer DeviceWriter = &kbd
 	)
 
+	driver.Configure(vm, &kbd, nil)
+
+	t.Log(kbd.Device())
+	t.Logf("cool 🕶️ %s", kbd)
+
+	addr := Word(KBSRAddr)
+
+	if err := writer.Write(addr, Register(0xffff)); err != nil {
+		t.Error(err)
+	} else if got, err := reader.Read(addr); err != nil {
+		t.Error(err)
+	} else if got == Word(uninitializedRegister) {
+		t.Errorf("uninitialized status register: %s", addr)
+	} else if got != Word(0xffff) {
+		t.Errorf("uninitialized status register: %s", addr)
+	}
+
+	addr = Word(KBDRAddr)
+	if got, err := reader.Read(addr); err != nil {
+		t.Errorf("expected read error: %s", addr)
+	} else if got == Word(uninitializedRegister) {
+		t.Errorf("uninitialized data register: %s:%s", addr, got)
+	}
+
+	addr = Word(KBSRAddr)
+	if got, err := reader.Read(addr); err != nil {
+		t.Errorf("read error: %s: %s", addr, err)
+	} else if got != Word(0x0000) {
+		t.Errorf("unexpected status: want: %s, got: %s", Word(0x0000), got)
+	}
+}
+
+func TestDisplayDriver(tt *testing.T) {
 	var (
-		have = newDevice(vm, kbd, nil)
-		want = Device{
-			data:   0x003f,
-			status: 0x0000,
-		}
+		t             = NewTestHarness(tt)
+		vm            = t.Make()
+		driver        = NewDeviceDriver(Display{})
+		deviceDriver  = driver
+		displayDriver = &DisplayDriver{*deviceDriver, Word(0xface), Word(0xf001)}
 	)
 
-	have.driver.(*Keyboard).WithLogger(t.log)
+	displayDriver.device.device.DSR = uninitializedRegister
+	displayDriver.device.device.DDR = uninitializedRegister
 
-	mmio := NewMMIO()
-	mmio.WithLogger(t.log)
+	displayDriver.Configure(vm, &Display{}, []Word{0xface, 0xf001})
 
-	err := mmio.Map(map[Word]any{
-		KBSRAddr: &have,
-		KBDRAddr: &have,
-	})
+	addr := Word(0xface)
 
-	if err != nil {
+	if got, err := displayDriver.Read(addr); err != nil {
 		t.Error(err)
-		t.FailNow()
+	} else if got == Word(uninitializedRegister) {
+		t.Errorf("uninitialized status register: %s", addr)
+	} else if got != Word(0x8000) {
+		t.Errorf("uninitialized status register: %s", addr)
 	}
 
-	got := Register(0xface)
+	addr = Word(0xf001)
 
-	if err := mmio.Load(KBSRAddr, &got); err != nil {
-		t.Error(err)
-	} else if DeviceRegister(got) != have.status {
-		t.Errorf("read: status have: %s, got: %s", want.status, got)
+	if got, err := displayDriver.Read(addr); err == nil {
+		t.Errorf("expected read error: %s", addr)
+	} else if got == Word(uninitializedRegister) {
+		t.Errorf("uninitialized display register: %s:%s", addr, got)
 	}
 
-	got = Register(0xdad0)
-
-	if err := mmio.Load(KBDRAddr, &got); err != nil {
-		t.Error(err)
-	} else if DeviceRegister(got) != want.data {
-		t.Errorf("read: data want: %s, got: %s", want.data, got)
-		t.log.Panicf("load: data: kbd: %s", kbd)
+	val := Register('?')
+	if err := displayDriver.Write(addr, val); err != nil {
+		t.Errorf("write error: %s: %s", addr, err)
 	}
 
-	if err := mmio.Load(KBSRAddr, &got); err != nil {
-		t.Error(err)
-	} else if DeviceRegister(got) != want.status {
-		t.Errorf("read: status want: %s, got: %s", want.status, got)
-	}
-
-	defer func() {
-		if perr := recover(); perr != nil {
-			t.Errorf("status: store panicked: %s", perr)
-		} else {
-			t.Logf("status: store did not panic: %s", have)
-		}
-	}()
-
-	if err := mmio.Store(KBSRAddr, 0xf001); err != nil {
-		t.Error(err)
-	}
+	driver.device.Device()
 }

@@ -75,13 +75,22 @@ func (p ProgramCounter) String() string {
 // | 15 |14   12|11 9|8      3|2    0|
 type ProcessorStatus Register
 
+// Get reads the register for I/O.
+func (p ProcessorStatus) Get() Register {
+	return Register(p)
+}
+
+// Put sets the register value for I/O.
+func (p *ProcessorStatus) Put(val Register) {
+	*p = ProcessorStatus(val)
+}
+
 // Status flags in PSR vector.
 const (
 	StatusPositive  ProcessorStatus = 0x0001
 	StatusZero      ProcessorStatus = 0x0002
 	StatusNegative  ProcessorStatus = 0x0004
-	StatusCondition ProcessorStatus = StatusNegative |
-		StatusZero | StatusPositive
+	StatusCondition ProcessorStatus = StatusNegative | StatusZero | StatusPositive
 
 	StatusPriority ProcessorStatus = 0x0700
 	StatusHigh     ProcessorStatus = 0x0700
@@ -228,4 +237,14 @@ func (c ControlRegister) String() string {
 	}
 
 	return fmt.Sprintf("%s (%s)", Register(c).String(), run)
+}
+
+// Get returns the register value for I/O.
+func (c *ControlRegister) Get() Register {
+	return Register(*c)
+}
+
+// Put sets the register value for I/O.
+func (c *ControlRegister) Put(val Register) {
+	*c = ControlRegister(val)
 }

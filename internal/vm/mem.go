@@ -116,8 +116,8 @@ type Memory struct {
 	// Physical memory in a virtual machine for an imaginary CPU.
 	cell PhysicalMemory
 
-	// Memory-mapped device registers.
-	device MMIO
+	// Memory-mapped Devices registers.
+	Devices MMIO
 
 	log logger
 }
@@ -139,10 +139,10 @@ type PhysicalMemory [AddrSpace & IOPageAddr]Word
 func NewMemory(psr *ProcessorStatus) Memory {
 	mem := Memory{
 		MAR: 0xffff,
-		MDR: 0x0000,
+		MDR: 0x0ff0,
 
 		cell: PhysicalMemory{},
-		device: MMIO{
+		Devices: MMIO{
 			devs: make(map[Word]any),
 			log:  defaultLogger(),
 		},
@@ -155,7 +155,7 @@ func NewMemory(psr *ProcessorStatus) Memory {
 
 // Fetch loads the data register from the address in the address register.
 func (mem *Memory) Fetch() error {
-	psr := mem.device.PSR()
+	psr := mem.Devices.PSR()
 	if psr&StatusPrivilege == StatusUser && mem.privileged() {
 		mem.MDR = Register(psr)
 		return &acv{interrupt{}}
@@ -172,7 +172,7 @@ func (mem *Memory) Fetch() error {
 // Store writes the word in the data register to the word in the address
 // register.
 func (mem *Memory) Store() error {
-	psr := mem.device.PSR()
+	psr := mem.Devices.PSR()
 
 	if psr.Privilege() == PrivilegeUser && mem.privileged() {
 		mem.MDR = Register(psr)
@@ -190,15 +190,16 @@ func (mem *Memory) Store() error {
 	return nil
 }
 
-// Loads a word from a memory directly without using the address and data
-// registers.
+// Loads a word directly, without using the address and data registers.
 func (mem *Memory) load(addr Word, reg *Register) error {
 	if addr >= IOPageAddr {
-		return mem.device.Load(addr, reg)
+		r, err := mem.Devices.Load(addr)
+		*reg = r
+
+		return err
 	}
 
 	*reg = Register(mem.cell[addr])
-	mem.log.Printf("load: %s:%s", addr, *reg)
 
 	return nil
 }
@@ -207,10 +208,9 @@ func (mem *Memory) load(addr Word, reg *Register) error {
 // registers.
 func (mem *Memory) store(addr Word, cell Word) error {
 	if addr >= IOPageAddr {
-		return mem.device.Store(addr, Register(cell))
+		return mem.Devices.Store(addr, Register(cell))
 	}
 
-	mem.log.Printf("store: %s:%s", addr, cell)
 	mem.cell[addr] = cell
 
 	return nil

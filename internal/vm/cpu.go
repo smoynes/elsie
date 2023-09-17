@@ -51,35 +51,50 @@ func New(opts ...OptionFn) *LC3 {
 		0xffff, 0x0000,
 		0xfff0, 0xf000,
 		0xff00, 0x0f00,
-		cpu.USP, 0x00f0,
+		cpu.USP, 0x00f0, // ... except the user stack.
 	})
 
-	cpu.Reg[SP] = cpu.USP // Initial stack is user.
-
-	// Configure MMU.
+	// Configure memory.
 	cpu.Mem = NewMemory(&cpu.PSR)
 
-	kbd := newDevice(&cpu, &Keyboard{}, []Word{KBSRAddr, KBDRAddr})
-	disp := newDevice(&cpu, nil, []Word{DSRAddr, KBDRAddr})
-	devs := map[Word]any{
-		MCRAddr:  &cpu.MCR,
-		PSRAddr:  &cpu.PSR,
-		KBSRAddr: &kbd,
-		KBDRAddr: &kbd,
-		DSRAddr:  &disp,
-		DDRAddr:  &disp,
-	}
+	// Create devices.
+	var (
+		// The keyboard device is hardwired and does not have a device
+		// driver. It doesn't really care how it's registers are
+		// addressed.
+		kbd = Keyboard{KBSR: 0xf000, KBDR: '?'}
+
+		// The display is more complicated: a driver configures the
+		// device with the addresses for the display registers.
+		display       = Display{DDR: '!'}
+		driven        = NewDeviceDriver(display)
+		displayDriver = DisplayDriver{device: *driven}
+
+		// Device configuration for the I/O.
+		devices = map[Word]any{
+			MCRAddr:  &cpu.MCR,
+			PSRAddr:  &cpu.PSR,
+			KBSRAddr: &kbd,
+			KBDRAddr: &kbd,
+			DSRAddr:  &displayDriver,
+			DDRAddr:  &displayDriver,
+		}
+	)
 
 	// Run early init.
 	for _, fn := range opts {
 		fn(&cpu)
 	}
 
-	err := cpu.Mem.device.Map(devs)
+	err := cpu.Mem.Devices.Map(devices)
 
 	if err != nil {
 		cpu.log.Panic(err)
 	}
+
+	cpu.log.Print("Configuring devices and drivers")
+	kbd.Configure(&cpu, &kbd, nil)                                          // Hardwired device.
+	displayDriver.Configure(&cpu, driven.device, []Word{DSRAddr, KBDRAddr}) // Set the address range.
 
 	// Drop privileges and execute as user.
 	cpu.PSR &^= (StatusPrivilege & StatusUser)

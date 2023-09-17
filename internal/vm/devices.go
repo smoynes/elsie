@@ -6,155 +6,143 @@ import (
 	"fmt"
 )
 
-// Device is an external device. Every device has a [Driver] that
-// exposes input/output operations to the system.
-type Device struct {
-	driver Driver
-	status DeviceRegister
-	data   DeviceRegister
+func NewDeviceDriver[T DrivableDevice](dev T) *DeviceDriver[T] {
+	driver := new(DeviceDriver[T]) // TODO: no generics
+	driver.device = &dev
+
+	return driver
 }
 
-func (d Device) String() string {
-	return fmt.Sprintf("dev: status: %s, data: %s", d.status, d.data)
+// IODevice represents a device has a single, lonely register for I/O.
+type IODevice interface {
+	Get() Register
+	Put(Register)
+
+	fmt.Stringer
 }
 
-func (d Device) Log(msg string) {
-	if d.driver != nil {
-		d.driver.Log(msg)
-	}
-}
-
-func (d Device) Logf(format string, args ...any) {
-	if d.driver != nil {
-		d.driver.Log(fmt.Sprintf(format, args...))
-	}
-}
-
-// newDevice creates a device using a driver to control access.
-func newDevice(vm *LC3, driver Driver, addrs []Word) Device {
-	dev := Device{
-		status: DeviceRegister(0x0000),
-		data:   DeviceRegister(0x003f), // ?
-	}
-
-	if driver != nil {
-		dev.driver = driver
-		driver.Configure(vm, &dev, addrs)
-	}
-
-	return dev
-}
-
-// Read delegates reads to a device's driver if driver is readable. Otherwise,
-// zero is returned.
-func (d *Device) Read(addr Word) (DeviceRegister, error) {
-	d.driver.Log("%s")
-	d.Logf("dev: read: %s", d)
-
-	if driver, ok := d.driver.(DeviceReader); ok {
-		return driver.Read(d, addr)
-	}
-
-	d.Logf("dev: read unsupported: %T", d.driver) // TODO
-
-	return DeviceRegister(0x0000), nil
-}
-
-// DeviceRegister represents a register on a (virtual) device and is how
-// the (virtual) machine exchanges data with the world.
-type DeviceRegister Register
-
-func (d DeviceRegister) String() string {
-	return Register(d).String()
-}
-
-// A Driver controls a device.
 type Driver interface {
-	// Configure initializes the device and machine for I/O.
-	Configure(machine *LC3, dev *Device, addrs []Word)
-	Log(string)
+	Configure(machine *LC3, dev DrivableDevice, addrs []Word)
+
+	fmt.Stringer
 }
 
-// DeviceReader is a driver that supports reading from a device register.
 type DeviceReader interface {
-	Driver
-	Read(dev *Device, addr Word) (DeviceRegister, error)
+	DrivableDevice
+	Read(addr Word) (Word, error)
 }
 
-// DeviceWriter is a driver that supports writing a value to a device
-// register.
 type DeviceWriter interface {
-	Driver
-	Write(dev *Device, addr Word, val DeviceRegister) error
+	DrivableDevice
+	Write(addr Word, val Register) error
 }
 
-func (d *Device) Write(addr Word, word DeviceRegister) error {
-	d.Logf("dev: read: %T, %s", d.driver, addr)
+type DrivableDevice interface {
+	Device() string
+	fmt.Stringer
+}
 
-	if driver, ok := d.driver.(DeviceWriter); ok {
-		return driver.Write(d, addr, word)
-	} else {
-		return fmt.Errorf("dev: write: %T", d.driver)
+type DeviceDriver[T DrivableDevice] struct {
+	device *T
+}
+
+func (driver *DeviceDriver[T]) String() string {
+	return fmt.Sprintf("DeviceDriver[%T](%s)", driver.device, driver.device)
+}
+
+type DisplayDriver struct {
+	device DeviceDriver[Display]
+
+	// Addresses to which the registers are mapped.
+	statusAddr Word
+	dataAddr   Word
+}
+
+func (driver *DisplayDriver) Configure(vm *LC3, drv DrivableDevice, addrs []Word) {
+	driver.statusAddr = addrs[0]
+	driver.dataAddr = addrs[1]
+
+	var display *Display = drv.(*Display)
+	display.DDR = 'X'
+	display.DSR = 0x8000
+
+	driver.device.device = display
+}
+
+func (driver *DisplayDriver) Read(addr Word) (Word, error) {
+	if addr == driver.statusAddr {
+		return Word(driver.device.device.DSR), nil
 	}
+
+	return Word(0xdea1), fmt.Errorf("read: %w: %s:%s", ErrNoDevice, addr, driver)
+}
+
+func (driver *DisplayDriver) Write(addr Word, value Register) error {
+	if addr == driver.dataAddr {
+		driver.device.device.DDR = value
+		println(value) // TODO: decode and output value
+
+		return nil
+	}
+
+	println(value) // TODO: decode and output value
+
+	return fmt.Errorf("write: %w: %s:%s", ErrNoDevice, addr, driver)
+}
+
+func (driver DisplayDriver) Device() string {
+	return driver.device.String()
+}
+
+func (driver DisplayDriver) String() string {
+	return fmt.Sprintf("DisplayDriver(display:%s)", driver.device.device)
+}
+
+func (device Display) Device() string {
+	return device.String()
+}
+
+func (display Display) String() string {
+	return fmt.Sprintf("Display(status:%s,data:%s)", display.DDR, display.DSR)
+}
+
+// Display is a device for outputting characters.
+type Display struct {
+	DSR, DDR Register
 }
 
 // Keyboard is a hardwired input device for typos. It is its own driver.
 type Keyboard struct {
-	Device
-
-	log logger
+	KBSR, KBDR Register
 }
 
-var (
-	_ DeviceReader = &Keyboard{}
-)
-
-func (k *Keyboard) String() string {
-	return fmt.Sprintf("kbd: %s %v", k.Device, k.log)
+func (k Keyboard) String() string {
+	return fmt.Sprintf("Keyboard(status:%s,data:%s)", k.KBDR, k.KBSR)
 }
 
-const kbdStatusReady = DeviceRegister(1 << 15) // READY
+func (k Keyboard) Device() string { return "Keyboard(ModelM)" }
 
-// Configure sets up the driver.
-func (k *Keyboard) Configure(machine *LC3, dev *Device, addrs []Word) {
-	k.log = machine.log
+func (k *Keyboard) Configure(machine *LC3, dev DrivableDevice, addrs []Word) {
+	k.KBSR = 0x0000
+	k.KBDR = 0x0000
 }
 
-func (k *Keyboard) WithLogger(log logger) {
-	k.log = log
-}
-
-// Read gets the value of the last pressed key and clears the device's ready status.
-func (k *Keyboard) Read(dev *Device, addr Word) (DeviceRegister, error) {
-	k.log.Printf("kbd: read: addr: %s, status: %s, data: %s", addr, dev.status, dev.data)
-	k.log.Printf(fmt.Sprintf("kbd: read: addr: %s, status: %s, data: %s", addr, dev.status, dev.data))
-
-	switch addr {
-	case KBSRAddr:
-		k.Logf("kbd: read: addr: %s, status: %s, data: %s\n", addr, dev.status, dev.data)
-		return DeviceRegister(dev.status), nil
-	case KBDRAddr:
-		k.status ^= kbdStatusReady
-		k.Logf("kbd: read: addr: %s, status: %s, data: %s\n", addr, dev.status, dev.data)
-
-		return DeviceRegister(dev.data), nil
-	default:
-		return 0, fmt.Errorf("kbd: read: bad addr: %s", addr) // TODO
+func (k *Keyboard) Read(addr Word) (Word, error) {
+	if addr == KBSRAddr {
+		return Word(k.KBSR), nil
 	}
+
+	k.KBSR = 0x0000
+
+	return Word(k.KBDR), nil
 }
 
-// Write sets the value of the device status register.
-func (k *Keyboard) Write(dev *Device, addr Word, word DeviceRegister) error {
-	k.Logf("kbd: write: addr: %s, status: %s, data: %s", addr, dev.status, word)
-
-	switch addr {
-	case KBSRAddr:
-		dev.status = word
-		return nil
-	case KBDRAddr:
-		k.Logf("kbd: write: addr: %s", addr)
-		return nil
-	default:
-		return fmt.Errorf("kbd: write: bad addr: %s", addr)
+func (k *Keyboard) Write(addr Word, val Register) error {
+	if addr != KBSRAddr {
+		return fmt.Errorf("kbd: %w: %s", ErrNoDevice, addr)
 	}
+
+	k.KBSR = val
+
+	return nil
 }
