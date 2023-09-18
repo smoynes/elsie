@@ -55,7 +55,7 @@ func (mmio MMIO) Store(addr Word, mdr Register) error {
 
 	if dev == nil {
 		return fmt.Errorf("%w: write: addr: %s %v", ErrNoDevice, addr, mmio.devs)
-	} else if reg, ok := dev.(IODevice); ok && reg != nil {
+	} else if reg, ok := dev.(RegisterDevice); ok && reg != nil {
 		reg.Put(mdr)
 	} else if driver, ok := dev.(DeviceWriter); ok && driver != nil {
 		err := driver.Write(addr, mdr)
@@ -79,7 +79,7 @@ func (mmio MMIO) Load(addr Word) (Register, error) {
 
 	if dev == nil {
 		return Register(0xffff), fmt.Errorf("%w: write: addr: %s", ErrNoDevice, addr)
-	} else if reg, ok := dev.(IODevice); ok {
+	} else if reg, ok := dev.(RegisterDevice); ok {
 		value = Word(reg.Get())
 	} else if driver, ok := dev.(DeviceReader); ok {
 		var err error
@@ -97,8 +97,6 @@ func (mmio MMIO) Load(addr Word) (Register, error) {
 	return Register(value), nil
 }
 
-var _ DrivableDevice = &Keyboard{}
-
 // Map configures the memory mapping for device I/O. Keys in the map are addresses and values are
 // device drivers or registers.
 func (mmio *MMIO) Map(devices map[Word]any) error {
@@ -107,10 +105,7 @@ func (mmio *MMIO) Map(devices map[Word]any) error {
 	for addr, dev := range devices {
 		if dev == nil {
 			return fmt.Errorf("%w: map: bad device: %s, %T", errMMIO, addr, dev)
-		} else if dd, ok := dev.(DrivableDevice); ok && dd != nil {
-			mmio.log.Printf("mmio: map: %s:%s", addr.String(), dd.String())
-			updated[addr] = dd
-		} else if dd, ok := dev.(IODevice); ok && dd != nil {
+		} else if dd, ok := dev.(Device); ok && dd != nil {
 			mmio.log.Printf("mmio: map: %s:%s (%T)", addr.String(), dd.String(), dev)
 			updated[addr] = dd
 		} else {

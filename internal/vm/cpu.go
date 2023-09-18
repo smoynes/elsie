@@ -93,13 +93,13 @@ func New(opts ...OptionFn) *LC3 {
 	}
 
 	cpu.log.Print("Configuring devices and drivers")
-	kbd.Configure(&cpu, &kbd, nil)                                          // Hardwired device.
-	displayDriver.Configure(&cpu, driven.device, []Word{DSRAddr, KBDRAddr}) // Set the address range.
+	kbd.Init(&cpu, nil)                                 // Keyboard needs no configuration.
+	displayDriver.Init(&cpu, []Word{DSRAddr, KBDRAddr}) // Configure the display's address range.
 
 	// Drop privileges and execute as user.
 	cpu.PSR &^= (StatusPrivilege & StatusUser)
 
-	// Run late init..
+	// Run late init...
 	for _, fn := range opts {
 		fn(&cpu)
 	}

@@ -6,50 +6,50 @@ import (
 	"fmt"
 )
 
-func NewDeviceDriver[T DrivableDevice](dev T) *DeviceDriver[T] {
+// NewDeviceDriver creates a new driver for the given device. The driver is initialized with a
+// reference to the device.
+func NewDeviceDriver[T Device](device T) *DeviceDriver[T] {
 	driver := new(DeviceDriver[T]) // TODO: no generics
-	driver.device = &dev
+	driver.device = &device
 
 	return driver
 }
 
-// IODevice represents a device has a single, lonely register for I/O.
-type IODevice interface {
-	Get() Register
-	Put(Register)
+// Device is the target of I/O.
+type Device interface {
+	// Init is called at startup to initialize a device or its driver.
+	Init(machine *LC3, addrs []Word)
 
 	fmt.Stringer
 }
 
-type Driver interface {
-	Configure(machine *LC3, dev DrivableDevice, addrs []Word)
-
-	fmt.Stringer
+// RegisterDevice represents a device that has a single, lonely register for I/O. In contrast to more
+// complicated devices, a RegisterDevice does not have a device driver or other state.
+type RegisterDevice interface {
+	Device
+	Get() Register
+	Put(Register)
 }
 
 type DeviceReader interface {
-	DrivableDevice
+	Device
 	Read(addr Word) (Word, error)
 }
 
 type DeviceWriter interface {
-	DrivableDevice
+	Device
 	Write(addr Word, val Register) error
 }
 
-type DrivableDevice interface {
-	Device() string
-	fmt.Stringer
-}
-
-type DeviceDriver[T DrivableDevice] struct {
+type DeviceDriver[T Device] struct {
 	device *T
 }
 
-func (driver *DeviceDriver[T]) String() string {
-	return fmt.Sprintf("DeviceDriver[%T](%s)", driver.device, driver.device)
+func (d *DeviceDriver[T]) String() string {
+	return fmt.Sprintf("DeviceDriver[%T](%s)", d.device, d.device)
 }
 
+// DisplayDriver is a device for an extremely simple terminal display.
 type DisplayDriver struct {
 	device DeviceDriver[Display]
 
@@ -58,15 +58,12 @@ type DisplayDriver struct {
 	dataAddr   Word
 }
 
-func (driver *DisplayDriver) Configure(vm *LC3, drv DrivableDevice, addrs []Word) {
+func (driver *DisplayDriver) Init(vm *LC3, addrs []Word) {
 	driver.statusAddr = addrs[0]
 	driver.dataAddr = addrs[1]
 
-	var display *Display = drv.(*Display)
-	display.DDR = 'X'
-	display.DSR = 0x8000
-
-	driver.device.device = display
+	device := driver.device.device
+	device.DSR = 0x8000
 }
 
 func (driver *DisplayDriver) Read(addr Word) (Word, error) {
@@ -98,17 +95,15 @@ func (driver DisplayDriver) String() string {
 	return fmt.Sprintf("DisplayDriver(display:%s)", driver.device.device)
 }
 
-func (device Display) Device() string {
-	return device.String()
-}
-
-func (display Display) String() string {
-	return fmt.Sprintf("Display(status:%s,data:%s)", display.DDR, display.DSR)
-}
-
 // Display is a device for outputting characters.
 type Display struct {
 	DSR, DDR Register
+}
+
+func (d Display) Init(_ *LC3, _ []Word) {}
+
+func (display Display) String() string {
+	return fmt.Sprintf("Display(status:%s,data:%s)", display.DDR, display.DSR)
 }
 
 // Keyboard is a hardwired input device for typos. It is its own driver.
@@ -122,7 +117,7 @@ func (k Keyboard) String() string {
 
 func (k Keyboard) Device() string { return "Keyboard(ModelM)" }
 
-func (k *Keyboard) Configure(machine *LC3, dev DrivableDevice, addrs []Word) {
+func (k *Keyboard) Init(machine *LC3, _ []Word) {
 	k.KBSR = 0x0000
 	k.KBDR = 0x0000
 }

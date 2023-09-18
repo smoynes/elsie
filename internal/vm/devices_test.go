@@ -7,22 +7,20 @@ import (
 // Type assertions for expected devices.
 var (
 	// CPU registers are simple I/O devices.
-	_ IODevice = (*ProcessorStatus)(nil)
-	_ IODevice = (*ControlRegister)(nil)
+	_ RegisterDevice = (*ProcessorStatus)(nil)
+	_ RegisterDevice = (*ControlRegister)(nil)
 
 	// Display has a driver.
-	d                = &DisplayDriver{}
-	_ Driver         = d
-	_ DeviceWriter   = d
-	_ DeviceReader   = d
-	_ DrivableDevice = d
+	d              = &DisplayDriver{}
+	_ Device       = d
+	_ DeviceWriter = d
+	_ DeviceReader = d
 
 	// Keyboard is its own driver.
-	k                = &Keyboard{}
-	_ Driver         = k
-	_ DrivableDevice = k
-	_ DeviceWriter   = d
-	_ DeviceReader   = d
+	k              = &Keyboard{}
+	_ Device       = k
+	_ DeviceWriter = k
+	_ DeviceReader = k
 )
 
 var uninitializedRegister = Register(0x0101)
@@ -36,12 +34,12 @@ func TestKeyboardDriver(tt *testing.T) {
 			KBSR: uninitializedRegister,
 			KBDR: uninitializedRegister,
 		}
-		driver Driver       = &kbd
+		driver Device       = &kbd
 		reader DeviceReader = &kbd
 		writer DeviceWriter = &kbd
 	)
 
-	driver.Configure(vm, &kbd, nil)
+	driver.Init(vm, nil)
 
 	t.Log(kbd.Device())
 	t.Logf("cool 🕶️ %s", kbd)
@@ -85,16 +83,18 @@ func TestDisplayDriver(tt *testing.T) {
 	displayDriver.device.device.DSR = uninitializedRegister
 	displayDriver.device.device.DDR = uninitializedRegister
 
-	displayDriver.Configure(vm, &Display{}, []Word{0xface, 0xf001})
+	displayDriver.Init(vm, []Word{0xface, 0xf001})
 
 	addr := Word(0xface)
 
 	if got, err := displayDriver.Read(addr); err != nil {
 		t.Error(err)
 	} else if got == Word(uninitializedRegister) {
-		t.Errorf("uninitialized status register: %s", addr)
+		t.Errorf("uninitialized status register: %s, want: %s, got: %s",
+			addr, Word(0x8000), got)
 	} else if got != Word(0x8000) {
-		t.Errorf("uninitialized status register: %s", addr)
+		t.Errorf("unexpected status register: %s, want: %s, got: %s",
+			addr, Word(0x8000), got)
 	}
 
 	addr = Word(0xf001)
@@ -109,6 +109,4 @@ func TestDisplayDriver(tt *testing.T) {
 	if err := displayDriver.Write(addr, val); err != nil {
 		t.Errorf("write error: %s: %s", addr, err)
 	}
-
-	driver.device.Device()
 }

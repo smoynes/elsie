@@ -75,6 +75,11 @@ func (p ProgramCounter) String() string {
 // | 15 |14   12|11 9|8      3|2    0|
 type ProcessorStatus Register
 
+// Init configures the device at startup.
+func (p *ProcessorStatus) Init(_ *LC3, _ []Word) {
+	*p = ProcessorStatus(0x8080)
+}
+
 // Get reads the register for I/O.
 func (p ProcessorStatus) Get() Register {
 	return Register(p)
@@ -237,6 +242,11 @@ func (c ControlRegister) String() string {
 	}
 
 	return fmt.Sprintf("%s (%s)", Register(c).String(), run)
+}
+
+// Init configures the device at startup.
+func (p *ControlRegister) Init(_ *LC3, _ []Word) {
+	*p = 0x8080
 }
 
 // Get returns the register value for I/O.
