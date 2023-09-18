@@ -26,8 +26,15 @@ func (testHarness) Make() *vm.LC3 {
 }
 
 // Context creates a test context. The context is cancelled after a timeout.
-func (testHarness) Context() (context.Context, context.CancelFunc) {
-	return context.WithTimeoutCause(context.Background(), timeout, errTestTimeout)
+func (testHarness) Context() (ctx context.Context,
+	cause context.CancelCauseFunc,
+	cancel context.CancelFunc,
+) {
+	ctx = context.Background()
+	ctx, cause = context.WithCancelCause(ctx)
+	ctx, cancel = context.WithTimeout(ctx, timeout)
+
+	return ctx, cause, cancel
 }
 
 var (
@@ -41,10 +48,26 @@ var (
 
 func TestMain(tt *testing.T) {
 	t := testHarness{tt}
-	ctx, done := t.Context()
-	defer done()
+	start := time.Now()
+
+	ctx, cause, cancel := t.Context()
+	defer cancel()
 
 	machine := t.Make()
+
+	go func() {
+		for {
+			select {
+			case <-time.After(timeout / 6):
+				// This seems... racy.
+				t.Log(machine.String())
+				t.Log(machine.Reg.String())
+				t.Log("")
+			case <-ctx.Done():
+				cancel()
+			}
+		}
+	}()
 
 	go func() {
 		t.Logf("running")
@@ -53,41 +76,23 @@ func TestMain(tt *testing.T) {
 
 		if !errors.Is(err, vm.ErrNoDevice) {
 			t.Error(err)
+			cause(err)
+		} else if ctx.Err() != nil {
+			cause(ctx.Err())
 		}
-		time.Sleep(2 * time.Second)
 
-		done()
-
-		t.Logf("ranned: err: %s, ctx: %v", err, ctx.Err())
+		t.Logf("ranned: err: %s", context.Cause(ctx))
+		cancel()
 	}()
 
-	start := time.Now()
-
-loop:
-	for {
-		select {
-		case <-time.After(20 * time.Millisecond):
-		case <-ctx.Done():
-			break loop
-		}
-
-		// This seems... racy.
-		t.Log(machine.String())
-		t.Log(machine.Reg.String())
-		t.Log(machine.PC.String())
-		t.Log(machine.IR.String())
-		t.Log(machine.MCR.String())
-		t.Log(machine.Mem.MAR.String())
-		t.Log(machine.Mem.MDR.String())
-		t.Log(machine.SSP.String())
-		t.Log(machine.USP.String())
-		t.Log("")
-	}
+	<-ctx.Done()
 
 	elapsed := time.Since(start)
 	err := context.Cause(ctx)
 
 	switch {
+	case err == nil:
+		t.Logf("test: ok, elapsed time: %s", elapsed)
 	case errors.Is(err, context.Canceled):
 		t.Log(machine.String())
 		t.Log(machine.Reg.String())
@@ -106,6 +111,4 @@ loop:
 	default:
 		t.Errorf("unexpected error: %s", err)
 	}
-
-	t.Logf("test: elapsed: %s", elapsed)
 }
