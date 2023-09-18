@@ -57,7 +57,7 @@ func (mmio MMIO) Store(addr Word, mdr Register) error {
 		return fmt.Errorf("%w: write: addr: %s %v", ErrNoDevice, addr, mmio.devs)
 	} else if reg, ok := dev.(RegisterDevice); ok && reg != nil {
 		reg.Put(mdr)
-	} else if driver, ok := dev.(DeviceWriter); ok && driver != nil {
+	} else if driver, ok := dev.(WriteDriver); ok && driver != nil {
 		err := driver.Write(addr, mdr)
 		if err != nil {
 			return fmt.Errorf("mmio: write: %s:%s: %w", addr, dev, err)
@@ -81,7 +81,7 @@ func (mmio MMIO) Load(addr Word) (Register, error) {
 		return Register(0xffff), fmt.Errorf("%w: write: addr: %s", ErrNoDevice, addr)
 	} else if reg, ok := dev.(RegisterDevice); ok {
 		value = Word(reg.Get())
-	} else if driver, ok := dev.(DeviceReader); ok {
+	} else if driver, ok := dev.(ReadDriver); ok {
 		var err error
 		value, err = driver.Read(addr)
 
@@ -105,7 +105,7 @@ func (mmio *MMIO) Map(devices map[Word]any) error {
 	for addr, dev := range devices {
 		if dev == nil {
 			return fmt.Errorf("%w: map: bad device: %s, %T", errMMIO, addr, dev)
-		} else if dd, ok := dev.(Device); ok && dd != nil {
+		} else if dd, ok := dev.(Driver); ok && dd != nil {
 			mmio.log.Printf("mmio: map: %s:%s (%T)", addr.String(), dd.String(), dev)
 			updated[addr] = dd
 		} else {

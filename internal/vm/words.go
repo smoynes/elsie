@@ -81,14 +81,10 @@ func (p *ProcessorStatus) Init(_ *LC3, _ []Word) {
 }
 
 // Get reads the register for I/O.
-func (p ProcessorStatus) Get() Register {
-	return Register(p)
-}
+func (p ProcessorStatus) Get() Register { return Register(p) }
 
 // Put sets the register value for I/O.
-func (p *ProcessorStatus) Put(val Register) {
-	*p = ProcessorStatus(val)
-}
+func (p *ProcessorStatus) Put(val Register) { *p = ProcessorStatus(val) }
 
 // Status flags in PSR vector.
 const (

@@ -11,16 +11,16 @@ var (
 	_ RegisterDevice = (*ControlRegister)(nil)
 
 	// Display has a driver.
-	d              = &DisplayDriver{}
-	_ Device       = d
-	_ DeviceWriter = d
-	_ DeviceReader = d
+	d             = &DisplayDriver{}
+	_ Driver      = d
+	_ WriteDriver = d
+	_ ReadDriver  = d
 
 	// Keyboard is its own driver.
-	k              = &Keyboard{}
-	_ Device       = k
-	_ DeviceWriter = k
-	_ DeviceReader = k
+	k             = &Keyboard{}
+	_ Driver      = k
+	_ WriteDriver = k
+	_ ReadDriver  = k
 )
 
 var uninitializedRegister = Register(0x0101)
@@ -34,9 +34,9 @@ func TestKeyboardDriver(tt *testing.T) {
 			KBSR: uninitializedRegister,
 			KBDR: uninitializedRegister,
 		}
-		driver Device       = &kbd
-		reader DeviceReader = &kbd
-		writer DeviceWriter = &kbd
+		driver Driver      = &kbd
+		reader ReadDriver  = &kbd
+		writer WriteDriver = &kbd
 	)
 
 	driver.Init(vm, nil)
@@ -75,13 +75,13 @@ func TestDisplayDriver(tt *testing.T) {
 	var (
 		t             = NewTestHarness(tt)
 		vm            = t.Make()
-		driver        = NewDeviceDriver(Display{})
-		deviceDriver  = driver
-		displayDriver = &DisplayDriver{*deviceDriver, Word(0xface), Word(0xf001)}
+		display       = Display{}
+		handle        = NewDeviceHandle[*Display](display)
+		displayDriver = &DisplayDriver{*handle, Word(0xface), Word(0xf001)}
 	)
 
-	displayDriver.device.device.DSR = uninitializedRegister
-	displayDriver.device.device.DDR = uninitializedRegister
+	displayDriver.handle.device.DSR = uninitializedRegister
+	displayDriver.handle.device.DDR = uninitializedRegister
 
 	displayDriver.Init(vm, []Word{0xface, 0xf001})
 

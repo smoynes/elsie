@@ -67,8 +67,8 @@ func New(opts ...OptionFn) *LC3 {
 		// The display is more complicated: a driver configures the
 		// device with the addresses for the display registers.
 		display       = Display{DDR: '!'}
-		driven        = NewDeviceDriver(display)
-		displayDriver = DisplayDriver{device: *driven}
+		handle        = NewDeviceHandle[*Display, Display](display)
+		displayDriver = DisplayDriver{handle: *handle}
 
 		// Device configuration for the I/O.
 		devices = map[Word]any{
