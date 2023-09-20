@@ -49,7 +49,6 @@ var (
 func TestMain(tt *testing.T) {
 	t := testHarness{tt}
 	start := time.Now()
-
 	ctx, cause, cancel := t.Context()
 	defer cancel()
 
