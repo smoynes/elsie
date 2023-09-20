@@ -103,8 +103,8 @@ func (op *not) Decode(vm *LC3) {
 }
 
 func (op *not) Execute() {
-	op.vm.Reg[op.dr] = op.vm.Reg[op.sr] ^ 0xffff
-	op.vm.PSR.Set(op.vm.Reg[op.dr])
+	op.vm.REG[op.dr] = op.vm.REG[op.sr] ^ 0xffff
+	op.vm.PSR.Set(op.vm.REG[op.dr])
 }
 
 // AND: Bitwise AND binary operator (registers)
@@ -137,9 +137,9 @@ func (a *and) Decode(vm *LC3) {
 }
 
 func (op *and) Execute() {
-	op.vm.Reg[op.dest] = op.vm.Reg[op.sr1]
-	op.vm.Reg[op.dest] &= op.vm.Reg[op.sr2]
-	op.vm.PSR.Set(op.vm.Reg[op.dest])
+	op.vm.REG[op.dest] = op.vm.REG[op.sr1]
+	op.vm.REG[op.dest] &= op.vm.REG[op.sr2]
+	op.vm.PSR.Set(op.vm.REG[op.dest])
 }
 
 type andImm struct {
@@ -163,8 +163,8 @@ func (a *andImm) Decode(vm *LC3) {
 }
 
 func (op *andImm) Execute() {
-	op.vm.Reg[op.dr] = op.vm.Reg[op.sr] & Register(op.lit)
-	op.vm.PSR.Set(op.vm.Reg[op.dr])
+	op.vm.REG[op.dr] = op.vm.REG[op.sr] & Register(op.lit)
+	op.vm.PSR.Set(op.vm.REG[op.dr])
 }
 
 // ADD: Arithmetic addition operator
@@ -200,8 +200,8 @@ func (op *add) Decode(vm *LC3) {
 }
 
 func (op *add) Execute() {
-	op.vm.Reg[op.dr] = Register(int16(op.vm.Reg[op.sr1]) + int16(op.vm.Reg[op.sr2]))
-	op.vm.PSR.Set(op.vm.Reg[op.dr])
+	op.vm.REG[op.dr] = Register(int16(op.vm.REG[op.sr1]) + int16(op.vm.REG[op.sr2]))
+	op.vm.PSR.Set(op.vm.REG[op.dr])
 }
 
 type addImm struct {
@@ -225,8 +225,8 @@ func (op *addImm) Decode(vm *LC3) {
 }
 
 func (op *addImm) Execute() {
-	op.vm.Reg[op.dr] = Register(int16(op.vm.Reg[op.sr]) + int16(op.lit))
-	op.vm.PSR.Set(op.vm.Reg[op.dr])
+	op.vm.REG[op.dr] = Register(int16(op.vm.REG[op.sr]) + int16(op.lit))
+	op.vm.PSR.Set(op.vm.REG[op.dr])
 }
 
 // LD: Load word from memory.
@@ -258,11 +258,11 @@ func (op *ld) EvalAddress() {
 }
 
 func (op *ld) FetchOperands() {
-	op.vm.Reg[op.dr] = op.vm.Mem.MDR
+	op.vm.REG[op.dr] = op.vm.Mem.MDR
 }
 
 func (op *ld) Execute() {
-	op.vm.PSR.Set(op.vm.Reg[op.dr])
+	op.vm.PSR.Set(op.vm.REG[op.dr])
 }
 
 // LDI: Load indirect
@@ -301,7 +301,7 @@ func (op *ldi) FetchOperands() {
 		return
 	}
 
-	op.vm.Reg[op.dr] = op.vm.Mem.MDR
+	op.vm.REG[op.dr] = op.vm.Mem.MDR
 }
 
 func (op *ldi) Execute() {
@@ -339,15 +339,15 @@ func (op *ldr) Decode(vm *LC3) {
 }
 
 func (op *ldr) EvalAddress() {
-	op.vm.Mem.MAR = Register(int16(op.vm.Reg[op.base]) + int16(op.offset))
+	op.vm.Mem.MAR = Register(int16(op.vm.REG[op.base]) + int16(op.offset))
 }
 
 func (op *ldr) FetchOperands() {
-	op.vm.Reg[op.dr] = op.vm.Mem.MDR
+	op.vm.REG[op.dr] = op.vm.Mem.MDR
 }
 
 func (op *ldr) Execute() {
-	op.vm.PSR.Set(op.vm.Reg[op.dr])
+	op.vm.PSR.Set(op.vm.REG[op.dr])
 }
 
 // LEA: Load effective address
@@ -378,7 +378,7 @@ func (op *lea) EvalAddress() {
 }
 
 func (op *lea) FetchOperands() {
-	op.vm.Reg[op.dr] = op.vm.Mem.MDR
+	op.vm.REG[op.dr] = op.vm.Mem.MDR
 }
 
 // ST: Store word in memory.
@@ -410,7 +410,7 @@ func (op *st) EvalAddress() {
 }
 
 func (op *st) Execute() {
-	op.vm.Mem.MDR = op.vm.Reg[op.sr]
+	op.vm.Mem.MDR = op.vm.REG[op.sr]
 }
 
 func (op *st) StoreResult() {} // ?
@@ -449,7 +449,7 @@ func (op *sti) FetchOperands() {
 }
 
 func (op *sti) Execute() {
-	op.vm.Mem.MDR = op.vm.Reg[op.sr]
+	op.vm.Mem.MDR = op.vm.REG[op.sr]
 }
 
 func (op *sti) StoreResult() {}
@@ -481,11 +481,11 @@ func (op *str) Decode(vm *LC3) {
 }
 
 func (op *str) EvalAddress() {
-	op.vm.Mem.MAR = Register(int16(op.vm.Reg[op.base]) + int16(op.offset))
+	op.vm.Mem.MAR = Register(int16(op.vm.REG[op.base]) + int16(op.offset))
 }
 
 func (op *str) Execute() {
-	op.vm.Mem.MDR = op.vm.Reg[op.sr]
+	op.vm.Mem.MDR = op.vm.REG[op.sr]
 }
 
 func (op *str) StoreResult() {}
@@ -518,7 +518,7 @@ func (op *jmp) Decode(vm *LC3) {
 }
 
 func (op *jmp) Execute() {
-	op.vm.PC = ProgramCounter(op.vm.Reg[op.sr])
+	op.vm.PC = ProgramCounter(op.vm.REG[op.sr])
 }
 
 // JSR: Jump to subroutine (relative mode)
@@ -551,7 +551,7 @@ func (op *jsr) Decode(vm *LC3) {
 }
 
 func (op *jsr) Execute() {
-	op.vm.Reg[RETP] = Register(op.vm.PC)
+	op.vm.REG[RETP] = Register(op.vm.PC)
 	op.vm.PC = ProgramCounter(int16(op.vm.PC) + int16(op.offset))
 }
 
@@ -572,8 +572,8 @@ func (op *jsrr) Decode(vm *LC3) {
 }
 
 func (op *jsrr) Execute() {
-	op.vm.Reg[RETP] = Register(op.vm.PC)
-	op.vm.PC = ProgramCounter(op.vm.Reg[op.sr])
+	op.vm.REG[RETP] = Register(op.vm.PC)
+	op.vm.PC = ProgramCounter(op.vm.REG[op.sr])
 }
 
 // TRAP: System call or software interrupt.
@@ -625,8 +625,8 @@ func (err *trapErr) Handle(cpu *LC3) error {
 	// Switch from the user to the system stack and system privilege level
 	// if it is a user trap.
 	if cpu.PSR.Privilege() == PrivilegeUser {
-		cpu.USP = cpu.Reg[SP]
-		cpu.Reg[SP] = cpu.SSP
+		cpu.USP = cpu.REG[SP]
+		cpu.REG[SP] = cpu.SSP
 		cpu.PSR &= ^StatusUser
 	}
 
@@ -652,7 +652,7 @@ func (op *rti) Execute() {
 	if op.vm.PSR.Privilege() == PrivilegeUser {
 		op.err = &pmv{
 			interrupt{
-				table: ExceptionTable,
+				table: ExceptionServiceRoutines,
 				vec:   ExceptionPMV,
 				pc:    op.vm.PC,
 				psr:   op.vm.PSR,
@@ -679,8 +679,8 @@ func (op *rti) Execute() {
 
 	if op.vm.PSR.Privilege() == PrivilegeUser {
 		// When dropping privileges, swap system and user stacks.
-		op.vm.SSP = op.vm.Reg[SP]
-		op.vm.Reg[SP] = op.vm.USP
+		op.vm.SSP = op.vm.REG[SP]
+		op.vm.REG[SP] = op.vm.USP
 	}
 }
 
@@ -695,8 +695,8 @@ func (pmv *pmv) Error() string {
 func (pmv *pmv) Handle(cpu *LC3) error {
 	// PMV only occurs with user privileges so switch to system before
 	// handling the interrupt.
-	cpu.USP = cpu.Reg[SP]
-	cpu.Reg[SP] = cpu.SSP
+	cpu.USP = cpu.REG[SP]
+	cpu.REG[SP] = cpu.SSP
 	cpu.PSR ^= StatusUser
 
 	return pmv.interrupt.Handle(cpu)
@@ -718,7 +718,7 @@ func (op *resv) Decode(vm *LC3) {
 func (op *resv) Execute() {
 	op.err = &xop{
 		interrupt{
-			table: ExceptionTable,
+			table: ExceptionServiceRoutines,
 			vec:   ExceptionXOP,
 			pc:    op.vm.PC,
 			psr:   op.vm.PSR,
@@ -738,8 +738,8 @@ func (xop *xop) Handle(cpu *LC3) error {
 	// Switch from the user to the system stack and system privilege level
 	// if it is a user trap.
 	if cpu.PSR.Privilege() == PrivilegeUser {
-		cpu.USP = cpu.Reg[SP]
-		cpu.Reg[SP] = cpu.SSP
+		cpu.USP = cpu.REG[SP]
+		cpu.REG[SP] = cpu.SSP
 		cpu.PSR ^= StatusUser
 	}
 

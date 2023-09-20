@@ -13,7 +13,7 @@ func TestRESV(tt *testing.T) {
 	)
 
 	cpu.PSR = (StatusSystem & StatusPrivilege) | StatusNormal | StatusNegative
-	cpu.Reg[SP] = 0x2ff0
+	cpu.REG[SP] = 0x2ff0
 	cpu.SSP = 0x1200
 	_ = cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
 	_ = cpu.Mem.store(Word(0x0101), 0x1100)
@@ -33,8 +33,8 @@ func TestRESV(tt *testing.T) {
 		t.Errorf("PC want: %0#x, got: %s", 0x1000, cpu.PC)
 	}
 
-	if cpu.Reg[SP] != Register(0x2ff0-2) {
-		t.Errorf("SP want: %s, got: %s", Word(0x2fee)-2, cpu.Reg[SP])
+	if cpu.REG[SP] != Register(0x2ff0-2) {
+		t.Errorf("SP want: %s, got: %s", Word(0x2fee)-2, cpu.REG[SP])
 	}
 
 	if cpu.USP != 0xfe00 {
@@ -57,7 +57,7 @@ func TestInstructions(tt *testing.T) {
 		cpu.PC = 0x3000
 		cpu.PSR = StatusUser | StatusNormal | StatusNegative
 		t.Log(cpu.PSR.String())
-		cpu.Reg[SP] = 0x2ff0
+		cpu.REG[SP] = 0x2ff0
 		cpu.SSP = 0x1200
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
 		_ = cpu.Mem.store(Word(0x0101), 0x1100)
@@ -82,8 +82,8 @@ func TestInstructions(tt *testing.T) {
 				(^StatusUser&StatusPrivilege)|StatusNormal|StatusNegative, cpu.PSR)
 		}
 
-		if cpu.Reg[SP] != cpu.SSP-2 {
-			t.Errorf("SP want: %s, got: %s", cpu.SSP, cpu.Reg[SP])
+		if cpu.REG[SP] != cpu.SSP-2 {
+			t.Errorf("SP want: %s, got: %s", cpu.SSP, cpu.REG[SP])
 		}
 
 		if cpu.USP != 0x2ff0 {
@@ -158,7 +158,7 @@ func TestInstructions(tt *testing.T) {
 			cpu = t.Make()
 		)
 
-		cpu.Reg[R0] = 0b0101_1010_1111_0000
+		cpu.REG[R0] = 0b0101_1010_1111_0000
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1001_000_000_111111)
 
 		err := cpu.Step()
@@ -170,8 +170,8 @@ func TestInstructions(tt *testing.T) {
 			t.Errorf("instr: %s, want: %b, got: %b", cpu.IR, NOT, op)
 		}
 
-		if cpu.Reg[R0] != 0b1010_0101_0000_1111 {
-			t.Errorf("r0 incorrect, want: %0b, got: %0b", 0b1010_0101_0000_1111, cpu.Reg[R0])
+		if cpu.REG[R0] != 0b1010_0101_0000_1111 {
+			t.Errorf("r0 incorrect, want: %0b, got: %0b", 0b1010_0101_0000_1111, cpu.REG[R0])
 		}
 
 		if cpu.PSR.Cond() != ConditionNegative {
@@ -186,17 +186,17 @@ func TestInstructions(tt *testing.T) {
 		)
 
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_0_00_001)
-		cpu.Reg[R0] = 0x5aff
-		cpu.Reg[R1] = 0x00f0
+		cpu.REG[R0] = 0x5aff
+		cpu.REG[R1] = 0x00f0
 
 		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
 		}
 
-		if cpu.Reg[R0] != 0x00f0 {
+		if cpu.REG[R0] != 0x00f0 {
 			t.Errorf("R0 incorrect, want: %0#16b, got: %0#b",
-				0x0000, cpu.Reg[R0])
+				0x0000, cpu.REG[R0])
 		}
 
 		if cpu.PSR.Cond() != ConditionPositive {
@@ -212,7 +212,7 @@ func TestInstructions(tt *testing.T) {
 		)
 
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0101_000_000_1_10101)
-		cpu.Reg[R0] = 0b0101_1010_1111_1111
+		cpu.REG[R0] = 0b0101_1010_1111_1111
 
 		err := cpu.Step()
 		if err != nil {
@@ -223,8 +223,8 @@ func TestInstructions(tt *testing.T) {
 			t.Errorf("instr: %s, want: %04b, got: %04b", cpu.IR, AND, op)
 		}
 
-		if cpu.Reg[R0] != 0x5af5 {
-			t.Errorf("r0 incorrect, want: %016b, got: %016b", 0x5af5, cpu.Reg[R0])
+		if cpu.REG[R0] != 0x5af5 {
+			t.Errorf("r0 incorrect, want: %016b, got: %016b", 0x5af5, cpu.REG[R0])
 		}
 
 		if !cpu.PSR.Positive() {
@@ -239,8 +239,8 @@ func TestInstructions(tt *testing.T) {
 		)
 
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_0_00001)
-		cpu.Reg[R0] = 0
-		cpu.Reg[R1] = 1
+		cpu.REG[R0] = 0
+		cpu.REG[R1] = 1
 
 		err := cpu.Step()
 		if err != nil {
@@ -254,8 +254,8 @@ func TestInstructions(tt *testing.T) {
 		oper := cpu.Decode()
 		t.Logf("oper: %#+v", oper)
 
-		if cpu.Reg[R0] != 1 {
-			t.Errorf("r0 incorrect, want: %016b, got: %016b", 1, cpu.Reg[R0])
+		if cpu.REG[R0] != 1 {
+			t.Errorf("r0 incorrect, want: %016b, got: %016b", 1, cpu.REG[R0])
 		}
 
 		if !cpu.PSR.Positive() {
@@ -270,7 +270,7 @@ func TestInstructions(tt *testing.T) {
 		)
 
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_1_10000)
-		cpu.Reg[R0] = 0
+		cpu.REG[R0] = 0
 
 		err := cpu.Step()
 		if err != nil {
@@ -285,9 +285,9 @@ func TestInstructions(tt *testing.T) {
 		oper := cpu.Decode()
 		t.Logf("oper: %#+v", oper)
 
-		if cpu.Reg[R0] != 0xfff0 {
+		if cpu.REG[R0] != 0xfff0 {
 			t.Errorf("r0 incorrect, want: %s, got: %s",
-				Register(0xfff0), cpu.Reg[R0])
+				Register(0xfff0), cpu.REG[R0])
 		}
 
 		if !cpu.PSR.Negative() {
@@ -303,7 +303,7 @@ func TestInstructions(tt *testing.T) {
 		)
 
 		cpu.PC = 0x00ff
-		cpu.Reg[R2] = 0xcafe
+		cpu.REG[R2] = 0xcafe
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0010_010_011000110)
 		_ = cpu.Mem.store(Word(0x0100+0x00c6), 0x0f00)
 
@@ -317,9 +317,9 @@ func TestInstructions(tt *testing.T) {
 				cpu.IR, LD, op)
 		}
 
-		if cpu.Reg[R2] != 0x0f00 {
+		if cpu.REG[R2] != 0x0f00 {
 			t.Errorf("R2 incorrect, want: %s, got: %s",
-				Register(0x0f00), cpu.Reg[R2])
+				Register(0x0f00), cpu.REG[R2])
 		}
 
 		if !cpu.PSR.Positive() {
@@ -336,7 +336,7 @@ func TestInstructions(tt *testing.T) {
 
 		cpu.PC = 0x00ff
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1100_000_111_000000)
-		cpu.Reg[R7] = 0x0010
+		cpu.REG[R7] = 0x0010
 
 		err := cpu.Step()
 		if err != nil {
@@ -362,7 +362,7 @@ func TestInstructions(tt *testing.T) {
 
 		cpu.PC = 0x0400
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0100_0_00_100_000000)
-		cpu.Reg[R4] = 0x0300
+		cpu.REG[R4] = 0x0300
 		err := cpu.Step()
 		if err != nil {
 			t.Error(err)
@@ -378,7 +378,7 @@ func TestInstructions(tt *testing.T) {
 				Register(0x0300), cpu.PC)
 		}
 
-		if cpu.Reg[R7] != 0x0401 {
+		if cpu.REG[R7] != 0x0401 {
 			t.Errorf("R7 incorrect, want: %s, got: %s",
 				Register(0x0401), cpu.PC)
 		}
@@ -394,7 +394,7 @@ func TestInstructions(tt *testing.T) {
 		_ = cpu.Mem.store(Word(cpu.PC), 0xa001)
 		addr := Word(0x0402)
 		_ = cpu.Mem.store(Word(addr), 0xdad0)
-		cpu.Reg[R0] = 0xffff
+		cpu.REG[R0] = 0xffff
 		_ = cpu.Mem.store(Word(0xdad0), 0xcafe)
 
 		err := cpu.Step()
@@ -419,9 +419,9 @@ func TestInstructions(tt *testing.T) {
 				Register(0x0401), cpu.PC)
 		}
 
-		if cpu.Reg[R0] != 0xcafe {
+		if cpu.REG[R0] != 0xcafe {
 			t.Errorf("R0 incorrect, want: %s, got: %s",
-				Register(0xdad0), cpu.Reg[R0])
+				Register(0xdad0), cpu.REG[R0])
 		}
 
 		if !cpu.PSR.Negative() {
@@ -437,8 +437,8 @@ func TestInstructions(tt *testing.T) {
 		)
 
 		cpu.PC = 0x0400
-		cpu.Reg[R0] = 0xf0f0
-		cpu.Reg[R4] = 0x8000
+		cpu.REG[R0] = 0xf0f0
+		cpu.REG[R4] = 0x8000
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0110_000_100_00_0010)
 		addr := Word(0x8000 + 0x0002)
 		_ = cpu.Mem.store(Word(addr), 0xdad0)
@@ -465,9 +465,9 @@ func TestInstructions(tt *testing.T) {
 				Register(0x0401), cpu.PC)
 		}
 
-		if cpu.Reg[R0] != 0xdad0 {
+		if cpu.REG[R0] != 0xdad0 {
 			t.Errorf("R0 incorrect, want: %s, got: %s",
-				Register(0xdad0), cpu.Reg[R0])
+				Register(0xdad0), cpu.REG[R0])
 		}
 
 		if !cpu.PSR.Negative() {
@@ -485,7 +485,7 @@ func TestInstructions(tt *testing.T) {
 		cpu.PC = 0x0400
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1110_000_1_00000000)
 		_ = cpu.Mem.store(Word(0x0301), 0xdead)
-		cpu.Reg[R0] = 0xff00
+		cpu.REG[R0] = 0xff00
 
 		err := cpu.Step()
 		if err != nil {
@@ -496,9 +496,9 @@ func TestInstructions(tt *testing.T) {
 			t.Errorf("IR: %s, want: %s, got: %s", cpu.IR.String(), LEA, op)
 		}
 
-		if cpu.Reg[R0] != 0xdead {
+		if cpu.REG[R0] != 0xdead {
 			t.Errorf("R0 incorrect, want: %s, got: %s",
-				Register(0xdead), cpu.Reg[R0])
+				Register(0xdead), cpu.REG[R0])
 		}
 
 		if !cpu.PSR.Zero() {
@@ -514,7 +514,7 @@ func TestInstructions(tt *testing.T) {
 		)
 
 		cpu.PC = 0x0400
-		cpu.Reg[R7] = 0xcafe
+		cpu.REG[R7] = 0xcafe
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0011_111_0_1000_0000)
 		_ = cpu.Mem.store(Word(0x0481), 0x0f00)
 
@@ -539,9 +539,9 @@ func TestInstructions(tt *testing.T) {
 				Word(0x0481), Word(0xcafe), val)
 		}
 
-		if cpu.Reg[R7] != 0xcafe {
+		if cpu.REG[R7] != 0xcafe {
 			t.Errorf("R7 incorrect, want: %s, got: %s",
-				Register(0xcafe), cpu.Reg[R7])
+				Register(0xcafe), cpu.REG[R7])
 		}
 
 		if !cpu.PSR.Zero() {
@@ -557,7 +557,7 @@ func TestInstructions(tt *testing.T) {
 		)
 
 		cpu.PC = 0x0400
-		cpu.Reg[RETP] = 0xcafe
+		cpu.REG[RETP] = 0xcafe
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1011_111_0_0000_0001)
 		_ = cpu.Mem.store(Word(cpu.PC)+2, 0x0f00)
 		_ = cpu.Mem.store(Word(0x0f00), 0x0fff)
@@ -599,7 +599,7 @@ func TestInstructions(tt *testing.T) {
 		cpu.PSR = StatusUser | StatusZero
 		cpu.SSP = 0x3000
 		cpu.USP = 0xface
-		cpu.Reg[SP] = 0xfe00
+		cpu.REG[SP] = 0xfe00
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1111_0000_1000_0000)
 		_ = cpu.Mem.store(Word(0x0080), 0xadad)
 
@@ -628,13 +628,13 @@ func TestInstructions(tt *testing.T) {
 				Word(0x3000), cpu.SSP)
 		}
 
-		if cpu.Reg[SP] != 0x3000-2 {
+		if cpu.REG[SP] != 0x3000-2 {
 			t.Errorf("SP want: %s, got: %s",
-				Word(0x2ffe), cpu.Reg[SP])
+				Word(0x2ffe), cpu.REG[SP])
 		}
 
 		var val Register
-		err = cpu.Mem.load(Word(cpu.Reg[SP]), &val)
+		err = cpu.Mem.load(Word(cpu.REG[SP]), &val)
 		if err != nil {
 			t.Error(err)
 		}
@@ -645,7 +645,7 @@ func TestInstructions(tt *testing.T) {
 				Register(0x4051), val)
 		}
 
-		err = cpu.Mem.load(Word(cpu.Reg[SP]+1), &val)
+		err = cpu.Mem.load(Word(cpu.REG[SP]+1), &val)
 		if err != nil {
 			t.Error(err)
 		}
@@ -673,7 +673,7 @@ func TestInstructions(tt *testing.T) {
 		t.Log(cpu.PSR.String())
 		cpu.USP = 0xffff
 		cpu.SSP = 0x1f00
-		cpu.Reg[SP] = 0x1e00
+		cpu.REG[SP] = 0x1e00
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1111_0000_1000_0000)
 		_ = cpu.Mem.store(Word(0x0080), 0xadad)
 
@@ -702,13 +702,13 @@ func TestInstructions(tt *testing.T) {
 				Word(0x2f00), cpu.SSP)
 		}
 
-		if cpu.Reg[SP] != 0x1e00-2 {
+		if cpu.REG[SP] != 0x1e00-2 {
 			t.Errorf("SP want: %s, got: %s",
-				Word(0x1dfe), cpu.Reg[SP])
+				Word(0x1dfe), cpu.REG[SP])
 		}
 
 		var val Register
-		err = cpu.Mem.load(Word(cpu.Reg[SP]), &val)
+		err = cpu.Mem.load(Word(cpu.REG[SP]), &val)
 		if err != nil {
 			t.Error(err)
 		}
@@ -719,7 +719,7 @@ func TestInstructions(tt *testing.T) {
 				Register(0x2100), val)
 		}
 
-		err = cpu.Mem.load(Word(cpu.Reg[SP]+1), &val)
+		err = cpu.Mem.load(Word(cpu.REG[SP]+1), &val)
 		if err != nil {
 			t.Error(err)
 		}
@@ -748,9 +748,9 @@ func TestInstructions(tt *testing.T) {
 		cpu.PSR = ^StatusUser | StatusNegative
 		cpu.SSP = 0xffff
 
-		cpu.Reg[SP] = 0x3000 - 2 // user PC, PSR on system stack
-		_ = cpu.Mem.store(Word(cpu.Reg[SP]), 0x0401)
-		_ = cpu.Mem.store(Word(cpu.Reg[SP]+1),
+		cpu.REG[SP] = 0x3000 - 2 // user PC, PSR on system stack
+		_ = cpu.Mem.store(Word(cpu.REG[SP]), 0x0401)
+		_ = cpu.Mem.store(Word(cpu.REG[SP]+1),
 			Word(StatusUser|StatusNegative))
 
 		cpu.USP = 0xfade // previous stored user stack
@@ -786,13 +786,13 @@ func TestInstructions(tt *testing.T) {
 				Word(0x3000), cpu.SSP)
 		}
 
-		if cpu.Reg[SP] != 0xfade {
+		if cpu.REG[SP] != 0xfade {
 			t.Errorf("SP want: USP=%s, got: %s",
-				Word(0xfade), cpu.Reg[SP])
+				Word(0xfade), cpu.REG[SP])
 		}
 
 		var top Register
-		err = cpu.Mem.load(Word(cpu.Reg[SP]), &top)
+		err = cpu.Mem.load(Word(cpu.REG[SP]), &top)
 		if err != nil {
 			t.Error(err)
 		}
@@ -804,7 +804,7 @@ func TestInstructions(tt *testing.T) {
 		}
 
 		var bottom Register
-		err = cpu.Mem.load(Word(cpu.Reg[SP]+1), &bottom)
+		err = cpu.Mem.load(Word(cpu.REG[SP]+1), &bottom)
 		if err != nil {
 			t.Error(err)
 		}
@@ -829,14 +829,14 @@ func TestInstructions(tt *testing.T) {
 		cpu.PSR = ^StatusUser | StatusNegative
 		cpu.SSP = 0xffff
 
-		cpu.Reg[SP] = 0x2f00 - 2 // system PC, PSR on system stack
-		_ = cpu.Mem.store(Word(cpu.Reg[SP]), 0x0401)
-		_ = cpu.Mem.store(Word(cpu.Reg[SP]+1),
+		cpu.REG[SP] = 0x2f00 - 2 // system PC, PSR on system stack
+		_ = cpu.Mem.store(Word(cpu.REG[SP]), 0x0401)
+		_ = cpu.Mem.store(Word(cpu.REG[SP]+1),
 			Word(StatusSystem|StatusZero))
 
 		// Values on old system stack.
-		_ = cpu.Mem.store(Word(cpu.Reg[SP]+2), 0x1111)
-		_ = cpu.Mem.store(Word(cpu.Reg[SP]+3), 0x2222)
+		_ = cpu.Mem.store(Word(cpu.REG[SP]+2), 0x1111)
+		_ = cpu.Mem.store(Word(cpu.REG[SP]+3), 0x2222)
 
 		cpu.USP = 0x4200 // Previous stored user stack.
 		_ = cpu.Mem.store(Word(cpu.USP), 0xff00)
@@ -872,13 +872,13 @@ func TestInstructions(tt *testing.T) {
 				Word(0xffff), cpu.SSP)
 		}
 
-		if cpu.Reg[SP] != 0x2f00 {
+		if cpu.REG[SP] != 0x2f00 {
 			t.Errorf("SP want: %s, got: %s",
-				Word(0x3000), cpu.Reg[SP])
+				Word(0x3000), cpu.REG[SP])
 		}
 
 		var top Register
-		err = cpu.Mem.load(Word(cpu.Reg[SP]), &top)
+		err = cpu.Mem.load(Word(cpu.REG[SP]), &top)
 		if err != nil {
 			t.Error(err)
 		}
@@ -890,7 +890,7 @@ func TestInstructions(tt *testing.T) {
 		}
 
 		var bottom Register
-		err = cpu.Mem.load(Word(cpu.Reg[SP]+1), &bottom)
+		err = cpu.Mem.load(Word(cpu.REG[SP]+1), &bottom)
 		if err != nil {
 			t.Error(err)
 		}
@@ -914,9 +914,9 @@ func TestInstructions(tt *testing.T) {
 		cpu.PSR = StatusUser | StatusNormal | StatusNegative
 		cpu.SSP = 0x1a1a
 
-		cpu.Reg[SP] = 0x2f00 - 2 // some data on stack
-		_ = cpu.Mem.store(Word(cpu.Reg[SP]), 0x0001)
-		_ = cpu.Mem.store(Word(cpu.Reg[SP]+1), 0xface)
+		cpu.REG[SP] = 0x2f00 - 2 // some data on stack
+		_ = cpu.Mem.store(Word(cpu.REG[SP]), 0x0001)
+		_ = cpu.Mem.store(Word(cpu.REG[SP]+1), 0xface)
 
 		cpu.USP = 0xffff                        // Invalid user stack pointer
 		_ = cpu.Mem.store(Word(0x0100), 0x1234) // PMV table points to handler
@@ -951,13 +951,13 @@ func TestInstructions(tt *testing.T) {
 				Word(0x1a1a), cpu.SSP)
 		}
 
-		if cpu.Reg[SP] != 0x1a1a-2 {
+		if cpu.REG[SP] != 0x1a1a-2 {
 			t.Errorf("SP want: %s, got: %s",
-				Word(0x1a18), cpu.Reg[SP])
+				Word(0x1a18), cpu.REG[SP])
 		}
 
 		var top Register
-		err = cpu.Mem.load(Word(cpu.Reg[SP]), &top)
+		err = cpu.Mem.load(Word(cpu.REG[SP]), &top)
 		if err != nil {
 			t.Error(err)
 		}
@@ -969,7 +969,7 @@ func TestInstructions(tt *testing.T) {
 		}
 
 		var bottom Register
-		err = cpu.Mem.load(Word(cpu.Reg[SP]+1), &bottom)
+		err = cpu.Mem.load(Word(cpu.REG[SP]+1), &bottom)
 		if err != nil {
 			t.Error(err)
 		}

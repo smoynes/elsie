@@ -12,13 +12,13 @@ var (
 
 	// Display has a driver.
 	d             = &DisplayDriver{}
-	_ Driver      = d
+	_ Device      = d
 	_ WriteDriver = d
 	_ ReadDriver  = d
 
 	// Keyboard is its own driver.
 	k             = &Keyboard{}
-	_ Driver      = k
+	_ Device      = k
 	_ WriteDriver = k
 	_ ReadDriver  = k
 )
@@ -34,7 +34,7 @@ func TestKeyboardDriver(tt *testing.T) {
 			KBSR: uninitializedRegister,
 			KBDR: uninitializedRegister,
 		}
-		driver Driver      = &kbd
+		driver Device      = &kbd
 		reader ReadDriver  = &kbd
 		writer WriteDriver = &kbd
 	)
@@ -49,11 +49,11 @@ func TestKeyboardDriver(tt *testing.T) {
 	if err := writer.Write(addr, Register(0xffff)); err != nil {
 		t.Error(err)
 	} else if got, err := reader.Read(addr); err != nil {
-		t.Error(err)
+		t.Errorf("read status: %s", err)
 	} else if got == Word(uninitializedRegister) {
 		t.Errorf("uninitialized status register: %s", addr)
 	} else if got != Word(0xffff) {
-		t.Errorf("uninitialized status register: %s", addr)
+		t.Errorf("status register unwritten: %s", addr)
 	}
 
 	addr = Word(KBDRAddr)
@@ -66,8 +66,8 @@ func TestKeyboardDriver(tt *testing.T) {
 	addr = Word(KBSRAddr)
 	if got, err := reader.Read(addr); err != nil {
 		t.Errorf("read error: %s: %s", addr, err)
-	} else if got != Word(0x0000) {
-		t.Errorf("unexpected status: want: %s, got: %s", Word(0x0000), got)
+	} else if got != Word(KeyboardEnable) {
+		t.Errorf("expected status ready: want: %s, got: %s", KeyboardEnable, got)
 	}
 }
 

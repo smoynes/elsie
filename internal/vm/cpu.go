@@ -7,14 +7,15 @@ import (
 
 // LC3 is a computer simulated in software.
 type LC3 struct {
-	PC  ProgramCounter  // Instruction Pointer
+	PC  ProgramCounter  // Instruction Pointer.
 	IR  Instruction     // Instruction Register
-	PSR ProcessorStatus // Processor Status Register
-	Reg RegisterFile    // General-purpose register file
-	USP Register        // User stack pointer
-	SSP Register        // System stack pointer
-	MCR ControlRegister // Master control register
-	Mem Memory          // All the memory you'll ever need.
+	PSR ProcessorStatus // Processor Status Register.
+	REG RegisterFile    // General-purpose Register File
+	USP Register        // User Stack Pointer.
+	SSP Register        // System Stack Pointer.
+	MCR ControlRegister // Master Control Register.
+	INT Interrupt       // Interrupt Line.
+	Mem Memory          // All the memory you'll ever need!
 
 	log logger // A log of where we've been.
 }
@@ -28,8 +29,8 @@ func New(opts ...OptionFn) *LC3 {
 	// configure devices. Privileges are dropped after late initialization.
 	status |= (StatusPrivilege & StatusSystem)
 
-	// Don't rush things, priority normal.
-	status |= (StatusPriority & StatusNormal)
+	// Don't rush things, low priority.
+	status |= (StatusPriority & StatusLow)
 
 	// All condition codes are set.
 	status |= StatusCondition
@@ -42,12 +43,15 @@ func New(opts ...OptionFn) *LC3 {
 		USP: Register(IOPageAddr),    // User stack grows down from the top of user space.
 		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where user space ends.
 		MCR: ControlRegister(0x8000), // Set the RUN flag. 🤾
+		INT: Interrupt{
+			log: defaultLogger(),
+		},
 
 		log: defaultLogger(),
 	}
 
 	// Initialize general purpose registers to a pleasing pattern.
-	copy(cpu.Reg[:], []Register{
+	copy(cpu.REG[:], []Register{
 		0xffff, 0x0000,
 		0xfff0, 0xf000,
 		0xff00, 0x0f00,
@@ -59,10 +63,9 @@ func New(opts ...OptionFn) *LC3 {
 
 	// Create devices.
 	var (
-		// The keyboard device is hardwired and does not have a device
-		// driver. It doesn't really care how it's registers are
-		// addressed.
-		kbd = Keyboard{KBSR: 0xf000, KBDR: '?'}
+		// The keyboard device is hardwired and does not have a separate
+		// driver.
+		kbd = Keyboard{KBSR: 0x0000, KBDR: '?'}
 
 		// The display is more complicated: a driver configures the
 		// device with the addresses for the display registers.
@@ -93,6 +96,7 @@ func New(opts ...OptionFn) *LC3 {
 	}
 
 	cpu.log.Print("Configuring devices and drivers")
+
 	kbd.Init(&cpu, nil)                                 // Keyboard needs no configuration.
 	displayDriver.Init(&cpu, []Word{DSRAddr, KBDRAddr}) // Configure the display's address range.
 
@@ -116,8 +120,8 @@ func (cpu *LC3) String() string {
 
 // PushStack pushes a word onto the current stack.
 func (cpu *LC3) PushStack(w Word) error {
-	cpu.Reg[SP]--
-	cpu.Mem.MAR = cpu.Reg[SP]
+	cpu.REG[SP]--
+	cpu.Mem.MAR = cpu.REG[SP]
 	cpu.Mem.MDR = Register(w)
 
 	return cpu.Mem.Store()
@@ -125,8 +129,8 @@ func (cpu *LC3) PushStack(w Word) error {
 
 // PopStack pops a word from the current stack into MDR.
 func (cpu *LC3) PopStack() error {
-	cpu.Reg[SP]++
-	cpu.Mem.MAR = cpu.Reg[SP] - 1
+	cpu.REG[SP]++
+	cpu.Mem.MAR = cpu.REG[SP] - 1
 
 	return cpu.Mem.Fetch()
 }

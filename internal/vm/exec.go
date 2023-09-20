@@ -11,7 +11,7 @@ import (
 func (vm *LC3) Run(ctx context.Context) error {
 	var err error
 
-	vm.log.Printf("Initial state\n%s\n%s\n", vm, vm.Reg.String())
+	vm.log.Printf("INITIAL STATE\n%s\n%s\n%s\n", vm, vm.INT.String(), vm.REG.String())
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -25,17 +25,42 @@ func (vm *LC3) Run(ctx context.Context) error {
 			break
 		}
 
-		vm.log.Printf("Instruction complete\n%s\n%s\n", vm.String(), vm.Reg.String())
+		vm.log.Printf("int: %s", vm.INT.String()) // TODO: remove
+
+		err = vm.ServiceInterrupts()
+		vm.log.Printf("EXEC\n%s\n%s\n", vm.String(), vm.REG.String())
 	}
 
-	vm.log.Println("System HALTED")
+	vm.log.Println("HALTED")
 
 	return err
 }
 
-// Step runs a single instruction cycle to completion.
+// Interrupt invokes the highest priority interrupt service routine, if any.
+func (vm *LC3) ServiceInterrupts() error {
+	if vec, intr := vm.INT.Request(vm.PSR.Priority()); intr {
+
+		isr := &interrupt{
+			table: ISRTable,
+			vec:   Word(vec), // TODO: change type to uint8?
+			pc:    vm.PC,
+			psr:   vm.PSR,
+		}
+
+		vm.log.Printf("ISR: %s", isr.String())
+
+		if err := isr.Handle(vm); err != nil {
+			// TODO: Handle error.
+			return fmt.Errorf("int: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// Step runs a single instruction to completion.
 //
-// Each cycle has six steps:
+// Each operation has as many as six steps:
 //
 //   - fetch instruction: using the program counter as a pointer, fetch an
 //     instruction from memory into the instruction register and increment the
@@ -52,11 +77,10 @@ func (vm *LC3) Run(ctx context.Context) error {
 //   - store result: store operation result in memory using the computed
 //     address.
 //
-// Each of these steps is optional: an instruction implements methods according
-// to its semantics.
+// An instruction implements methods according to its operational semantics; see [operation].
 func (vm *LC3) Step() error {
 	if err := vm.Fetch(); err != nil {
-		return fmt.Errorf("step: %w", err)
+		return fmt.Errorf("ins: %w", err)
 	}
 
 	op := vm.Decode()
@@ -65,18 +89,20 @@ func (vm *LC3) Step() error {
 	vm.Execute(op)
 	vm.StoreResult(op)
 
-	switch int := op.Err().(type) {
-	case interruptable:
-		vm.log.Printf("step: interrupt: %s", op.Err())
+	if op.Err() == nil {
+		// Success! ☺️
+		vm.log.Printf("ins: executed: %+v", op)
+	} else if int, ok := op.Err().(interruptable); ok {
+		// Instruction raised an exception or trap.
+		vm.log.Printf("ins: raised: %s", op.Err())
 
 		if err := int.Handle(vm); err != nil {
-			return fmt.Errorf("step: interrupt: %w", err)
+			// TODO: What should happen if switching to the service
+			// routine fails?
+			return fmt.Errorf("ins: interrupt: %w", err)
 		}
-	case nil: // success ☺️
-		vm.log.Printf("step: executed: %+v", op)
-		return nil
-	default:
-		vm.log.Panicf("step: error: %s", op.Err())
+	} else if op.Err() != nil {
+		vm.log.Panicf("ins: error: %s", op.Err())
 		return nil // unreachable
 	}
 
@@ -195,7 +221,7 @@ func (vm *LC3) StoreResult(op operation) {
 
 // An operation represents a single CPU instruction as it is being executed by
 // the machine. The instruction's semantics are defined by implementing optional
-// interfaces for each execution step: [addressable], [fetchable], [executable],
+// interfaces for each execution stage: [addressable], [fetchable], [executable],
 // [storable].
 type operation interface {
 	// Decode initializes the operation from the machine's instruction

@@ -61,7 +61,7 @@ func TestMain(tt *testing.T) {
 			case <-time.After(timeout / 6):
 				// This seems... racy.
 				t.Log(machine.String())
-				t.Log(machine.Reg.String())
+				t.Log(machine.REG.String())
 				t.Log("")
 			case <-ctx.Done():
 				cancel()
@@ -95,7 +95,7 @@ func TestMain(tt *testing.T) {
 		t.Logf("test: ok, elapsed time: %s", elapsed)
 	case errors.Is(err, context.Canceled):
 		t.Log(machine.String())
-		t.Log(machine.Reg.String())
+		t.Log(machine.REG.String())
 		t.Log(machine.PC.String())
 		t.Log(machine.IR.String())
 		t.Log(machine.MCR.String())

@@ -21,6 +21,7 @@ func (vm *LC3) withLogger(l logger) {
 	vm.log = l
 	vm.Mem.log = l
 	vm.Mem.Devices.log = l
+	vm.INT.log = l
 }
 
 func (mmio *MMIO) WithLogger(l logger) {
