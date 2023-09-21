@@ -10,7 +10,7 @@ func TestInterrupt(tt *testing.T) {
 	var (
 		t      = NewTestHarness(tt)
 		intr   = Interrupt{}
-		kbd    = &Keyboard{}
+		kbd    = NewKeyboard()
 		isrKbd = ISR{vector: 0xad, driver: kbd}
 		disp   = &DisplayDriver{
 			handle: DeviceHandle[*Display, Display]{

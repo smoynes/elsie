@@ -65,7 +65,7 @@ func New(opts ...OptionFn) *LC3 {
 	var (
 		// The keyboard device is hardwired and does not have a separate
 		// driver.
-		kbd = Keyboard{KBSR: 0x0000, KBDR: '?'}
+		kbd *Keyboard = NewKeyboard()
 
 		// The display is more complicated: a driver configures the
 		// device with the addresses for the display registers.
@@ -77,8 +77,8 @@ func New(opts ...OptionFn) *LC3 {
 		devices = map[Word]any{
 			MCRAddr:  &vm.MCR,
 			PSRAddr:  &vm.PSR,
-			KBSRAddr: &kbd,
-			KBDRAddr: &kbd,
+			KBSRAddr: kbd,
+			KBDRAddr: kbd,
 			DSRAddr:  &displayDriver,
 			DDRAddr:  &displayDriver,
 		}

@@ -4,6 +4,7 @@ package vm
 
 import (
 	"fmt"
+	"sync"
 )
 
 // Device represents an external device with which a program can read or write data.
@@ -174,20 +175,50 @@ func (display Display) String() string {
 	return fmt.Sprintf("Display(status:%s,data:%s)", display.DSR, display.DDR)
 }
 
+const (
+	KeyboardReady  = Register(1 << 15)
+	KeyboardEnable = Register(1 << 14)
+)
+
 // Keyboard is a hardwired input device for typos. It is its own driver.
 type Keyboard struct {
+	lock *sync.RWMutex
+	intr *sync.Cond
+
 	KBSR, KBDR Register
 }
 
+func NewKeyboard() *Keyboard {
+	lock := new(sync.RWMutex)
+
+	return &Keyboard{
+		lock: lock,
+		intr: sync.NewCond(lock),
+
+		KBSR: 0x0000,
+		KBDR: '?',
+	}
+}
+
 func (k Keyboard) String() string {
+	k.lock.RLock()
+	defer k.lock.RUnlock()
+
 	return fmt.Sprintf("Keyboard(status:%s,data:%s)", k.KBSR, k.KBDR)
+}
+
+// Wait blocks the caller until interrupts are enabled.
+func (k Keyboard) Wait() {
+	k.lock.Lock()
+	k.intr.Wait()
 }
 
 func (k Keyboard) Device() string { return "Keyboard(ModelM)" } // Simply the best.
 
 func (k *Keyboard) Init(vm *LC3, _ []Word) {
-	k.KBSR = ^KeyboardReady & KeyboardEnable // Enable interrupts, clear ready flag.
+	k.KBSR = ^KeyboardReady | KeyboardEnable // Enable interrupts, clear ready flag.
 	k.KBDR = 0x0000
+
 	isr := ISR{vector: 0xff, driver: k}
 	vm.INT.Register(PriorityNormal, isr)
 }
@@ -195,32 +226,67 @@ func (k *Keyboard) Init(vm *LC3, _ []Word) {
 // InterruptRequested returns true if the keyboard has requested interrupt and interrupts are
 // enabled. That is, both the R and IE bits are set in the status register.
 func (k *Keyboard) InterruptRequested() bool {
-	return k.KBSR|^(KeyboardReady|KeyboardEnable) == 0
+	k.lock.RLock()
+	defer k.lock.RUnlock()
+
+	return k.KBSR == (KeyboardEnable | KeyboardReady)
 }
 
-const (
-	KeyboardReady  = Register(1 << 15)
-	KeyboardEnable = Register(1 << 14)
-)
-
-// Read returns the value of a keyboard's register. When the data register is read, the keyboard
-// ready flag is cleared.
+// Read returns the value of a keyboard's register. If the data register is read then the ready flag
+// is cleared.
 func (k *Keyboard) Read(addr Word) (Word, error) {
 	if addr == KBSRAddr {
+		k.lock.RLock()
+		defer k.lock.RUnlock()
+
 		return Word(k.KBSR), nil
 	}
 
-	k.KBSR &= (KeyboardEnable & ^KeyboardReady)
+	k.lock.Lock()
+	defer k.lock.Unlock()
 
-	return Word(k.KBDR), nil
+	wasDisabled := k.KBSR&KeyboardEnable == KeyboardEnable
+	val := Word(k.KBDR)
+	k.KBSR = (KeyboardEnable & ^KeyboardReady)
+	k.KBDR = 0x0000 // ??
+
+	if wasDisabled {
+		k.intr.Broadcast()
+	}
+
+	return val, nil
 }
 
+// Write updates the status keyboard status register.
 func (k *Keyboard) Write(addr Word, val Register) error {
 	if addr != KBSRAddr {
 		return fmt.Errorf("kbd: %w: %s", ErrNoDevice, addr)
 	}
 
+	k.lock.Lock()
+	defer k.lock.Unlock()
+
+	enabled := (k.KBSR & ^KeyboardEnable != 0) && (val&KeyboardEnable != 0)
 	k.KBSR = val
 
+	if enabled {
+		k.intr.Broadcast()
+	}
+
 	return nil
+}
+
+// Update blocks until the keyboard has interrupts enabled and atomically sets the data and ready
+// flag.
+func (k *Keyboard) Update(key uint16) {
+	k.intr.L.Lock()
+
+	for !(k.KBSR&(KeyboardEnable & ^KeyboardReady) != 0) {
+		k.intr.Wait()
+	}
+
+	k.KBDR = Register(key)
+	k.KBSR |= KeyboardReady // Data is ready.
+	k.intr.Broadcast()
+	k.intr.L.Unlock()
 }

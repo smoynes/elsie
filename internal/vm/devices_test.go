@@ -23,34 +23,32 @@ var (
 	_ ReadDriver  = k
 )
 
-var uninitializedRegister = Register(0x0101)
+var uninitialized = Register(0x0101)
 
 func TestKeyboardDriver(tt *testing.T) {
 	t := NewTestHarness(tt)
 	vm := t.Make()
 
 	var (
-		kbd = Keyboard{
-			KBSR: uninitializedRegister,
-			KBDR: uninitializedRegister,
-		}
-		driver Device      = &kbd
-		reader ReadDriver  = &kbd
-		writer WriteDriver = &kbd
+		kbd    *Keyboard   = NewKeyboard()
+		driver Device      = kbd
+		reader ReadDriver  = kbd
+		writer WriteDriver = kbd
 	)
 
-	driver.Init(vm, nil)
+	kbd.KBDR = uninitialized
+	kbd.KBSR = uninitialized
 
-	t.Log(kbd.Device())
 	t.Logf("cool 🕶️ %s", kbd)
 
+	driver.Init(vm, nil)
 	addr := Word(KBSRAddr)
 
 	if err := writer.Write(addr, Register(0xffff)); err != nil {
 		t.Error(err)
 	} else if got, err := reader.Read(addr); err != nil {
 		t.Errorf("read status: %s", err)
-	} else if got == Word(uninitializedRegister) {
+	} else if got == Word(uninitialized) {
 		t.Errorf("uninitialized status register: %s", addr)
 	} else if got != Word(0xffff) {
 		t.Errorf("status register unwritten: %s", addr)
@@ -59,7 +57,7 @@ func TestKeyboardDriver(tt *testing.T) {
 	addr = Word(KBDRAddr)
 	if got, err := reader.Read(addr); err != nil {
 		t.Errorf("expected read error: %s", addr)
-	} else if got == Word(uninitializedRegister) {
+	} else if got == Word(uninitialized) {
 		t.Errorf("uninitialized data register: %s:%s", addr, got)
 	}
 
@@ -80,8 +78,8 @@ func TestDisplayDriver(tt *testing.T) {
 		displayDriver = &DisplayDriver{*handle, Word(0xface), Word(0xf001)}
 	)
 
-	displayDriver.handle.device.DSR = uninitializedRegister
-	displayDriver.handle.device.DDR = uninitializedRegister
+	displayDriver.handle.device.DSR = uninitialized
+	displayDriver.handle.device.DDR = uninitialized
 
 	displayDriver.Init(vm, []Word{0xface, 0xf001})
 
@@ -89,7 +87,7 @@ func TestDisplayDriver(tt *testing.T) {
 
 	if got, err := displayDriver.Read(addr); err != nil {
 		t.Error(err)
-	} else if got == Word(uninitializedRegister) {
+	} else if got == Word(uninitialized) {
 		t.Errorf("uninitialized status register: %s, want: %s, got: %s",
 			addr, Word(0x8000), got)
 	} else if got != Word(0x8000) {
@@ -101,7 +99,7 @@ func TestDisplayDriver(tt *testing.T) {
 
 	if got, err := displayDriver.Read(addr); err == nil {
 		t.Errorf("expected read error: %s", addr)
-	} else if got == Word(uninitializedRegister) {
+	} else if got == Word(uninitialized) {
 		t.Errorf("uninitialized display register: %s:%s", addr, got)
 	}
 
