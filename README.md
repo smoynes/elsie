@@ -32,10 +32,10 @@ computing, I feel lost and uncertain when it comes to some of the rudiments of t
 - operating systems
 - computing history
 
-This slightly absurd project is for experiential learning[^facecloud]: reading, writing, conversations, asking
-questions, finding answers, and solving problems. It is to be hoped that by using the old ways, by
-holding the master craftsman's tools, and building something cute and useless, I will gain a better
-understanding of computing.
+This slightly absurd project is for experiential learning[^facecloud]: reading, writing,
+conversations, asking questions, finding answers, and solving problems. It is to be hoped that by
+using the old ways, by holding the master craftsman's tools, and building something cute and
+useless, I will gain a better understanding of computing.
 
 Hardware simulators already exist for the LC-3 architecture, of course. The textbook publishers
 provide one and there are many others freely available online. This one is admittedly a mere
@@ -91,17 +91,14 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 ## Status ##
 
 <details>
-<summary>
+<summary>**IN DEVELOPMENT**</summary>
 
-**IN DEVELOPMENT**
+Focus right now:
 
-</summary>
-
-Focus right now: devices: KBD, DISPLAY.
+- interrupts
 
 Up next:
 
-- I/O interrupts
 - ISRs
 
 Completed:
