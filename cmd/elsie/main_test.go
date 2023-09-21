@@ -49,10 +49,10 @@ var (
 func TestMain(tt *testing.T) {
 	t := testHarness{tt}
 	start := time.Now()
+	machine := t.Make()
+
 	ctx, cause, cancel := t.Context()
 	defer cancel()
-
-	machine := t.Make()
 
 	go func() {
 		for {

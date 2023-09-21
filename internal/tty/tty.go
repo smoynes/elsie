@@ -18,6 +18,7 @@ type (
 	ConsoleDoneFunc = context.CancelCauseFunc
 )
 
+// Console is simulated serial console using Unix terminal I/O for teletype emulation.
 type Console struct {
 	in     *os.File
 	fd     int
@@ -28,10 +29,24 @@ type Console struct {
 }
 
 var (
-	errNoTTY error = errors.New("console: not a tty")
+	errNoTTY error = errors.New("console: not a TTY")
 )
 
-func NewConsole(in *os.File, out *os.File, cancel ConsoleDoneFunc) (*Console, error) {
+func WithConsole(parent Context) (Context, *Console, ConsoleDoneFunc) {
+	ctx, cancel := context.WithCancelCause(parent)
+	console, err := newConsole(os.Stdin, os.Stdout, cancel)
+
+	if err != nil {
+		cancel(err)
+		return ctx, console, cancel
+	}
+
+	go console.readKeys(ctx, console.restore)
+
+	return ctx, console, console.restore
+}
+
+func newConsole(in *os.File, out *os.File, cancel ConsoleDoneFunc) (*Console, error) {
 	fd := int(in.Fd())
 
 	if !term.IsTerminal(fd) {
@@ -52,7 +67,7 @@ func NewConsole(in *os.File, out *os.File, cancel ConsoleDoneFunc) (*Console, er
 		cancel: cancel,
 	}
 
-	err = cons.setBufferParams(1, 0)
+	err = cons.setTerminalParams(1, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -60,21 +75,7 @@ func NewConsole(in *os.File, out *os.File, cancel ConsoleDoneFunc) (*Console, er
 	return &cons, nil
 }
 
-func WithConsole(parent Context) (Context, *Console, ConsoleDoneFunc) {
-	ctx, cancel := context.WithCancelCause(parent)
-	console, err := NewConsole(os.Stdin, os.Stdout, cancel)
-
-	if err != nil {
-		cancel(err)
-		return ctx, console, cancel
-	}
-
-	go console.readKeys(ctx, console.restore)
-
-	return ctx, console, console.restore
-}
-
-func (c *Console) setBufferParams(vmin, vtime byte) error {
+func (c *Console) setTerminalParams(vmin, vtime byte) error {
 	_ = syscall.SetNonblock(c.fd, true)
 
 	termIO, err := unix.IoctlGetTermios(c.fd, unix.TIOCGETA)
@@ -99,16 +100,17 @@ func (c Console) readKeys(ctx Context, cancel ConsoleDoneFunc) {
 	buf := make([]byte, 8)
 
 	for { // ever and ever
-
 		select {
 		case <-ctx.Done():
 			return
 		default:
 			_ = syscall.SetNonblock(c.fd, false)
 			n, err := c.in.Read(buf)
+
 			if err != nil {
 				log.Printf("read error %#v", err)
 				cancel(err)
+
 				return
 			}
 
@@ -116,7 +118,6 @@ func (c Console) readKeys(ctx Context, cancel ConsoleDoneFunc) {
 				c.keyCh <- uint16(buf[i])
 			}
 		}
-
 	}
 }
 

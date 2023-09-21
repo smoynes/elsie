@@ -10,6 +10,7 @@ import (
 
 func main() {
 	ctx := context.Background()
+
 	ctx, console, cancel := WithConsole(ctx)
 	defer cancel(nil)
 
