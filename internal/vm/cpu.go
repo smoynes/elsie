@@ -36,7 +36,7 @@ func New(opts ...OptionFn) *LC3 {
 	status |= StatusCondition
 
 	// Set CPU registers to known values.
-	cpu := LC3{
+	vm := LC3{
 		PC:  0x0300,
 		IR:  0x0000,
 		PSR: status,
@@ -51,15 +51,15 @@ func New(opts ...OptionFn) *LC3 {
 	}
 
 	// Initialize general purpose registers to a pleasing pattern.
-	copy(cpu.REG[:], []Register{
+	copy(vm.REG[:], []Register{
 		0xffff, 0x0000,
 		0xfff0, 0xf000,
 		0xff00, 0x0f00,
-		cpu.USP, 0x00f0, // ... except the user stack.
+		vm.USP, 0x00f0, // ... except the user stack.
 	})
 
 	// Configure memory.
-	cpu.Mem = NewMemory(&cpu.PSR)
+	vm.Mem = NewMemory(&vm.PSR)
 
 	// Create devices.
 	var (
@@ -75,8 +75,8 @@ func New(opts ...OptionFn) *LC3 {
 
 		// Device configuration for the I/O.
 		devices = map[Word]any{
-			MCRAddr:  &cpu.MCR,
-			PSRAddr:  &cpu.PSR,
+			MCRAddr:  &vm.MCR,
+			PSRAddr:  &vm.PSR,
 			KBSRAddr: &kbd,
 			KBDRAddr: &kbd,
 			DSRAddr:  &displayDriver,
@@ -86,53 +86,53 @@ func New(opts ...OptionFn) *LC3 {
 
 	// Run early init.
 	for _, fn := range opts {
-		fn(&cpu)
+		fn(&vm)
 	}
 
-	err := cpu.Mem.Devices.Map(devices)
+	err := vm.Mem.Devices.Map(devices)
 
 	if err != nil {
-		cpu.log.Panic(err)
+		vm.log.Panic(err)
 	}
 
-	cpu.log.Print("Configuring devices and drivers")
+	vm.log.Print("Configuring devices and drivers")
 
-	kbd.Init(&cpu, nil)                                 // Keyboard needs no configuration.
-	displayDriver.Init(&cpu, []Word{DSRAddr, KBDRAddr}) // Configure the display's address range.
+	kbd.Init(&vm, nil)                                 // Keyboard needs no configuration.
+	displayDriver.Init(&vm, []Word{DSRAddr, KBDRAddr}) // Configure the display's address range.
 
 	// Drop privileges and execute as user.
-	cpu.PSR &^= (StatusPrivilege & StatusUser)
+	vm.PSR &^= (StatusPrivilege & StatusUser)
 
 	// Run late init...
 	for _, fn := range opts {
-		fn(&cpu)
+		fn(&vm)
 	}
 
-	return &cpu
+	return &vm
 }
 
-func (cpu *LC3) String() string {
+func (vm *LC3) String() string {
 	return fmt.Sprintf("PC:  %s IR:  %s \nPSR: %s\nUSP: %s SSP: %s MCR: %s\n"+
 		"MAR: %s MDR: %s",
-		cpu.PC.String(), cpu.IR.String(), cpu.PSR, cpu.USP, cpu.SSP, cpu.MCR,
-		cpu.Mem.MAR, cpu.Mem.MDR)
+		vm.PC.String(), vm.IR.String(), vm.PSR, vm.USP, vm.SSP, vm.MCR,
+		vm.Mem.MAR, vm.Mem.MDR)
 }
 
 // PushStack pushes a word onto the current stack.
-func (cpu *LC3) PushStack(w Word) error {
-	cpu.REG[SP]--
-	cpu.Mem.MAR = cpu.REG[SP]
-	cpu.Mem.MDR = Register(w)
+func (vm *LC3) PushStack(w Word) error {
+	vm.REG[SP]--
+	vm.Mem.MAR = vm.REG[SP]
+	vm.Mem.MDR = Register(w)
 
-	return cpu.Mem.Store()
+	return vm.Mem.Store()
 }
 
 // PopStack pops a word from the current stack into MDR.
-func (cpu *LC3) PopStack() error {
-	cpu.REG[SP]++
-	cpu.Mem.MAR = cpu.REG[SP] - 1
+func (vm *LC3) PopStack() error {
+	vm.REG[SP]++
+	vm.Mem.MAR = vm.REG[SP] - 1
 
-	return cpu.Mem.Fetch()
+	return vm.Mem.Fetch()
 }
 
 // An OptionFn is modifies the machine during late initialization. That is, the

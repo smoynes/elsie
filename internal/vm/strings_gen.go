@@ -106,28 +106,28 @@ func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
-	_ = x[PriorityLow-0]
+	_ = x[PL0-0]
+	_ = x[PL1-1]
+	_ = x[PL2-2]
+	_ = x[PL3-3]
+	_ = x[PL4-4]
+	_ = x[PL5-5]
+	_ = x[PL6-6]
+	_ = x[PL7-7]
+	_ = x[PriorityLOW-0]
 	_ = x[PriorityNormal-3]
 	_ = x[PriorityHigh-7]
 }
 
-const (
-	_Priority_name_0 = "LOW"
-	_Priority_name_1 = "NORM"
-	_Priority_name_2 = "HIGH"
-)
+const _Priority_name = "PL0PL1PL2PL3PL4PL5PL6PL7"
+
+var _Priority_index = [...]uint8{0, 3, 6, 9, 12, 15, 18, 21, 24}
 
 func (i Priority) String() string {
-	switch {
-	case i == 0:
-		return _Priority_name_0
-	case i == 3:
-		return _Priority_name_1
-	case i == 7:
-		return _Priority_name_2
-	default:
+	if i >= Priority(len(_Priority_index)-1) {
 		return "Priority(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
+	return _Priority_name[_Priority_index[i]:_Priority_index[i+1]]
 }
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.

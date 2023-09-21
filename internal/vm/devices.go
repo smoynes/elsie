@@ -126,7 +126,8 @@ func (driver *DisplayDriver) Read(addr Word) (Word, error) {
 
 func (driver *DisplayDriver) InterruptRequested() bool {
 	// For our purposes, the display is always ready.
-	return (driver.handle.device.DSR|DisplayReady)&DisplayEnabled != 0
+	return driver.handle.device != nil &&
+		(driver.handle.device.DSR|DisplayReady)&DisplayEnabled != 0
 }
 
 // Write sets the data register of the display device.
@@ -187,8 +188,8 @@ func (k Keyboard) Device() string { return "Keyboard(ModelM)" } // Simply the be
 func (k *Keyboard) Init(vm *LC3, _ []Word) {
 	k.KBSR = ^KeyboardReady & KeyboardEnable // Enable interrupts, clear ready flag.
 	k.KBDR = 0x0000
-
-	vm.INT.Register(PriorityNormal, k, 0xff)
+	isr := ISR{vector: 0xff, driver: k}
+	vm.INT.Register(PriorityNormal, isr)
 }
 
 // InterruptRequested returns true if the keyboard has requested interrupt and interrupts are

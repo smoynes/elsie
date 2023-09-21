@@ -37,8 +37,6 @@ func (vm *LC3) Run(ctx context.Context) error {
 // Interrupt invokes the highest priority interrupt service routine, if any.
 func (vm *LC3) ServiceInterrupts() error {
 	if vec, intr := vm.INT.Requested(vm.PSR.Priority()); intr {
-		vm.log.Printf("int: %s", vm.INT.String()) // TODO: remove
-
 		isr := &interrupt{
 			table: ISRTable,
 			vec:   Word(vec), // TODO: change type to uint8?

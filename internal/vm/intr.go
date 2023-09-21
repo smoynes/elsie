@@ -8,10 +8,8 @@ import (
 // Interrupt represents the I/O interrupt signal to the CPU. It is as an extremely basic interrupt
 // controller.
 //
-// # Each
-//
-// There are three conditions that must be satisfied for an device to interrupt and
-// change the CPU's control flow:
+// There are three conditions that must be satisfied for an device to interrupt and change the CPU's
+// control flow:
 //
 // 1. the device has raised a request;
 // 2. the device's interrupt is enabled; and
@@ -19,13 +17,21 @@ import (
 type Interrupt struct {
 
 	// Interrupt descriptor table. Each priority (PL0 to P7) references a
-	// device driver and an 8 bit vector in the interrupt vector table.
-	idt [8]struct {
-		driver Driver
-		vector uint8
-	}
+	// device driver and the interrupt's vector.
+	idt [8]ISR
 
 	log logger
+}
+
+// ISR is an interrupt service routine. It contains the interrupt's vector and a reference to the
+// driver for the device that requests service.
+type ISR struct {
+	vector uint8
+	driver Driver
+}
+
+func (isr ISR) String() string {
+	return fmt.Sprintf("ISR{%0#2x:%s}", isr.vector, isr.driver.String())
 }
 
 func (i Interrupt) String() string {
@@ -50,16 +56,17 @@ func (i Interrupt) String() string {
 	return b.String()
 }
 
-func (i *Interrupt) Register(priority Priority, driver Driver, vector uint8) {
-	if descriptor := i.idt[priority]; descriptor.driver != nil {
+// Register assigns an interrupt priority to a service routine.
+func (i *Interrupt) Register(priority Priority, isr ISR) {
+	if entry := i.idt[priority]; entry.driver != nil {
 		// TODO: return error
 		i.log.Printf("intr: device priority conflict: want: %s:%s, have: %s:%s",
-			priority.String(), driver.String(), priority, descriptor.driver.String(),
+			priority.String(), isr.String(), priority, entry.String(),
 		)
 	} else {
-		descriptor.driver = driver
-		descriptor.vector = vector
-		i.idt[priority] = descriptor
+		entry.driver = isr.driver
+		entry.vector = isr.vector
+		i.idt[priority] = entry
 	}
 }
 

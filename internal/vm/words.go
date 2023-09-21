@@ -164,7 +164,16 @@ type Priority uint8
 
 // Task priorities.
 const (
-	PriorityLow    Priority = 0x00 // LOW
+	PL0 Priority = iota
+	PL1
+	PL2
+	PL3
+	PL4
+	PL5
+	PL6
+	PL7
+
+	PriorityLOW    Priority = 0x00 // NORM
 	PriorityNormal Priority = 0x03 // NORM
 	PriorityHigh   Priority = 0x07 // HIGH
 )
