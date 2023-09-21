@@ -189,7 +189,7 @@ type RegisterFile [NumGPR]Register
 func (rf RegisterFile) String() string {
 	b := strings.Builder{}
 	for i := 0; i < len(rf)/2; i++ {
-		fmt.Fprintf(&b, "R%d: %s  R%d: %s\n",
+		fmt.Fprintf(&b, "R%d:  %s R%d: %s\n",
 			i, rf[i], i+len(rf)/2, rf[i+len(rf)/2])
 	}
 

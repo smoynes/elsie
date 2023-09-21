@@ -113,7 +113,7 @@ func New(opts ...OptionFn) *LC3 {
 
 func (cpu *LC3) String() string {
 	return fmt.Sprintf("PC:  %s IR:  %s \nPSR: %s\nUSP: %s SSP: %s MCR: %s\n"+
-		"MAR: %s MDR: %s\n",
+		"MAR: %s MDR: %s",
 		cpu.PC.String(), cpu.IR.String(), cpu.PSR, cpu.USP, cpu.SSP, cpu.MCR,
 		cpu.Mem.MAR, cpu.Mem.MDR)
 }

@@ -58,7 +58,7 @@ type br struct {
 }
 
 func (op br) String() string {
-	return fmt.Sprintf("%s[cond:%s offset:%s]", op.mo.String(), op.cond.String(), op.offset.String())
+	return fmt.Sprintf("BR{cond:%s,offset:%s}", op.cond.String(), op.offset.String())
 }
 
 var (
@@ -94,6 +94,10 @@ var (
 	_ executable = &not{}
 )
 
+func (op not) String() string {
+	return fmt.Sprintf("NOT{dr:%s,sr:%s}", op.dr.String(), op.sr.String())
+}
+
 func (op *not) Decode(vm *LC3) {
 	*op = not{
 		mo: mo{vm: vm},
@@ -124,7 +128,7 @@ type and struct {
 }
 
 func (op *and) String() string {
-	return fmt.Sprintf("%s[dr:%s sr1:%s sr2: %v]", op.mo.String(), op.dest.String(), op.sr1, op.sr2)
+	return fmt.Sprintf("AND{dr:%s,sr1:%s,sr2:%s}", op.dest.String(), op.sr1, op.sr2)
 }
 
 func (a *and) Decode(vm *LC3) {
@@ -150,7 +154,7 @@ type andImm struct {
 }
 
 func (op *andImm) String() string {
-	return fmt.Sprintf("%s[dr:%s sr:%s lit: %v]", op.mo.String(), op.dr.String(), op.sr, op.lit)
+	return fmt.Sprintf("AND{dr:%s,sr:%s,lit:%0#2x}", op.dr.String(), op.sr, uint16(op.lit))
 }
 
 func (a *andImm) Decode(vm *LC3) {
@@ -471,6 +475,11 @@ var (
 	_ storable    = &str{}
 )
 
+func (op str) String() string {
+	return fmt.Sprintf("STR{sr:%s,base:%s,offset:%s}",
+		op.sr.String(), op.base.String(), op.offset.String())
+}
+
 func (op *str) Decode(vm *LC3) {
 	*op = str{
 		mo:     mo{vm: vm},
@@ -583,12 +592,11 @@ func (op *jsrr) Execute() {
 // |15  12|11   8|7       0|
 type trap struct {
 	mo
-	vec  Word
-	addr Word
+	vec Word
 }
 
 func (op *trap) String() string {
-	return fmt.Sprintf("TRAP: %s (%s)", op.vec, op.addr)
+	return fmt.Sprintf("TRAP: %0#2x", uint16(op.vec))
 }
 
 var (

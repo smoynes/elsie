@@ -63,7 +63,7 @@ func (i *Interrupt) Register(priority Priority, driver Driver, vector uint8) {
 	}
 }
 
-func (i Interrupt) Request(curr Priority) (uint8, bool) {
+func (i Interrupt) Requested(curr Priority) (uint8, bool) {
 	for pl := len(i.idt) - 1; pl > int(curr); pl-- {
 		idt := i.idt[pl]
 		if idt.driver == nil {
@@ -139,7 +139,7 @@ func (i *interrupt) Error() string {
 }
 
 func (i *interrupt) String() string {
-	return fmt.Sprintf("INT: (%s:%s)", i.table, i.vec)
+	return fmt.Sprintf("INT: (%s:%0#2x)", i.table, uint16(i.vec))
 }
 
 // Trap handler table and defined vectors in the table.
