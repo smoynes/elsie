@@ -95,36 +95,14 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 
 Focus right now:
 
-- interrupts
+- terminal I/O: display adapter
 
-Up next:
+On deck:
 
-- ISRs
+- BIOS
+- assembler
 
-Completed:
-
-- instruction loop
-- operations:
-  - BR
-  - NOT
-  - AND
-  - ADD
-  - LD
-  - LDI
-  - LDR
-  - LEA
-  - ST
-  - STI
-  - STR
-  - JMP/RET
-  - JSR
-  - JSRR
-  - TRAP
-  - RTI
-  - RESV
-- exceptions
-- traps
-- memory mapped I/O
+See [TODO.md](TODO.md)
 
 </details>
 
