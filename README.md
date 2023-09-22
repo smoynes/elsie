@@ -1,11 +1,12 @@
 # `ELSIE`: A pedagogical LC-3 simulator #
 
-This is `ELSIE`, a virtual machine for the LC-3: a little computer that is simple, comprehensive,
-and imaginary.
+This is `ELSIE`, a virtual machine for the LC-3: a little computer that is
+simple, comprehensive, and imaginary.
 
-The computer was designed as a learning tool for undergraduate computer-engineering students. It is
-described in detail in an excellent textbook, Patt and Patel's *Introduction to Computing Systems:
-From Bits & Gates to C/C++ and Beyond*[^1], 3ed.
+The computer was designed as a learning tool for undergraduate
+computer-engineering students. It is described in detail in an excellent
+textbook, Patt and Patel's *Introduction to Computing Systems: From Bits & Gates
+to C/C++ and Beyond*[^1], 3ed.
 
 The LC-3 instruction set architecture includes:
 
@@ -18,29 +19,33 @@ The LC-3 instruction set architecture includes:
 - a privileged mode with a basic operating system
 - an instruction set compact enough to fit on a single page
 
-While similar in many respects to the x86 ISA, the LC-3 is radically simpler in almost every way.
-Unlike the sprawling x86, with thousands of instructions, dozens of addressing modes, multicore
-execution, an intricate memory model, many advanced features, and over 40 years of history etched
-into silicon, the LC-3 remains a tractable system that is comprehensible by an individual. It is a
-lot closer to PDP/11 machines than anything you have in your home or pocket.
+While similar in many respects to the x86 ISA, the LC-3 is radically simpler in
+almost every way. Unlike the sprawling x86, with thousands of instructions,
+dozens of addressing modes, multicore execution, an intricate memory model, many
+advanced features, and over 40 years of history etched into silicon, the LC-3
+remains a tractable system that is comprehensible by an individual. It is a lot
+closer to PDP/11 machines than anything you have in your home or pocket.
 
-Personally, there remain many computer things that baffle me. Despite ten thousand hours of
-computing, I feel lost and uncertain when it comes to some of the rudiments of the field:
+Personally, there remain many computer things that baffle me. Despite ten
+thousand hours of computing, I feel lost and uncertain when it comes to some of
+the rudiments of the field:
 
 - computer architecture
 - assembly programming
 - operating systems
 - computing history
 
-This slightly absurd project is for experiential learning[^facecloud]: reading, writing,
-conversations, asking questions, finding answers, and solving problems. It is to be hoped that by
-using the old ways, by holding the master craftsman's tools, and building something cute and
-useless, I will gain a better understanding of computing.
+This slightly absurd project is for experiential learning[^facecloud]: reading,
+writing, conversations, asking questions, finding answers, and solving problems.
+It is to be hoped that by using the old ways, by holding the master craftsman's
+tools, and building something cute and useless, I will gain a better
+understanding of computing.
 
-Hardware simulators already exist for the LC-3 architecture, of course. The textbook publishers
-provide one and there are many others freely available online. This one is admittedly a mere
-reinvention of the wheel. Nevertheless, the design and engineering process sometimes reveals
-something fundamental about either ourselves or our world.
+Hardware simulators already exist for the LC-3 architecture, of course. The
+textbook publishers provide one and there are many others freely available
+online. This one is admittedly a mere reinvention of the wheel. Nevertheless,
+the design and engineering process sometimes reveals something fundamental about
+either ourselves or our world.
 
 I have lots ideas for experiments to bring into the lab. I've thought about:
 
@@ -58,21 +63,18 @@ I have lots ideas for experiments to bring into the lab. I've thought about:
 - concurrency and parallelism, _e.g._ communicating sequential processes,
   preemptive multitasking, multicore execution
 
-Admittedly, some of these experiments are pretty straightforward, while others appear daunting and
-complex; some are immediate goals, but most are mere thought experiments. Trying to do all of that
-work might be a path in madness.
+Admittedly, some of these experiments are pretty straightforward, while others
+appear daunting and complex; some are immediate goals, but most are mere thought
+experiments. Trying to do all of that work might be a path in madness.
 
 In the meantime, feel free to browse the code or follow the project if you enjoy
 the absurdist theatrics of a curious software engineer. As ever, I seek to
 understand the essence of computing and to embody _Shokunin Kishitsu_ (職人気質),
 the artisan's spirit.
 
-You are welcome to reach out if you'd like to join me on this journey of
-exploration.
+You are welcome to reach out if you'd like to join me on this exploration.
 
-> The path is made in the walking of it.
-
-<right>Zhuangzi</right>
+> The path is made in the walking of it. -- Zhuangzi
 
 ----
 
