@@ -14,7 +14,6 @@ import (
 func main() {
 	ctx := context.Background()
 	keyboard := vm.NewKeyboard()
-	keyboard.KBDR = 'X'
 
 	ctx, console, cancel := tty.WithConsole(ctx, keyboard)
 	defer cancel()
