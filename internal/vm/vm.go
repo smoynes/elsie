@@ -97,8 +97,8 @@ func New(opts ...OptionFn) *LC3 {
 
 	vm.log.Print("Configuring devices and drivers")
 
-	kbd.Init(&vm, nil)                                 // Keyboard needs no configuration.
-	displayDriver.Init(&vm, []Word{DSRAddr, KBDRAddr}) // Configure the display's address range.
+	kbd.Init(&vm, nil)                                // Keyboard needs no configuration.
+	displayDriver.Init(&vm, []Word{DSRAddr, DDRAddr}) // Configure the display's address range.
 
 	// Drop privileges and execute as user.
 	vm.PSR &^= (StatusPrivilege & StatusUser)
