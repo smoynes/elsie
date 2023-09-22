@@ -17,7 +17,7 @@ func main() {
 	keyboard.KBDR = 'X'
 
 	ctx, console, cancel := tty.WithConsole(ctx, keyboard)
-	defer cancel(nil)
+	defer cancel()
 
 	log.SetOutput(console.Writer())
 
@@ -42,7 +42,7 @@ func main() {
 			log.Printf("polled: %c", rune(key))
 		case <-timeout:
 			log.Print("timeout")
-			cancel(context.DeadlineExceeded)
+			cancel()
 
 			return
 		case <-ctx.Done():

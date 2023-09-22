@@ -18,7 +18,7 @@ import (
 
 // Console is simulated serial console using Unix terminal I/O for teletype emulation. It adapts the
 // machine's keyboard and display devices for use on modern systems that pretend to have much older
-// devices.
+// electromechanical devices.
 type Console struct {
 	in    *os.File
 	out   *term.Terminal
@@ -28,21 +28,19 @@ type Console struct {
 }
 
 var (
-	// ErrNoTTY is returned
+	// ErrNoTTY is returned if standard input is not a terminal.
 	ErrNoTTY error = errors.New("console: not a TTY")
 )
 
 // WithConsole creates a Console context with the standard streams. Calling cancel will restore the
 // terminal state and release resources.
-func WithConsole(parent Context, keyboard *vm.Keyboard) (
-	ctx Context, console *Console, cancel ConsoleDoneFunc,
-) {
-	ctx, cancel = context.WithCancelCause(parent)
+func WithConsole(parent Context, keyboard *vm.Keyboard) (Context, *Console, ConsoleDoneFunc) {
+	ctx, cause := context.WithCancelCause(parent)
 	console, err := NewConsole(os.Stdin, os.Stdout, os.Stderr)
 
 	if err != nil {
-		cancel(err)
-		return ctx, console, cancel
+		cause(err)
+		return ctx, console, func() { cause(context.Canceled) }
 	}
 
 	go console.readTerminal(ctx, console.Restore)
@@ -92,10 +90,9 @@ func (c Console) Writer() io.Writer {
 	return c.out
 }
 
-// Restore returns the terminal to its initial state, cancels in-progress reads, and cancels the
-// context.
-func (c *Console) Restore(err error) {
-	_ = os.Stdin.SetReadDeadline(time.Now()) // Cancel any in progress blocking reads.
+// Restore returns the terminal to its initial state and cancels in-progress reads.
+func (c *Console) Restore() {
+	_ = os.Stdin.SetReadDeadline(time.Now())
 	_ = term.Restore(c.fd, c.state)
 }
 
@@ -133,7 +130,7 @@ func (c Console) readTerminal(ctx Context, cancel ConsoleDoneFunc) {
 			b, err := buf.ReadByte()
 
 			if err != nil {
-				cancel(err)
+				cancel()
 				return
 			}
 
@@ -157,5 +154,5 @@ func (c Console) updateKeyboard(ctx Context, kbd *vm.Keyboard, cancel ConsoleDon
 // Type aliases to reduce symbol stutter.
 type (
 	Context         = context.Context
-	ConsoleDoneFunc = context.CancelCauseFunc
+	ConsoleDoneFunc = context.CancelFunc
 )

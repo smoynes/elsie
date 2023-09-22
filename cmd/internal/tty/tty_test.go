@@ -23,13 +23,9 @@ type testHarness struct {
 
 const timeout = 100 * time.Millisecond
 
-func (testHarness) Context() (context.Context, context.CancelCauseFunc) {
+func (testHarness) Context() (context.Context, context.CancelFunc) {
 	ctx := context.Background()
-	ctx, cancel := context.WithTimeoutCause(ctx, timeout, context.DeadlineExceeded)
-
-	return ctx, func(err error) {
-		cancel()
-	}
+	return context.WithTimeoutCause(ctx, timeout, context.DeadlineExceeded)
 }
 
 func TestTerminal(tt *testing.T) {
@@ -37,10 +33,10 @@ func TestTerminal(tt *testing.T) {
 	kbd := vm.NewKeyboard()
 
 	ctx, cancel := t.Context()
-	defer cancel(nil)
+	defer cancel()
 
 	ctx, console, cancel := tty.WithConsole(ctx, kbd)
-	defer cancel(nil)
+	defer cancel()
 
 	if err := context.Cause(ctx); errors.Is(err, tty.ErrNoTTY) {
 		t.Skipf("error: %s", context.Cause(ctx))
@@ -56,7 +52,7 @@ func TestTerminal(tt *testing.T) {
 		_, err := kbd.Read(vm.KBDRAddr)
 
 		if err != nil {
-			cancel(err)
+			cancel()
 			return
 		}
 
@@ -64,6 +60,7 @@ func TestTerminal(tt *testing.T) {
 	}()
 
 	go func() {
+		//<-pressed
 		console.Press('!')
 	}()
 
@@ -72,9 +69,9 @@ func TestTerminal(tt *testing.T) {
 	case <-pressed:
 	}
 
-	cancel(nil)
+	cancel()
 
-	if err := context.Cause(ctx); err != nil {
+	if err := ctx.Err(); err != nil {
 		t.Errorf("cause: %s", err)
 	}
 }
