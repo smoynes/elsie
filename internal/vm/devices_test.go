@@ -42,8 +42,8 @@ func TestKeyboardDriver(tt *testing.T) {
 	t.Logf("cool 🕶️ %s", kbd)
 
 	driver.Init(vm, nil)
-	addr := Word(KBSRAddr)
 
+	addr := Word(KBSRAddr)
 	if err := writer.Write(addr, Register(0xffff)); err != nil {
 		t.Error(err)
 	} else if got, err := reader.Read(addr); err != nil {

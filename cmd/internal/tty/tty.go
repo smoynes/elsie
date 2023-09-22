@@ -2,6 +2,7 @@
 package tty
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
@@ -19,12 +20,11 @@ import (
 // machine's keyboard and display devices for use on modern systems that pretend to have much older
 // devices.
 type Console struct {
-	in     *os.File
-	out    *term.Terminal
-	fd     int
-	state  *term.State
-	cancel ConsoleDoneFunc
-	keyCh  chan uint16
+	in    *os.File
+	out   *term.Terminal
+	fd    int
+	state *term.State
+	keyCh chan uint16
 }
 
 var (
@@ -67,13 +67,11 @@ func NewConsole(sin, sout, serr *os.File) (*Console, error) {
 	}
 
 	cons := Console{
-		fd:     fd,
-		in:     sin,
-		out:    term.NewTerminal(sin, ""),
-		state:  saved,
-		cancel: func(_ error) {},
-
-		keyCh: make(chan uint16),
+		fd:    fd,
+		in:    sin,
+		out:   term.NewTerminal(sin, ""),
+		state: saved,
+		keyCh: make(chan uint16, 1),
 	}
 
 	err = cons.setTerminalParams(1, 0)
@@ -99,7 +97,6 @@ func (c Console) Writer() io.Writer {
 func (c *Console) Restore(err error) {
 	_ = os.Stdin.SetReadDeadline(time.Now()) // Cancel any in progress blocking reads.
 	_ = term.Restore(c.fd, c.state)
-	c.cancel(err)
 }
 
 func (c *Console) setTerminalParams(vmin, vtime byte) error {
@@ -124,7 +121,8 @@ func (c *Console) setTerminalParams(vmin, vtime byte) error {
 }
 
 func (c Console) readTerminal(ctx Context, cancel ConsoleDoneFunc) {
-	buf := make([]byte, 8)
+	buf := bufio.NewReader(c.in)
+
 	_ = syscall.SetNonblock(c.fd, false)
 
 	for { // ever and ever
@@ -132,32 +130,27 @@ func (c Console) readTerminal(ctx Context, cancel ConsoleDoneFunc) {
 		case <-ctx.Done():
 			return
 		default:
-			n, err := c.in.Read(buf)
+			b, err := buf.ReadByte()
 
 			if err != nil {
 				cancel(err)
 				return
 			}
 
-			for i := 0; i < n; i++ {
-				c.keyCh <- uint16(buf[i])
-			}
+			c.keyCh <- uint16(b)
 		}
 	}
 }
 
 func (c Console) updateKeyboard(ctx Context, kbd *vm.Keyboard, cancel ConsoleDoneFunc) {
 	for { // you, a gift.
-		var key uint16
-
 		select {
+		case key := <-c.keyCh:
+			kbd.Update(key)
+			continue
 		case <-ctx.Done():
 			return
-		case key = <-c.keyCh:
-			break
 		}
-
-		kbd.Update(key)
 	}
 }
 

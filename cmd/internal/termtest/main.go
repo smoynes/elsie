@@ -33,21 +33,20 @@ func main() {
 			if keyboard.InterruptRequested() {
 				log.Printf("INT: %s", keyboard)
 			}
-			break
 		case <-poll:
 			key, err := keyboard.Read(vm.KBDRAddr)
 			if err != nil {
 				log.Fatal(err)
 			}
+
 			log.Printf("polled: %c", rune(key))
-			break
 		case <-timeout:
 			log.Print("timeout")
 			cancel(context.DeadlineExceeded)
+
 			return
 		case <-ctx.Done():
 			log.Printf("done: %s", ctx.Err())
-			return
 		}
 	}
 }

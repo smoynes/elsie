@@ -182,42 +182,49 @@ const (
 
 // Keyboard is a hardwired input device for typos. It is its own driver.
 type Keyboard struct {
-	lock *sync.RWMutex
+	sync.Mutex
 	intr *sync.Cond
 
 	KBSR, KBDR Register
 }
 
 func NewKeyboard() *Keyboard {
-	lock := new(sync.RWMutex)
-
-	return &Keyboard{
-		lock: lock,
-		intr: sync.NewCond(lock),
-
-		KBSR: 0x0000,
-		KBDR: '?',
+	k := &Keyboard{
+		Mutex: sync.Mutex{},
+		KBSR:  0x0000,
+		KBDR:  '?',
 	}
+	k.intr = sync.NewCond(&k.Mutex)
+
+	return k
 }
 
-func (k Keyboard) String() string {
-	k.lock.RLock()
-	defer k.lock.RUnlock()
+func (k *Keyboard) String() string {
+	k.Lock()
+	defer k.Unlock()
 
 	return fmt.Sprintf("Keyboard(status:%s,data:%s)", k.KBSR, k.KBDR)
 }
 
 // Wait blocks the caller until interrupts are enabled.
-func (k Keyboard) Wait() {
-	k.lock.Lock()
-	k.intr.Wait()
+func (k *Keyboard) Wait() {
+	k.Lock()
+	defer k.Unlock()
+
+	for !(k.KBSR&(KeyboardEnable & ^KeyboardReady) != 0) {
+		k.intr.Wait()
+	}
 }
 
-func (k Keyboard) Device() string { return "Keyboard(ModelM)" } // Simply the best.
+func (k *Keyboard) Device() string { return "Keyboard(ModelM)" } // Simply the best.
 
 func (k *Keyboard) Init(vm *LC3, _ []Word) {
+	k.Lock()
+
 	k.KBSR = ^KeyboardReady | KeyboardEnable // Enable interrupts, clear ready flag.
 	k.KBDR = 0x0000
+
+	k.Unlock()
 
 	isr := ISR{vector: 0xff, driver: k}
 	vm.INT.Register(PriorityNormal, isr)
@@ -226,8 +233,8 @@ func (k *Keyboard) Init(vm *LC3, _ []Word) {
 // InterruptRequested returns true if the keyboard has requested interrupt and interrupts are
 // enabled. That is, both the R and IE bits are set in the status register.
 func (k *Keyboard) InterruptRequested() bool {
-	k.lock.RLock()
-	defer k.lock.RUnlock()
+	k.Lock()
+	defer k.Unlock()
 
 	return k.KBSR == (KeyboardEnable | KeyboardReady)
 }
@@ -236,14 +243,14 @@ func (k *Keyboard) InterruptRequested() bool {
 // is cleared.
 func (k *Keyboard) Read(addr Word) (Word, error) {
 	if addr == KBSRAddr {
-		k.lock.RLock()
-		defer k.lock.RUnlock()
+		k.Lock()
+		defer k.Unlock()
 
 		return Word(k.KBSR), nil
 	}
 
-	k.lock.Lock()
-	defer k.lock.Unlock()
+	k.Lock()
+	defer k.Unlock()
 
 	wasDisabled := k.KBSR&KeyboardEnable == KeyboardEnable
 	val := Word(k.KBDR)
@@ -263,8 +270,8 @@ func (k *Keyboard) Write(addr Word, val Register) error {
 		return fmt.Errorf("kbd: %w: %s", ErrNoDevice, addr)
 	}
 
-	k.lock.Lock()
-	defer k.lock.Unlock()
+	k.Lock()
+	defer k.Unlock()
 
 	enabled := (k.KBSR & ^KeyboardEnable != 0) && (val&KeyboardEnable != 0)
 	k.KBSR = val
@@ -276,10 +283,11 @@ func (k *Keyboard) Write(addr Word, val Register) error {
 	return nil
 }
 
-// Update blocks until the keyboard has interrupts enabled and atomically sets the data and ready
+// Update blocks until the keyboard interrupt is enabled and atomically sets the data and ready
 // flag.
 func (k *Keyboard) Update(key uint16) {
-	k.intr.L.Lock()
+	k.Lock()
+	defer k.Unlock()
 
 	for !(k.KBSR&(KeyboardEnable & ^KeyboardReady) != 0) {
 		k.intr.Wait()
@@ -288,5 +296,4 @@ func (k *Keyboard) Update(key uint16) {
 	k.KBDR = Register(key)
 	k.KBSR |= KeyboardReady // Data is ready.
 	k.intr.Broadcast()
-	k.intr.L.Unlock()
 }

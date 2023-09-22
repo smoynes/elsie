@@ -48,14 +48,13 @@ func TestTerminal(tt *testing.T) {
 	}
 
 	pressed := make(chan struct{})
-
 	_, _ = kbd.Read(vm.KBDRAddr)
 
 	go func() {
 		defer close(pressed)
-		b, err := kbd.Read(vm.KBDRAddr)
 
-		t.Logf("read: %c %s", b, err)
+		_, err := kbd.Read(vm.KBDRAddr)
+
 		if err != nil {
 			cancel(err)
 			return
@@ -65,14 +64,7 @@ func TestTerminal(tt *testing.T) {
 	}()
 
 	go func() {
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
-			console.Press('!')
-		}
+		console.Press('!')
 	}()
 
 	select {
