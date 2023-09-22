@@ -19,12 +19,17 @@ func main() {
 	ctx, console, cancel := tty.WithConsole(ctx, keyboard)
 	defer cancel()
 
-	log.SetOutput(console.Writer())
-
 	intr := time.Tick(100 * time.Millisecond)
 	poll := time.Tick(500 * time.Millisecond)
 	timeout := time.After(10 * time.Second)
 
+	select {
+	case <-ctx.Done():
+		log.Fatal(context.Cause(ctx))
+	default:
+	}
+
+	log.SetOutput(console.Writer())
 	log.Printf("polling keyboard")
 
 	for {
