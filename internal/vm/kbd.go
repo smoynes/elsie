@@ -82,7 +82,7 @@ func (k *Keyboard) Read(addr Word) (Word, error) {
 		return Word(k.KBSR), nil
 	}
 
-	wasDisabled := k.KBSR&KeyboardEnable == KeyboardEnable
+	wasDisabled := k.KBSR&KeyboardEnable != KeyboardEnable
 	val := Word(k.KBDR)
 	k.KBSR = (KeyboardEnable & ^KeyboardReady)
 	k.KBDR = 0x0000 // ??

@@ -15,6 +15,7 @@ type DisplayDriver struct {
 	dataAddr   Word
 }
 
+// WithDisplayDriver creates a new display and its driver.
 func WithDisplayDriver(parent context.Context) (context.Context, *DisplayDriver, context.CancelFunc) {
 	display := &Display{
 		Mutex: &sync.Mutex{},
@@ -54,9 +55,9 @@ func (driver *DisplayDriver) Read(addr Word) (Word, error) {
 	return Word(0xdea1), fmt.Errorf("read: %w: %s:%s", ErrNoDevice, addr, driver)
 }
 
+// InterruptRequested returns true when the display raises an interrupt request. For our purposes,
+// the display never interrupts the CPU.
 func (driver *DisplayDriver) InterruptRequested() bool {
-	// For our purposes, the display never interrupts the CPU.
-
 	return driver.handle.device != nil &&
 		driver.handle.device.DSR() == (DisplayReady|DisplayEnabled)
 }
@@ -131,6 +132,8 @@ func (d *Display) Init(_ *LC3, _ []Word) {
 	d.notify()
 }
 
+// Write updates the display data register with the given data. It (briefly) clears the ready
+// status-flag until it notifies all listeners with the data. Then the ready flag is set again.
 func (disp *Display) Write(data Register) {
 	disp.Lock()
 	defer disp.Unlock()
@@ -141,6 +144,7 @@ func (disp *Display) Write(data Register) {
 	disp.notify()
 }
 
+// DSR returns the value of the display status register.
 func (disp *Display) DSR() Register {
 	disp.Lock()
 	defer disp.Unlock()
@@ -148,6 +152,8 @@ func (disp *Display) DSR() Register {
 	return disp.dsr
 }
 
+// Listen adds a display listener. Every listener function is called every time the display data is
+// written.
 func (disp *Display) Listen(listener func(uint16)) {
 	disp.Lock()
 	defer disp.Unlock()

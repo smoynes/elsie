@@ -43,7 +43,9 @@ var (
 
 // WithConsole creates a Console context with the standard streams. Calling cancel will restore the
 // terminal state and release resources.
-func WithConsole(parent Context, keyboard *vm.Keyboard, display *vm.Display) (Context, *Console, ConsoleDoneFunc) {
+func WithConsole(parent context.Context, keyboard *vm.Keyboard, display *vm.Display) (
+	context.Context, *Console, context.CancelFunc,
+) {
 	ctx, cause := context.WithCancelCause(parent)
 	console, err := NewConsole(os.Stdin, os.Stdout, os.Stderr)
 
@@ -53,9 +55,9 @@ func WithConsole(parent Context, keyboard *vm.Keyboard, display *vm.Display) (Co
 		return ctx, console, func() { cause(err) }
 	}
 
-	go console.readTerminal(ctx, console.Restore)
-	go console.updateKeyboard(ctx, keyboard, console.Restore)
-	go console.updateTerminal(ctx, display, console.Restore)
+	go console.readTerminal(ctx, cause)
+	go console.updateKeyboard(ctx, keyboard)
+	go console.updateTerminal(ctx, display)
 
 	return ctx, console, console.Restore
 }
@@ -130,8 +132,8 @@ func (c *Console) setTerminalParams(vmin, vtime byte) error {
 }
 
 // readTerminal reads bytes from the terminal and writes them to the key channel until the context
-// is cancelled.
-func (c Console) readTerminal(ctx Context, cancel ConsoleDoneFunc) {
+// is cancelled. If reading from the terminal fails, the cancel is called.
+func (c Console) readTerminal(ctx context.Context, cancel context.CancelCauseFunc) {
 	buf := bufio.NewReader(c.in)
 
 	// Make terminal input block on reads.
@@ -142,39 +144,44 @@ func (c Console) readTerminal(ctx Context, cancel ConsoleDoneFunc) {
 		case <-ctx.Done():
 			return
 		default:
-			b, err := buf.ReadByte()
+		}
 
-			if err != nil {
-				cancel() // TODO: Is it right to cancel the context on errors?
-				return
-			}
+		b, err := buf.ReadByte()
 
-			c.keyCh <- b
+		if err != nil {
+			cancel(err) // TODO: Is it right to cancel the context on errors?
+			return
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case c.keyCh <- b:
 		}
 	}
 }
 
-// updateKeyboard takes keys from the key channel and updates the keyboard device for each key. When
-// the context is
-func (c Console) updateKeyboard(ctx Context, kbd *vm.Keyboard, _ ConsoleDoneFunc) {
+// updateKeyboard takes keys from the key channel and updates the keyboard device for each key. The
+// function blocks until the context is cancelled.
+func (c Console) updateKeyboard(ctx context.Context, kbd *vm.Keyboard) {
 	for { // you, a gift.
 		select {
-		case key := <-c.keyCh:
-			kbd.Update(uint16(key))
 		case <-ctx.Done():
 			return
+		case key := <-c.keyCh:
+			// Blocks until there is space in keyboard buffer.
+			kbd.Update(uint16(key))
 		}
 	}
 }
 
 // updateTerminal waits for writes to the display and outputs the display data to the terminal.
-func (c Console) updateTerminal(ctx Context, disp *vm.Display, cancel ConsoleDoneFunc) {
+func (c Console) updateTerminal(ctx context.Context, disp *vm.Display) {
 	// Listen to the display device.
 	disp.Listen(
 		func(char uint16) {
 			select {
 			case <-ctx.Done():
-				return
 			case c.termCh <- rune(char):
 			default:
 				// dropped signal
@@ -187,7 +194,6 @@ func (c Console) updateTerminal(ctx Context, disp *vm.Display, cancel ConsoleDon
 		case char := <-c.termCh:
 			if _, err := fmt.Fprintf(c.out, "%c", char); err != nil {
 				// TODO: WHATDO?
-				cancel()
 				panic(err)
 			}
 		case <-ctx.Done():
@@ -195,9 +201,3 @@ func (c Console) updateTerminal(ctx Context, disp *vm.Display, cancel ConsoleDon
 		}
 	}
 }
-
-// Type aliases to reduce symbol stutter.
-type (
-	Context         = context.Context
-	ConsoleDoneFunc = context.CancelFunc
-)
