@@ -13,7 +13,7 @@ func TestInterrupt(tt *testing.T) {
 		kbd    = NewKeyboard()
 		isrKbd = ISR{vector: 0xad, driver: kbd}
 
-		disp    = &Display{}
+		disp    = NewDisplay()
 		driver  = NewDisplayDriver(disp)
 		isrDisp = ISR{vector: 0xdd, driver: driver}
 	)

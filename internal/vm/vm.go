@@ -63,16 +63,15 @@ func New(opts ...OptionFn) *LC3 {
 
 	// Create devices.
 	var (
-		// The keyboard device is hardwired and does not have a separate
-		// driver.
+		// The keyboard device is hardwired and does not have a separate driver.
 		kbd *Keyboard = NewKeyboard()
 
-		// The display is more complicated: a driver configures the
-		// device with the addresses for the display registers.
-		display       = &Display{ddr: '!'}
+		// The display is more complicated: a driver configures the device with the addresses for
+		// the display registers.
+		display       = NewDisplay()
 		displayDriver = NewDisplayDriver(display)
 
-		// Device configuration for the I/O.
+		// Device configuration for memory-mapped I/O.
 		devices = map[Word]any{
 			MCRAddr:  &vm.MCR,
 			PSRAddr:  &vm.PSR,

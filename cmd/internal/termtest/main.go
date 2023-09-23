@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"log"
-	"math/rand"
 	"time"
 
 	"github.com/smoynes/elsie/cmd/internal/tty"
@@ -13,13 +12,15 @@ import (
 )
 
 func main() {
-	ctx := context.Background()
-	keyboard := vm.NewKeyboard()
-	display := vm.Display{} // TODO: vm.NewDisplay()??
+	var (
+		ctx      = context.Background()
+		keyboard = vm.NewKeyboard()
+		display  = vm.NewDisplay()
+	)
 
 	display.Init(nil, nil)
 
-	ctx, console, cancel := tty.WithConsole(ctx, keyboard, &display)
+	ctx, console, cancel := tty.WithConsole(ctx, keyboard, display)
 	defer cancel()
 
 	log.SetOutput(console.Writer())
@@ -35,8 +36,7 @@ func main() {
 
 	log.Printf("polling keyboard")
 
-	display.Write(vm.Register(a[rand.Intn(len(a))]))
-	display.Write('\n')
+	display.Write(vm.Register('\n'))
 
 	for {
 		select {
@@ -56,8 +56,4 @@ func main() {
 			log.Printf("done: %s", ctx.Err())
 		}
 	}
-}
-
-var a = []rune{
-	0x2361, 0x2362, 0x2363, 0x2364, 0x2365, 0x2368, 0x2369,
 }

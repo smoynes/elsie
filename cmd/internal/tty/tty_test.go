@@ -31,7 +31,9 @@ func (testHarness) Context() (context.Context, context.CancelFunc) {
 func TestTerminal(tt *testing.T) {
 	t := testHarness{tt}
 	kbd := vm.NewKeyboard()
-	display := &vm.Display{}
+	display := vm.NewDisplay()
+	_ = vm.NewDisplayDriver(display)
+
 	display.Init(nil, nil)
 
 	ctx, cancel := t.Context()
@@ -57,12 +59,9 @@ func TestTerminal(tt *testing.T) {
 			cancel()
 			return
 		}
-
-		kbd.Wait()
 	}()
 
 	go func() {
-		//<-pressed
 		console.Press('!')
 	}()
 

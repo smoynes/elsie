@@ -64,8 +64,8 @@ func TestKeyboardDriver(tt *testing.T) {
 	addr = Word(KBSRAddr)
 	if got, err := reader.Read(addr); err != nil {
 		t.Errorf("read error: %s: %s", addr, err)
-	} else if got != Word(KeyboardEnable) {
-		t.Errorf("expected status ready: want: %s, got: %s", KeyboardEnable, got)
+	} else if got != Word(KeyboardEnable|KeyboardReady) {
+		t.Errorf("expected status ready: want: %s, got: %s", KeyboardEnable|KeyboardReady, got)
 	}
 }
 
@@ -73,34 +73,41 @@ func TestDisplayDriver(tt *testing.T) {
 	var (
 		t             = NewTestHarness(tt)
 		vm            = t.Make()
-		display       = Display{dsr: uninitialized, ddr: uninitialized}
-		displayDriver = NewDisplayDriver(&display)
+		display       = NewDisplay()
+		displayDriver = NewDisplayDriver(display)
+		statusAddr    = Word(0xface)
+		dataAddr      = Word(0xf001)
 	)
 
-	displayDriver.Init(vm, []Word{0xface, 0xf001})
+	display.dsr = uninitialized
+	display.ddr = uninitialized
 
-	addr := Word(0xface)
+	displayDriver.Init(vm, []Word{statusAddr, dataAddr})
 
-	if got, err := displayDriver.Read(addr); err != nil {
+	if got, err := displayDriver.Read(statusAddr); err != nil {
 		t.Error(err)
 	} else if got == Word(uninitialized) {
 		t.Errorf("uninitialized status register: %s, want: %s, got: %s",
-			addr, Word(0x8000), got)
+			statusAddr, Word(0x8000), got)
 	} else if got != Word(0x8000) {
 		t.Errorf("unexpected status register: %s, want: %s, got: %s",
-			addr, Word(0x8000), got)
+			statusAddr, Word(0x8000), got)
 	}
 
-	addr = Word(0xf001)
-
-	if got, err := displayDriver.Read(addr); err == nil {
-		t.Errorf("expected read error: %s", addr)
+	if got, err := displayDriver.Read(dataAddr); err == nil {
+		t.Errorf("expected read error: %s", dataAddr)
 	} else if got == Word(uninitialized) {
-		t.Errorf("uninitialized display register: %s:%s", addr, got)
+		t.Errorf("uninitialized display register: %s:%s", dataAddr, got)
 	}
 
 	val := Register('?')
-	if err := displayDriver.Write(addr, val); err != nil {
-		t.Errorf("write error: %s: %s", addr, err)
+	if err := displayDriver.Write(dataAddr, val); err != nil {
+		t.Errorf("write error: %s: %s", dataAddr, err)
+	}
+
+	if got, err := displayDriver.Read(statusAddr); err != nil {
+		t.Errorf("write error: %s: %s", dataAddr, err)
+	} else if got != Word(DisplayReady) {
+		t.Errorf("expected status: %s, got: %s", Word(DisplayReady), got)
 	}
 }
