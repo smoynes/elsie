@@ -106,7 +106,7 @@ func (mmio *MMIO) Map(devices map[Word]any) error {
 		if dev == nil {
 			return fmt.Errorf("%w: map: bad device: %s, %T", errMMIO, addr, dev)
 		} else if dd, ok := dev.(Device); ok && dd != nil {
-			mmio.log.Printf("mmio: map: %s:%s (%T)", addr.String(), dd.String(), dev)
+			mmio.log.Printf("mmio: map: %s:%s (%T)", addr.String(), dd.device(), dev)
 			updated[addr] = dd
 		} else {
 			mmio.log.Printf("mmio: map: unsupported device: %s %T %#v", dev, dev, dev)

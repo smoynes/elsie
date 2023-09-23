@@ -31,11 +31,13 @@ func (testHarness) Context() (context.Context, context.CancelFunc) {
 func TestTerminal(tt *testing.T) {
 	t := testHarness{tt}
 	kbd := vm.NewKeyboard()
+	display := &vm.Display{}
+	display.Init(nil, nil)
 
 	ctx, cancel := t.Context()
 	defer cancel()
 
-	ctx, console, cancel := tty.WithConsole(ctx, kbd)
+	ctx, console, cancel := tty.WithConsole(ctx, kbd, display)
 	defer cancel()
 
 	if err := context.Cause(ctx); errors.Is(err, tty.ErrNoTTY) {
@@ -63,6 +65,10 @@ func TestTerminal(tt *testing.T) {
 		//<-pressed
 		console.Press('!')
 	}()
+
+	display.Write('\n')
+	display.Write('⍝')
+	display.Write('\n')
 
 	select {
 	case <-ctx.Done(): // Just wait.

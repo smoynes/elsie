@@ -12,15 +12,14 @@ func TestInterrupt(tt *testing.T) {
 		intr   = Interrupt{}
 		kbd    = NewKeyboard()
 		isrKbd = ISR{vector: 0xad, driver: kbd}
-		disp   = &DisplayDriver{
-			handle: DeviceHandle[*Display, Display]{
-				device: &Display{
-					DSR: DisplayEnabled | DisplayReady,
-				},
-			},
-		}
-		isrDisp = ISR{vector: 0xdd, driver: disp}
+
+		disp    = &Display{}
+		driver  = NewDisplayDriver(disp)
+		isrDisp = ISR{vector: 0xdd, driver: driver}
 	)
+
+	driver.handle.Init(nil, nil)
+	driver.handle.device.dsr = DisplayEnabled | DisplayReady
 
 	intr.Register(PriorityHigh, isrKbd)
 	intr.Register(PL6, isrDisp)

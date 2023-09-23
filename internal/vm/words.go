@@ -159,6 +159,8 @@ func (c ProcessorStatus) Priority() Priority {
 	return Priority(c & StatusPriority >> 8)
 }
 
+func (c *ProcessorStatus) device() string { return Register(*c).String() }
+
 // Priority represents the priority level of a task.
 type Priority uint8
 
@@ -240,13 +242,13 @@ func (c ControlRegister) Running() bool {
 	return c&ControlRunning != 0
 }
 
-func (c ControlRegister) String() string {
+func (c *ControlRegister) String() string {
 	run := "RUN"
 	if !c.Running() {
 		run = "STOP"
 	}
 
-	return fmt.Sprintf("%s (%s)", Register(c).String(), run)
+	return fmt.Sprintf("%s (%s)", Register(*c).String(), run)
 }
 
 // Init configures the device at startup.
@@ -263,3 +265,5 @@ func (c *ControlRegister) Get() Register {
 func (c *ControlRegister) Put(val Register) {
 	*c = ControlRegister(val)
 }
+
+func (c *ControlRegister) device() string { return c.String() }

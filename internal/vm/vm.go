@@ -69,9 +69,8 @@ func New(opts ...OptionFn) *LC3 {
 
 		// The display is more complicated: a driver configures the
 		// device with the addresses for the display registers.
-		display       = Display{DDR: '!'}
-		handle        = NewDeviceHandle[*Display, Display](display)
-		displayDriver = DisplayDriver{handle: *handle}
+		display       = &Display{ddr: '!'}
+		displayDriver = NewDisplayDriver(display)
 
 		// Device configuration for the I/O.
 		devices = map[Word]any{
@@ -79,8 +78,8 @@ func New(opts ...OptionFn) *LC3 {
 			PSRAddr:  &vm.PSR,
 			KBSRAddr: kbd,
 			KBDRAddr: kbd,
-			DSRAddr:  &displayDriver,
-			DDRAddr:  &displayDriver,
+			DSRAddr:  displayDriver,
+			DDRAddr:  displayDriver,
 		}
 	)
 
@@ -114,8 +113,8 @@ func New(opts ...OptionFn) *LC3 {
 func (vm *LC3) String() string {
 	return fmt.Sprintf("PC:  %s IR:  %s \nPSR: %s\nUSP: %s SSP: %s MCR: %s\n"+
 		"MAR: %s MDR: %s",
-		vm.PC.String(), vm.IR.String(), vm.PSR, vm.USP, vm.SSP, vm.MCR,
-		vm.Mem.MAR, vm.Mem.MDR)
+		vm.PC.String(), vm.IR.String(), vm.PSR.String(), vm.USP.String(), vm.SSP.String(),
+		vm.MCR.String(), vm.Mem.MAR.String(), vm.Mem.MDR.String())
 }
 
 // PushStack pushes a word onto the current stack.

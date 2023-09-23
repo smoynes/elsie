@@ -31,7 +31,7 @@ func TestKeyboardDriver(tt *testing.T) {
 
 	var (
 		kbd    *Keyboard   = NewKeyboard()
-		driver Device      = kbd
+		driver Driver      = kbd
 		reader ReadDriver  = kbd
 		writer WriteDriver = kbd
 	)
@@ -73,13 +73,9 @@ func TestDisplayDriver(tt *testing.T) {
 	var (
 		t             = NewTestHarness(tt)
 		vm            = t.Make()
-		display       = Display{}
-		handle        = NewDeviceHandle[*Display](display)
-		displayDriver = &DisplayDriver{*handle, Word(0xface), Word(0xf001)}
+		display       = Display{dsr: uninitialized, ddr: uninitialized}
+		displayDriver = NewDisplayDriver(&display)
 	)
-
-	displayDriver.handle.device.DSR = uninitialized
-	displayDriver.handle.device.DDR = uninitialized
 
 	displayDriver.Init(vm, []Word{0xface, 0xf001})
 

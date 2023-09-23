@@ -16,35 +16,46 @@ import (
 	"golang.org/x/term"
 )
 
-// Console is simulated serial console using Unix terminal I/O for teletype emulation. It adapts the
-// machine's keyboard and display devices for use on modern systems that pretend to have much older
-// electromechanical devices.
+// Console is a serial console for the machine simulated using Unix terminal I/O[^1]. It adapts the
+// machine's (virtual) keyboard and display devices for use on contemporary systems[^2].
+//
+// Keys pressed on the console are copied to the keyboard device, after waiting for device
+// interrupts to be enabled. Likewise, writes to the display device are output on the terminal.
+//
+// [1]: See: tty(4), termios(4).
+// [2]: These systems, themselves, emulating electromecahnical teletype devices, of course.
 type Console struct {
 	in    *os.File
 	out   *term.Terminal
 	fd    int
 	state *term.State
-	keyCh chan uint16
+
+	// I/O buffers.
+	keyCh  chan uint8
+	termCh chan rune
 }
 
 var (
-	// ErrNoTTY is returned if standard input is not a terminal.
+	// ErrNoTTY is returned if standard input is not a terminal. In this case, asynchronous I/O is
+	// not supported by the console.
 	ErrNoTTY error = errors.New("console: not a TTY")
 )
 
 // WithConsole creates a Console context with the standard streams. Calling cancel will restore the
 // terminal state and release resources.
-func WithConsole(parent Context, keyboard *vm.Keyboard) (Context, *Console, ConsoleDoneFunc) {
+func WithConsole(parent Context, keyboard *vm.Keyboard, display *vm.Display) (Context, *Console, ConsoleDoneFunc) {
 	ctx, cause := context.WithCancelCause(parent)
 	console, err := NewConsole(os.Stdin, os.Stdout, os.Stderr)
 
 	if err != nil {
 		cause(err)
-		return ctx, console, func() { cause(context.Canceled) }
+
+		return ctx, console, func() { cause(err) }
 	}
 
 	go console.readTerminal(ctx, console.Restore)
 	go console.updateKeyboard(ctx, keyboard, console.Restore)
+	go console.updateTerminal(ctx, display, console.Restore)
 
 	return ctx, console, console.Restore
 }
@@ -65,11 +76,12 @@ func NewConsole(sin, sout, serr *os.File) (*Console, error) {
 	}
 
 	cons := Console{
-		fd:    fd,
-		in:    sin,
-		out:   term.NewTerminal(sin, ""),
-		state: saved,
-		keyCh: make(chan uint16, 1),
+		fd:     fd,
+		in:     sin,
+		out:    term.NewTerminal(sin, ""),
+		state:  saved,
+		keyCh:  make(chan uint8, 1),
+		termCh: make(chan rune, 80),
 	}
 
 	err = cons.setTerminalParams(1, 0)
@@ -82,7 +94,7 @@ func NewConsole(sin, sout, serr *os.File) (*Console, error) {
 
 // Press injects a key press into the input stream.
 func (c Console) Press(key byte) {
-	c.keyCh <- uint16(key)
+	c.keyCh <- key
 }
 
 // Writer returns an io.Writer that writes to the terminal.
@@ -117,9 +129,12 @@ func (c *Console) setTerminalParams(vmin, vtime byte) error {
 	return nil
 }
 
+// readTerminal reads bytes from the terminal and writes them to the key channel until the context
+// is cancelled.
 func (c Console) readTerminal(ctx Context, cancel ConsoleDoneFunc) {
 	buf := bufio.NewReader(c.in)
 
+	// Make terminal input block on reads.
 	_ = syscall.SetNonblock(c.fd, false)
 
 	for { // ever and ever
@@ -130,21 +145,51 @@ func (c Console) readTerminal(ctx Context, cancel ConsoleDoneFunc) {
 			b, err := buf.ReadByte()
 
 			if err != nil {
-				cancel()
+				cancel() // TODO: Is it right to cancel the context on errors?
 				return
 			}
 
-			c.keyCh <- uint16(b)
+			c.keyCh <- b
 		}
 	}
 }
 
-func (c Console) updateKeyboard(ctx Context, kbd *vm.Keyboard, cancel ConsoleDoneFunc) {
+// updateKeyboard takes keys from the key channel and updates the keyboard device for each key. When
+// the context is
+func (c Console) updateKeyboard(ctx Context, kbd *vm.Keyboard, _ ConsoleDoneFunc) {
 	for { // you, a gift.
 		select {
 		case key := <-c.keyCh:
-			kbd.Update(key)
-			continue
+			kbd.Update(uint16(key))
+		case <-ctx.Done():
+			return
+		}
+	}
+}
+
+// updateTerminal waits for writes to the display and outputs the display data to the terminal.
+func (c Console) updateTerminal(ctx Context, disp *vm.Display, cancel ConsoleDoneFunc) {
+	// Listen to the display device.
+	disp.Listen(
+		func(char uint16) {
+			select {
+			case <-ctx.Done():
+				return
+			case c.termCh <- rune(char):
+			default:
+				// dropped signal
+			}
+		},
+	)
+
+	for { // SPARTA!
+		select {
+		case char := <-c.termCh:
+			if _, err := fmt.Fprintf(c.out, "%c", char); err != nil {
+				// TODO: WHATDO?
+				cancel()
+				panic(err)
+			}
 		case <-ctx.Done():
 			return
 		}

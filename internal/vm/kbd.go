@@ -47,7 +47,7 @@ func (k *Keyboard) Wait() {
 	}
 }
 
-func (k *Keyboard) Device() string { return "Keyboard(ModelM)" } // Simply the best.
+func (k *Keyboard) device() string { return "Keyboard(ModelM)" } // Simply the best.
 
 // Init configures the keyboard device for use. It registers the device with the interrupt
 // controller and enables interrupts.
@@ -75,15 +75,12 @@ func (k *Keyboard) InterruptRequested() bool {
 // Read returns the value of a keyboard's register. If the data register is read then the ready flag
 // is cleared.
 func (k *Keyboard) Read(addr Word) (Word, error) {
-	if addr == KBSRAddr {
-		k.Lock()
-		defer k.Unlock()
-
-		return Word(k.KBSR), nil
-	}
-
 	k.Lock()
 	defer k.Unlock()
+
+	if addr == KBSRAddr {
+		return Word(k.KBSR), nil
+	}
 
 	wasDisabled := k.KBSR&KeyboardEnable == KeyboardEnable
 	val := Word(k.KBDR)
