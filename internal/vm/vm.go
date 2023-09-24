@@ -3,6 +3,8 @@ package vm
 
 import (
 	"fmt"
+
+	"github.com/smoynes/elsie/internal/log"
 )
 
 // LC3 is a computer simulated in software.
@@ -16,8 +18,7 @@ type LC3 struct {
 	MCR ControlRegister // Master Control Register.
 	INT Interrupt       // Interrupt Line.
 	Mem Memory          // All the memory you'll ever need!
-
-	log logger // A log of where we've been.
+	log *log.Logger     // A record of where we've been.
 }
 
 // New initializes a virtual machine state.
@@ -43,12 +44,10 @@ func New(opts ...OptionFn) *LC3 {
 		USP: Register(IOPageAddr),    // User stack grows down from the top of user space.
 		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where user space ends.
 		MCR: ControlRegister(0x8000), // Set the RUN flag. 🤾
-		INT: Interrupt{
-			log: defaultLogger(),
-		},
-
-		log: defaultLogger(),
+		INT: Interrupt{},
 	}
+
+	vm.withLogger(log.DefaultLogger())
 
 	// Initialize general purpose registers to a pleasing pattern.
 	copy(vm.REG[:], []Register{
@@ -90,10 +89,11 @@ func New(opts ...OptionFn) *LC3 {
 	err := vm.Mem.Devices.Map(devices)
 
 	if err != nil {
-		vm.log.Panic(err)
+		vm.log.Error(err.Error())
+		panic(err)
 	}
 
-	vm.log.Print("Configuring devices and drivers")
+	vm.log.Debug("Configuring devices and drivers")
 
 	kbd.Init(&vm, nil)                                // Keyboard needs no configuration.
 	displayDriver.Init(&vm, []Word{DSRAddr, DDRAddr}) // Configure the display's address range.

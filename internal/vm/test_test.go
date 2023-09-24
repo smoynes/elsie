@@ -2,30 +2,30 @@ package vm
 
 import (
 	"io"
-	"log"
-	"strings"
 	"testing"
+
+	"github.com/smoynes/elsie/internal/log"
 )
 
 func NewTestHarness(t *testing.T) *testHarness {
 	t.Parallel()
 	th := &testHarness{
-		T:   t,
-		log: nil,
+		T:      t,
+		logger: nil,
 	}
-	th.log = makeTestLogger(t, th)
+	th.logger = makeTestLogger(t, th)
 
 	return th
 }
 
 type testHarness struct {
 	*testing.T
-	log logger
+	logger *log.Logger
 }
 
 func (t *testHarness) Make() *LC3 {
 	opts := []OptionFn{
-		WithLogger(t.log),
+		WithLogger(t.logger),
 		WithSystemPrivileges(),
 	}
 	vm := New(opts...)
@@ -33,12 +33,8 @@ func (t *testHarness) Make() *LC3 {
 	return vm
 }
 
-func makeTestLogger(t *testing.T, out io.Writer) logger {
-	flag := log.Lshortfile | log.Lmsgprefix
-	s := strings.Split(t.Name(), "/")
-	logPrefix := s[len(s)-1] + ": "
-
-	return log.New(out, logPrefix, flag)
+func makeTestLogger(t *testing.T, out io.Writer) *log.Logger {
+	return log.NewTestLogger()
 }
 
 func (t *testHarness) Write(b []byte) (n int, err error) {

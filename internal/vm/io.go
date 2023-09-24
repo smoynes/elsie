@@ -5,6 +5,8 @@ package vm
 import (
 	"errors"
 	"fmt"
+
+	"github.com/smoynes/elsie/internal/log"
 )
 
 // The memory controller redirects accesses of addresses in the I/O page to the MMIO controller.
@@ -19,14 +21,14 @@ import (
 // to either a register or a device driver.
 type MMIO struct {
 	devs map[Word]any
-	log  logger
+	log  *log.Logger
 }
 
 // NewMMIO creates a memory-mapped I/O controller with default configuration.
 func NewMMIO() *MMIO {
 	m := MMIO{
 		devs: make(map[Word]any),
-		log:  defaultLogger(),
+		log:  log.DefaultLogger(),
 	}
 
 	return &m
@@ -63,10 +65,11 @@ func (mmio MMIO) Store(addr Word, mdr Register) error {
 			return fmt.Errorf("mmio: write: %s:%s: %w", addr, dev, err)
 		}
 	} else {
-		mmio.log.Panicf("%s: addr: %s: %T", ErrNoDevice, addr, dev)
+		mmio.log.Error("%s: addr: %s: %T", ErrNoDevice, addr, dev)
+		panic(ErrNoDevice.Error())
 	}
 
-	mmio.log.Printf("mmio: store: %s := %s\n", addr, mdr)
+	mmio.log.Debug("mmio: store: %s := %s\n", addr.String(), mdr.String())
 
 	return nil
 }
@@ -89,10 +92,11 @@ func (mmio MMIO) Load(addr Word) (Register, error) {
 			return Register(0xffff), fmt.Errorf("mmio: write: %s:%s: %w", addr, dev, err)
 		}
 	} else {
-		mmio.log.Panicf("%s: addr: %s: %T", ErrNoDevice, addr, dev)
+		mmio.log.Error("%s: addr: %s: %T", ErrNoDevice, addr, dev)
+		panic(ErrNoDevice)
 	}
 
-	mmio.log.Printf("mmio: store: %s := %s\n", addr, value)
+	mmio.log.Debug("mmio: store: %s := %s\n", addr.String(), value.String())
 
 	return Register(value), nil
 }
@@ -106,10 +110,10 @@ func (mmio *MMIO) Map(devices map[Word]any) error {
 		if dev == nil {
 			return fmt.Errorf("%w: map: bad device: %s, %T", errMMIO, addr, dev)
 		} else if dd, ok := dev.(Device); ok && dd != nil {
-			mmio.log.Printf("mmio: map: %s:%s (%T)", addr.String(), dd.device(), dev)
+			mmio.log.Debug("mmio: map: %s:%s (%T)", addr.String(), dd.device(), dev)
 			updated[addr] = dd
 		} else {
-			mmio.log.Printf("mmio: map: unsupported device: %s %T %#v", dev, dev, dev)
+			mmio.log.Error("mmio: map: unsupported device: %s %T %#v", dev, dev, dev)
 			return fmt.Errorf("%w: map: unsupported device: %s %T", errMMIO, addr, dev)
 		}
 	}

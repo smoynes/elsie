@@ -11,7 +11,8 @@ import (
 func (vm *LC3) Run(ctx context.Context) error {
 	var err error
 
-	vm.log.Printf("START\n%s\n%s\n%s\n", vm, vm.INT.String(), vm.REG.String())
+	log := vm.log.With("vm", vm)
+	log.Info("START", "vm", vm)
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -25,17 +26,18 @@ func (vm *LC3) Run(ctx context.Context) error {
 			break
 		}
 
-		err = vm.ServiceInterrupts()
-		vm.log.Printf("EXEC\n%s\n%s", vm.String(), vm.REG.String())
+		err = vm.serviceInterrupts()
+
+		log.Info("EXEC", "vm", vm)
 	}
 
-	vm.log.Println("HALTED (HCF)")
+	log.Info("HALTED (HCF)")
 
 	return err
 }
 
-// Interrupt invokes the highest priority interrupt service routine, if any.
-func (vm *LC3) ServiceInterrupts() error {
+// serviceInterrupts invokes the highest priority interrupt service routine, if any.
+func (vm *LC3) serviceInterrupts() error {
 	if vec, intr := vm.INT.Requested(vm.PSR.Priority()); intr {
 		isr := &interrupt{
 			table: ISRTable,
@@ -44,7 +46,7 @@ func (vm *LC3) ServiceInterrupts() error {
 			psr:   vm.PSR,
 		}
 
-		vm.log.Printf("ISR: %s", isr.String())
+		vm.log.Debug("interrupt requested", "ISR", isr)
 
 		if err := isr.Handle(vm); err != nil {
 			// TODO: Handle error.
@@ -88,10 +90,10 @@ func (vm *LC3) Step() error {
 
 	if op.Err() == nil {
 		// Success! ☺️
-		vm.log.Printf("ins: executed: %+v", op)
+		vm.log.Debug("executed instruction", "OP", op)
 	} else if int, ok := op.Err().(interruptable); ok {
 		// Instruction raised an exception or trap.
-		vm.log.Printf("ins: raised: %s", int.String())
+		vm.log.Debug("instruction raised exception", "OP", op, "INT", int)
 
 		if err := int.Handle(vm); err != nil {
 			// TODO: What should happen if switching to the service
@@ -100,7 +102,8 @@ func (vm *LC3) Step() error {
 		}
 	} else if op.Err() != nil {
 		// Unhandled error.
-		vm.log.Panicf("ins: error: %s", op.Err())
+		vm.log.Error(op.Err().Error())
+		panic(op.Err()) // TODO: Don't panic.
 	}
 
 	return nil
@@ -117,7 +120,7 @@ func (vm *LC3) Fetch() error {
 	vm.IR = Instruction(vm.Mem.MDR)
 	vm.PC++
 
-	vm.log.Printf("fetch: IR: %s", vm.IR)
+	vm.log.Debug("fetched", "IR", vm.IR)
 
 	return nil
 }
@@ -175,7 +178,7 @@ func (vm *LC3) Decode() operation {
 
 	oper.Decode(vm)
 
-	vm.log.Printf("decode: %s", oper.String())
+	vm.log.Debug("decoded", "OP", oper)
 
 	return oper
 }
@@ -185,7 +188,7 @@ func (vm *LC3) Decode() operation {
 func (vm *LC3) EvalAddress(op operation) {
 	if op, ok := op.(addressable); ok && op.Err() == nil {
 		op.EvalAddress()
-		vm.log.Printf("eval: %s", op.String())
+		vm.log.Debug("eval", "OP", op)
 	}
 }
 
@@ -198,7 +201,7 @@ func (vm *LC3) FetchOperands(op operation) {
 		}
 
 		op.FetchOperands()
-		vm.log.Printf("fetch: %s", op.String())
+		vm.log.Debug("fetched", "OP", op.String())
 	}
 }
 
@@ -206,7 +209,7 @@ func (vm *LC3) FetchOperands(op operation) {
 func (vm *LC3) Execute(op operation) {
 	if op, ok := op.(executable); ok && op.Err() == nil {
 		op.Execute()
-		vm.log.Printf("exec: %s", op.String())
+		vm.log.Debug("exec", "OP", op.String())
 	}
 }
 
@@ -218,7 +221,7 @@ func (vm *LC3) StoreResult(op operation) {
 		if err := vm.Mem.Store(); err != nil {
 			op.Fail(err)
 		} else {
-			vm.log.Printf("store: %s", op.String())
+			vm.log.Debug("store", "OP", op.String())
 		}
 	}
 }

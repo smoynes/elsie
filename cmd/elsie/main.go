@@ -1,79 +1,28 @@
-// elsie is a LC-3 hardware emulator.
+// cmd/elsie is the command-line interface to the ELSIE, an LC-3 simulator and tool suite.
 package main
 
 import (
 	"context"
-	"log"
+	"os"
 
-	"github.com/smoynes/elsie/internal/vm"
+	"github.com/smoynes/elsie/cmd/internal/cli"
+	"github.com/smoynes/elsie/cmd/internal/cli/cmd"
 )
 
+var (
+	commands = []cli.Command{
+		cmd.Demo(),
+	}
+)
+
+// Entry point.
 func main() {
-	ctx := context.Background()
+	result :=
+		cli.New(context.Background()).
+			WithLogger(os.Stderr).
+			WithCommands(commands).
+			WithHelp(cmd.Help(commands)).
+			Execute(os.Args[1:])
 
-	var program vm.Register
-
-	log.SetFlags(log.Lmsgprefix | log.Lmicroseconds | log.Lshortfile)
-	log.Println("Initializing machine")
-
-	machine := vm.New()
-
-	log.Println("Loading trap handlers")
-
-	// TRAP HALT handler
-	program = vm.Register(0x1000)
-	machine.Mem.MAR = vm.Register(0x0025)
-	machine.Mem.MDR = program
-
-	if err := machine.Mem.Store(); err != nil {
-		log.Fatal(err)
-	}
-
-	// AND R0,R0,0 ; clear R0
-	program = vm.Register(vm.Word(vm.AND) | 0x0020)
-	machine.Mem.MAR = vm.Register(0x1000)
-	machine.Mem.MDR = program
-
-	if err := machine.Mem.Store(); err != nil {
-		log.Fatal(err)
-	}
-
-	// LEA R1,[MCR] ; load MCR addr into R1
-	program = vm.Register(vm.Word(vm.LEA) | 0x0201)
-	machine.Mem.MAR = vm.Register(0x1001)
-	machine.Mem.MDR = program
-
-	if err := machine.Mem.Store(); err != nil {
-		log.Fatal(err)
-	}
-
-	// STR R0,R1,0
-	program = vm.Register(vm.Word(vm.STR) | 0x0040)
-	machine.Mem.MAR = vm.Register(0x1002)
-	machine.Mem.MDR = program
-
-	if err := machine.Mem.Store(); err != nil {
-		log.Fatal(err)
-	}
-
-	// Store MCR addr
-	machine.Mem.MAR = vm.Register(0x1003)
-	machine.Mem.MDR = vm.Register(0xfffe)
-
-	if err := machine.Mem.Store(); err != nil {
-		log.Fatal(err)
-	}
-
-	// TRAP HALT
-	program = vm.Register(vm.Word(vm.TRAP) | vm.TrapHALT)
-	machine.Mem.MAR = vm.Register(machine.PC)
-	machine.Mem.MDR = program
-
-	if err := machine.Mem.Store(); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := machine.Run(ctx); err != nil {
-		log.Fatal(err)
-	}
+	os.Exit(result)
 }

@@ -1,9 +1,11 @@
 # TODO #
 
+- [ ] CLI: sub commands for vm, tools, terminal, shell
 - [ ] object loader
-- [ ] BIOS
-  - trap, exception, and interrupt routines
+- [ ] BIOS: trap, exception, and interrupt routines
 - [ ] assembler
+- [ ] repl: step debugger shell
+- [ ] simple timer device
 
 ... more to come.
 

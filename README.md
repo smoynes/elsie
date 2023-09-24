@@ -93,16 +93,25 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 ## Status ##
 
 <details>
-<summary>**IN DEVELOPMENT**</summary>
+<summary>
+<strong>IN DEVELOPMENT</strong>
+</summary>
 
 Focus right now:
 
-- terminal I/O: display adapter
+- command-line interface
+- keyboard polling
 
 On deck:
 
 - BIOS
 - assembler
+
+Always:
+
+- testing
+- exploring
+- learning
 
 See [TODO.md](TODO.md)
 

@@ -3,6 +3,8 @@ package vm
 import (
 	"bytes"
 	"fmt"
+
+	"github.com/smoynes/elsie/internal/log"
 )
 
 // Interrupt represents the I/O interrupt signal to the CPU. It is as an extremely basic interrupt
@@ -20,7 +22,7 @@ type Interrupt struct {
 	// device driver and the interrupt's vector.
 	idt [8]ISR
 
-	log logger
+	log *log.Logger
 }
 
 // ISR is an interrupt service routine. It contains the interrupt's vector and a reference to the
@@ -60,8 +62,8 @@ func (i Interrupt) String() string {
 func (i *Interrupt) Register(priority Priority, isr ISR) {
 	if entry := i.idt[priority]; entry.driver != nil {
 		// TODO: return error
-		i.log.Printf("intr: device priority conflict: want: %s:%s, have: %s:%s",
-			priority.String(), isr.String(), priority, entry.String(),
+		i.log.Error("intr: device priority conflict: want: %s:%s, have: %s:%s",
+			priority.String(), isr.String(), priority.String(), entry.String(),
 		)
 	} else {
 		entry.driver = isr.driver

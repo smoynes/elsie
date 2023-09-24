@@ -4,6 +4,8 @@ package vm
 
 import (
 	"fmt"
+
+	"github.com/smoynes/elsie/internal/log"
 )
 
 // Memory is where we keep our most precious things: programs and data.
@@ -119,7 +121,7 @@ type Memory struct {
 	// Memory-mapped Devices registers.
 	Devices MMIO
 
-	log logger
+	log *log.Logger
 }
 
 // Regions of address space. Each region begins at the address and grows upwards towards the next.
@@ -144,10 +146,10 @@ func NewMemory(psr *ProcessorStatus) Memory {
 		cell: PhysicalMemory{},
 		Devices: MMIO{
 			devs: make(map[Word]any),
-			log:  defaultLogger(),
+			log:  log.DefaultLogger(),
 		},
 
-		log: defaultLogger(),
+		log: log.DefaultLogger(),
 	}
 
 	return mem
