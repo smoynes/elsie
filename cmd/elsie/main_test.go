@@ -4,15 +4,18 @@ import (
 	"context"
 	"errors"
 	"io"
-	"log"
+	"log/slog"
 	"testing"
 	"time"
 
+	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/vm"
 )
 
 func init() {
-	log.Default().SetOutput(io.Discard)
+	log.DefaultLogger = func() *log.Logger {
+		return slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
 }
 
 type testHarness struct {
@@ -20,9 +23,7 @@ type testHarness struct {
 }
 
 func (testHarness) Make() *vm.LC3 {
-	return vm.New(
-		vm.WithLogger(log.Default()),
-	)
+	return vm.New()
 }
 
 // Context creates a test context. The context is cancelled after a timeout.
@@ -39,7 +40,7 @@ func (testHarness) Context() (ctx context.Context,
 
 var (
 	// timeout is how long to wait for the machine to stop running. It is very likely to take
-	// less than 100 ms.
+	// less than 200 ms.
 	timeout = time.Second
 
 	// errTestTimeout is the cause of a context cancellation for a timeout.
@@ -57,11 +58,9 @@ func TestMain(tt *testing.T) {
 	go func() {
 		for {
 			select {
-			case <-time.After(timeout / 6):
+			case <-time.After(80 * time.Millisecond):
 				// This seems... racy.
-				t.Log(machine.String())
-				t.Log(machine.REG.String())
-				t.Log("")
+				t.Log("in progress, PC:", machine.PC.String(), "MCR:", machine.MCR.String())
 			case <-ctx.Done():
 				cancel()
 			}
@@ -73,6 +72,7 @@ func TestMain(tt *testing.T) {
 
 		err := machine.Run(ctx)
 
+		// We expect the program to eventually reach protected I/O address space.
 		if !errors.Is(err, vm.ErrNoDevice) {
 			t.Error(err)
 			cause(err)
@@ -80,7 +80,6 @@ func TestMain(tt *testing.T) {
 			cause(ctx.Err())
 		}
 
-		t.Logf("ranned: err: %s", context.Cause(ctx))
 		cancel()
 	}()
 
@@ -91,23 +90,11 @@ func TestMain(tt *testing.T) {
 
 	switch {
 	case err == nil:
-		t.Logf("test: ok, elapsed time: %s", elapsed)
+		t.Logf("test: ok, elapsed: %s", elapsed)
 	case errors.Is(err, context.Canceled):
-		t.Log(machine.String())
-		t.Log(machine.REG.String())
-		t.Log(machine.PC.String())
-		t.Log(machine.IR.String())
-		t.Log(machine.MCR.String())
-		t.Log(machine.Mem.MAR.String())
-		t.Log(machine.Mem.MDR.String())
-		t.Log(machine.SSP.String())
-		t.Log(machine.USP.String())
-		t.Log("")
-	case errors.Is(err, errTestTimeout):
-		t.Error(errTestTimeout)
-	case errors.Is(err, context.DeadlineExceeded):
-		t.Errorf("%s: elapsed: %s", err, elapsed)
+		t.Logf("test: ok, err: %s, elapsed: %s", err, elapsed)
 	default:
-		t.Errorf("unexpected error: %s", err)
+		err = context.Cause(ctx)
+		t.Errorf("%s: elapsed: %s", err, elapsed)
 	}
 }

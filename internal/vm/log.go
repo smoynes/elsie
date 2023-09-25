@@ -12,11 +12,11 @@ func WithLogger(log *log.Logger) OptionFn {
 }
 
 // TODO: This is weird.
-func (vm *LC3) withLogger(log *log.Logger) {
-	vm.log = log
-	vm.Mem.log = log
-	vm.Mem.Devices.log = log
-	vm.INT.log = log
+func (vm *LC3) withLogger(logger *log.Logger) {
+	vm.log = logger
+	vm.Mem.log = logger.With(log.String("subsytem", "MEM"))
+	vm.Mem.Devices.log = logger.With(log.String("subsytem", "MMIO"))
+	vm.INT.log = logger.With(log.String("subystem", "INTR"))
 }
 
 func (vm *LC3) LogValue() log.Value {
@@ -32,12 +32,12 @@ func (vm *LC3) LogValue() log.Value {
 	)
 }
 
-func (mmio *MMIO) WithLogger(l *log.Logger) {
-	mmio.log = l
+func (mmio *MMIO) WithLogger(logger *log.Logger) {
+	mmio.log = logger.With("subsystem", "IO")
 
 	for _, dev := range mmio.devs {
 		if dev, ok := dev.(log.Loggable); ok {
-			dev.WithLogger(l)
+			dev.WithLogger(logger.With("subsystem", "DEVICE"))
 		}
 	}
 }

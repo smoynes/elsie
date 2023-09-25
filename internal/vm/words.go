@@ -282,4 +282,6 @@ func (c *ControlRegister) Put(val Register) {
 	*c = ControlRegister(val)
 }
 
-func (c *ControlRegister) device() string { return c.String() }
+func (c *ControlRegister) device() string {
+	return "MCR(ELSIE LC-3 SIMULATOR)"
+}

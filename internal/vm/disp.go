@@ -187,5 +187,9 @@ func (driver *DisplayDriver) String() string {
 }
 
 func (driver *DisplayDriver) device() string {
-	return driver.String()
+	if driver.handle.device != nil {
+		return driver.handle.device.device()
+	}
+
+	return "DISP(DRIVER)"
 }

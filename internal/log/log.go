@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -15,7 +17,9 @@ import (
 // DefaultLogger returns the default, global logger. Application components can call DefaultLogger
 // and cache the result. The default will not change at runtime.
 var (
-	DefaultLogger func() *Logger = slog.Default
+	DefaultLogger func() *Logger = func() *Logger {
+		return NewFormattedLogger(os.Stderr)
+	}
 )
 
 // NewFormattedLogger returns a logger that uses a Handler to format and write logs to a Writer.
@@ -31,9 +35,9 @@ type Handler struct {
 	out io.Writer
 	mut *sync.Mutex // Synchronizes writer.
 
-	opts    slog.HandlerOptions
-	grouped bool
-	attrs   []Attr
+	opts  slog.HandlerOptions
+	group string
+	attrs []Attr
 }
 
 func NewHandler(out io.Writer) *Handler {
@@ -105,6 +109,7 @@ func (h *Handler) WithGroup(name string) slog.Handler {
 		out:   h.out,
 		opts:  h.opts,
 		attrs: attrs,
+		group: name,
 	}
 }
 
@@ -124,22 +129,28 @@ func (h *Handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 
 func (h *Handler) appendAttr(out io.Writer, attr slog.Attr, grouped bool) error {
 	attr.Value = attr.Value.Resolve()
+	attr = h.opts.ReplaceAttr([]string{h.group}, attr)
+
+	key, value := strings.ToUpper(attr.Key), attr.Value
 
 	switch {
 	case attr.Equal(slog.Attr{}):
 		return nil
 
-	case attr.Value.Kind() != slog.KindGroup:
+	case value.Kind() != slog.KindGroup:
 		if grouped {
 			fmt.Fprint(out, "  ")
 		}
-		fmt.Fprintf(out, "%10s : %v\n", attr.Key, attr.Value.Any())
-	case attr.Value.Kind() == slog.KindGroup && attr.Key != "":
-		fmt.Fprintf(out, "%10s :\n", attr.Key)
+		fmt.Fprintf(out, "%10s : %v\n", key, value.Any())
+
+	case value.Kind() == slog.KindGroup && key != "":
+		fmt.Fprintf(out, "%10s :\n", key)
 		grouped = true
+		h.group = key
 		fallthrough
-	case attr.Value.Kind() == slog.KindGroup && attr.Key == "":
-		for _, a := range attr.Value.Group() {
+
+	case attr.Value.Kind() == slog.KindGroup && key == "":
+		for _, a := range value.Group() {
 			h.appendAttr(out, a, grouped)
 		}
 	}

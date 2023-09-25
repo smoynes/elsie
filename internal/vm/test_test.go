@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"io"
 	"os"
 	"testing"
 
@@ -12,9 +11,8 @@ func NewTestHarness(t *testing.T) *testHarness {
 	t.Parallel()
 	th := &testHarness{
 		T:      t,
-		logger: nil,
+		logger: makeTestLogger(t),
 	}
-	th.logger = makeTestLogger(t, th)
 
 	return th
 }
@@ -34,7 +32,7 @@ func (t *testHarness) Make() *LC3 {
 	return vm
 }
 
-func makeTestLogger(t *testing.T, out io.Writer) *log.Logger {
+func makeTestLogger(t *testing.T) *log.Logger {
 	return log.NewFormattedLogger(os.Stdout)
 }
 
