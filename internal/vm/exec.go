@@ -11,8 +11,8 @@ import (
 func (vm *LC3) Run(ctx context.Context) error {
 	var err error
 
-	log := vm.log.WithGroup("vm")
-	log.Info("START", vm, "ok", true)
+	log := vm.log.With("STATE", vm)
+	log.Info("START")
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -28,7 +28,7 @@ func (vm *LC3) Run(ctx context.Context) error {
 
 		err = vm.serviceInterrupts()
 
-		log.Info("EXEC", "vm", vm)
+		log.Info("EXEC")
 	}
 
 	log.Info("HALTED (HCF)")

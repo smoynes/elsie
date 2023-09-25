@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -48,9 +49,8 @@ type Handler struct {
 	out io.Writer
 	mut *sync.Mutex // Synchronizes writer.
 
-	opts   slog.HandlerOptions
-	indent int
-	group  string
+	opts     slog.HandlerOptions
+	children child
 }
 
 func FormattedLogger(out io.Writer) *Logger {
@@ -59,10 +59,9 @@ func FormattedLogger(out io.Writer) *Logger {
 
 func NewHandler(out io.Writer) *Handler {
 	h := Handler{
-		out:    out,
-		mut:    new(sync.Mutex),
-		opts:   *logOptions,
-		indent: 0,
+		out:  out,
+		mut:  new(sync.Mutex),
+		opts: *logOptions,
 	}
 
 	return &h
@@ -95,11 +94,14 @@ func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
 
 	fmt.Fprintf(out, "%10s : %s\n", "MESSAGE", rec.Message)
 
+	for _, groupOrAttr := range h.children.attrs {
+		h.appendAttr(out, groupOrAttr)
+	}
+
 	rec.Attrs(func(attr slog.Attr) bool {
 		h.appendAttr(out, attr)
 		return true
 	})
-
 	fmt.Fprintln(out)
 	h.mut.Lock()
 	defer h.mut.Unlock()
@@ -110,48 +112,57 @@ func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
 }
 
 func (h *Handler) WithGroup(name string) slog.Handler {
+	if name == "" {
+		return h
+	}
+
 	return &Handler{
-		mut:   h.mut,
-		out:   h.out,
-		opts:  h.opts,
-		group: h.group + "::" + name,
+		mut:      h.mut,
+		out:      h.out,
+		opts:     h.opts,
+		children: child{group: name},
 	}
 }
 
+type child struct {
+	group string
+	attrs []slog.Attr
+}
+
+// WithAttrs returns a new handler that combines the handler's attributes and those in the argument.
 func (h *Handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	return &Handler{
-		out:   h.out,
-		mut:   h.mut,
-		opts:  h.opts,
-		group: h.group,
+		out:      h.out,
+		mut:      h.mut,
+		opts:     h.opts,
+		children: child{attrs: attrs},
 	}
 }
 
 func (h *Handler) appendAttr(out io.Writer, attr slog.Attr) error {
 	attr.Value = attr.Value.Resolve()
 
-	if h.group != "" {
+	if h.children.group != "" {
 		fmt.Fprintf(out, "  ")
 	}
 
 	switch {
 	case attr.Equal(slog.Attr{}):
 		return nil
+
 	case attr.Value.Kind() != slog.KindGroup:
-		//println("1", attr.String())
-		fmt.Fprintf(out, "%10s : %v\n", attr.Key, attr.Value.Any())
+		fmt.Fprintf(out, "%10v : %v\n", attr.Key, attr.Value.Any())
+
 	case attr.Value.Kind() == slog.KindGroup && attr.Key != "":
-		//println("2", attr.String())
-		fmt.Fprintf(out, "%10s :\n", attr.Key)
-		h.group = attr.Key
+		fmt.Fprintf(out, "%10s :\n", strings.ToUpper(attr.Key))
+		h.children.group = attr.Key
 		fallthrough
 
 	case attr.Value.Kind() == slog.KindGroup && attr.Key == "":
-		//println("3", attr.String())
-		for _, attr := range attr.Value.Group() {
-			h.appendAttr(out, attr)
+		for _, a := range attr.Value.Group() {
+			h.appendAttr(out, a)
 		}
-		h.group = ""
+		h.children.group = ""
 	}
 
 	return nil
