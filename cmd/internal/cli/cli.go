@@ -63,7 +63,7 @@ func (cli *Commander) WithHelp(cmd Command) *Commander {
 }
 
 func (cli *Commander) WithLogger(out *os.File) *Commander {
-	cli.log = log.DefaultLogger()
+	cli.log = log.FormattedLogger(os.Stderr)
 	return cli
 }
 

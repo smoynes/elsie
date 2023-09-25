@@ -11,8 +11,8 @@ import (
 func (vm *LC3) Run(ctx context.Context) error {
 	var err error
 
-	log := vm.log.With("vm", vm)
-	log.Info("START", "vm", vm)
+	log := vm.log.WithGroup("vm")
+	log.Info("START", vm, "ok", true)
 
 	for {
 		if err := ctx.Err(); err != nil {
