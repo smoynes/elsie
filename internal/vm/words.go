@@ -4,8 +4,9 @@ package vm
 
 import (
 	"fmt"
-	"log/slog"
 	"strings"
+
+	"github.com/smoynes/elsie/internal/log"
 )
 
 // Word is the base data type on which the CPU operates. Registers, memory
@@ -165,7 +166,7 @@ func (c *ProcessorStatus) device() string { return Register(*c).String() }
 // Priority represents the priority level of a task.
 type Priority uint8
 
-// Task priorities.
+// Task and interrupt priorities.
 const (
 	PL0 Priority = iota
 	PL1
@@ -175,6 +176,7 @@ const (
 	PL5
 	PL6
 	PL7
+	NumPL
 
 	PriorityLOW    Priority = 0x00 // NORM
 	PriorityNormal Priority = 0x03 // NORM
@@ -208,16 +210,16 @@ func (rf RegisterFile) String() string {
 	return b.String()
 }
 
-func (rf RegisterFile) LogValue() slog.Value {
-	return slog.GroupValue(
-		slog.String("R0", rf[R0].String()),
-		slog.String("R1", rf[R1].String()),
-		slog.String("R2", rf[R2].String()),
-		slog.String("R3", rf[R3].String()),
-		slog.String("R4", rf[R4].String()),
-		slog.String("R5", rf[R5].String()),
-		slog.String("R6", rf[R6].String()),
-		slog.String("R7", rf[R7].String()),
+func (rf RegisterFile) LogValue() log.Value {
+	return log.GroupValue(
+		log.String("R0", rf[R0].String()),
+		log.String("R1", rf[R1].String()),
+		log.String("R2", rf[R2].String()),
+		log.String("R3", rf[R3].String()),
+		log.String("R4", rf[R4].String()),
+		log.String("R5", rf[R5].String()),
+		log.String("R6", rf[R6].String()),
+		log.String("R7", rf[R7].String()),
 	)
 }
 

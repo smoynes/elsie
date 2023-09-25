@@ -1,3 +1,4 @@
+// Package log provides logging output.
 package log
 
 import (
@@ -6,55 +7,33 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 )
 
+// DefaultLogger returns the default, global logger. Application components can call DefaultLogger
+// and cache the result. The default will not change at runtime.
 var (
-	DefaultLogger func() *Logger = makeLogger
+	DefaultLogger func() *Logger = slog.Default
 )
 
-func makeLogger() *Logger {
-	handler := slog.NewTextHandler(
-		os.Stderr,
-		logOptions,
-	)
+// NewFormattedLogger returns a logger that uses a Handler to format and write logs to a Writer.
+func NewFormattedLogger(out io.Writer) *Logger {
+	handler := NewHandler(out)
 	return slog.New(handler)
 }
-
-func NewTestLogger() *Logger {
-	handler := slog.NewTextHandler(
-		os.Stdout,
-		logOptions,
-	)
-	return slog.New(handler)
-}
-
-var (
-	LogLevel   = &slog.LevelVar{}
-	logOptions = &slog.HandlerOptions{
-		AddSource: true,
-		Level:     LogLevel,
-		ReplaceAttr: func(groups []string, attr slog.Attr) slog.Attr {
-			return attr // TODO
-		},
-	}
-)
 
 // Handler implements slog.Handler to produce formatted log output.
+//
+// (It exists as an exercise in learning about the slog module.)
 type Handler struct {
 	out io.Writer
 	mut *sync.Mutex // Synchronizes writer.
 
-	opts     slog.HandlerOptions
-	children child
-}
-
-func FormattedLogger(out io.Writer) *Logger {
-	return slog.New(NewHandler(out))
+	opts    slog.HandlerOptions
+	grouped bool
+	attrs   []Attr
 }
 
 func NewHandler(out io.Writer) *Handler {
@@ -94,15 +73,17 @@ func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
 
 	fmt.Fprintf(out, "%10s : %s\n", "MESSAGE", rec.Message)
 
-	for _, groupOrAttr := range h.children.attrs {
-		h.appendAttr(out, groupOrAttr)
+	for _, a := range h.attrs {
+		h.appendAttr(out, a, false)
 	}
 
 	rec.Attrs(func(attr slog.Attr) bool {
-		h.appendAttr(out, attr)
+		h.appendAttr(out, attr, false)
 		return true
 	})
+
 	fmt.Fprintln(out)
+
 	h.mut.Lock()
 	defer h.mut.Unlock()
 
@@ -116,53 +97,51 @@ func (h *Handler) WithGroup(name string) slog.Handler {
 		return h
 	}
 
-	return &Handler{
-		mut:      h.mut,
-		out:      h.out,
-		opts:     h.opts,
-		children: child{group: name},
-	}
-}
+	attrs := make([]Attr, len(h.attrs))
+	copy(attrs, h.attrs)
 
-type child struct {
-	group string
-	attrs []slog.Attr
+	return &Handler{
+		mut:   h.mut,
+		out:   h.out,
+		opts:  h.opts,
+		attrs: attrs,
+	}
 }
 
 // WithAttrs returns a new handler that combines the handler's attributes and those in the argument.
 func (h *Handler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	as := make([]Attr, 0, len(h.attrs)+len(attrs))
+	copy(as, h.attrs)
+	as = append(as, attrs...)
+
 	return &Handler{
-		out:      h.out,
-		mut:      h.mut,
-		opts:     h.opts,
-		children: child{attrs: attrs},
+		out:   h.out,
+		mut:   h.mut,
+		opts:  h.opts,
+		attrs: as,
 	}
 }
 
-func (h *Handler) appendAttr(out io.Writer, attr slog.Attr) error {
+func (h *Handler) appendAttr(out io.Writer, attr slog.Attr, grouped bool) error {
 	attr.Value = attr.Value.Resolve()
-
-	if h.children.group != "" {
-		fmt.Fprintf(out, "  ")
-	}
 
 	switch {
 	case attr.Equal(slog.Attr{}):
 		return nil
 
 	case attr.Value.Kind() != slog.KindGroup:
-		fmt.Fprintf(out, "%10v : %v\n", attr.Key, attr.Value.Any())
-
+		if grouped {
+			fmt.Fprint(out, "  ")
+		}
+		fmt.Fprintf(out, "%10s : %v\n", attr.Key, attr.Value.Any())
 	case attr.Value.Kind() == slog.KindGroup && attr.Key != "":
-		fmt.Fprintf(out, "%10s :\n", strings.ToUpper(attr.Key))
-		h.children.group = attr.Key
+		fmt.Fprintf(out, "%10s :\n", attr.Key)
+		grouped = true
 		fallthrough
-
 	case attr.Value.Kind() == slog.KindGroup && attr.Key == "":
 		for _, a := range attr.Value.Group() {
-			h.appendAttr(out, a)
+			h.appendAttr(out, a, grouped)
 		}
-		h.children.group = ""
 	}
 
 	return nil
@@ -172,13 +151,37 @@ type Loggable interface {
 	WithLogger(*Logger)
 }
 
+var (
+	LogLevel   = &slog.LevelVar{}
+	logOptions = &slog.HandlerOptions{
+		AddSource: true,
+		Level:     LogLevel,
+		ReplaceAttr: func(groups []string, attr slog.Attr) slog.Attr {
+			// string paths and packages
+			return attr // TODO
+		},
+	}
+)
+
 type (
 	Logger = slog.Logger
 	Value  = slog.Value
+	Attr   = slog.Attr
 )
 
 var (
-	GroupValue = slog.GroupValue
-	String     = slog.String
-	Group      = slog.Group
+	AnyValue      = slog.AnyValue
+	BoolValue     = slog.BoolValue
+	DurationValue = slog.DurationValue
+	Float64Value  = slog.Float64Value
+	GroupValue    = slog.GroupValue
+	Int64Value    = slog.Int64Value
+	IntValue      = slog.IntValue
+	StringValue   = slog.StringValue
+	TimeValue     = slog.TimeValue
+	Uint64Value   = slog.Uint64Value
+
+	Any    = slog.Any
+	String = slog.String
+	Group  = slog.Group
 )

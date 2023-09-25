@@ -5,7 +5,6 @@ import (
 	"flag"
 	"io"
 	"log/slog"
-	"os"
 
 	"github.com/smoynes/elsie/cmd/internal/cli"
 	"github.com/smoynes/elsie/internal/log"
@@ -41,7 +40,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, logger *log
 	logger.Info("Initializing machine")
 
 	machine := vm.New(
-		vm.WithLogger(log.FormattedLogger(os.Stdout)),
+		vm.WithLogger(logger),
 	)
 	logger.Info("Loading trap handlers")
 

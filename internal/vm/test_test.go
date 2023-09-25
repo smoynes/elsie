@@ -2,6 +2,7 @@ package vm
 
 import (
 	"io"
+	"os"
 	"testing"
 
 	"github.com/smoynes/elsie/internal/log"
@@ -34,7 +35,7 @@ func (t *testHarness) Make() *LC3 {
 }
 
 func makeTestLogger(t *testing.T, out io.Writer) *log.Logger {
-	return log.NewTestLogger()
+	return log.NewFormattedLogger(os.Stdout)
 }
 
 func (t *testHarness) Write(b []byte) (n int, err error) {

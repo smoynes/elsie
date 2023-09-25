@@ -7,7 +7,7 @@ import (
 	"github.com/smoynes/elsie/internal/log"
 )
 
-// Interrupt represents the I/O interrupt signal to the CPU. It is as an extremely basic interrupt
+// Interrupt represents the I/O interrupt signal to the CPU. It is an extremely basic interrupt
 // controller.
 //
 // There are three conditions that must be satisfied for an device to interrupt and change the CPU's
@@ -17,12 +17,23 @@ import (
 // 2. the device's interrupt is enabled; and
 // 3. the device's priority is greater than the current program (or other ISR).
 type Interrupt struct {
-
 	// Interrupt descriptor table. Each priority (PL0 to P7) references a
 	// device driver and the interrupt's vector.
-	idt [8]ISR
+	idt [NumPL]ISR
 
 	log *log.Logger
+}
+
+func (i Interrupt) LogValue() log.Value {
+	var as []log.Attr
+
+	for i, isr := range i.idt {
+		pl := Priority(i)
+		if isr.driver != nil {
+			as = append(as, log.String(pl.String(), isr.String()))
+		}
+	}
+	return log.GroupValue(as...)
 }
 
 // ISR is an interrupt service routine. It contains the interrupt's vector and a reference to the
