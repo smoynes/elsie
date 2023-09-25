@@ -99,21 +99,16 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 
 Focus right now:
 
-- command-line interface
-- keyboard polling
+- logging
+- cli
 
 On deck:
 
-- BIOS
+- keyboard interrupts
 - assembler
+- BIOS
 
-Always:
-
-- testing
-- exploring
-- learning
-
-See [TODO.md](TODO.md)
+See [TODO.md](`TODO.md`) for ideas.
 
 </details>
 
