@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"io"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -13,7 +14,7 @@ import (
 
 func init() {
 	log.DefaultLogger = func() *log.Logger {
-		return log.NewFormattedLogger(io.Discard)
+		return slog.New(slog.NewTextHandler(io.Discard, nil)) // Log output slow.
 	}
 }
 
