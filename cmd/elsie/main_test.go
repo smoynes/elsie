@@ -13,7 +13,7 @@ import (
 
 func init() {
 	log.DefaultLogger = func() *log.Logger {
-		return log.New(io.Discard)
+		return log.NewFormattedLogger(io.Discard)
 	}
 }
 
@@ -41,9 +41,6 @@ var (
 	// timeout is how long to wait for the machine to stop running. It is very likely to take
 	// less than 200 ms.
 	timeout = time.Second
-
-	// errTestTimeout is the cause of a context cancellation for a timeout.
-	errTestTimeout = errors.New("test: timeout")
 )
 
 func TestMain(tt *testing.T) {

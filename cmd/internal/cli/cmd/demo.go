@@ -31,10 +31,10 @@ func (d *demo) FlagSet() *cli.FlagSet {
 
 func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logger) {
 	if d.debug {
-		log.LogLevel.Set(log.LevelDebug)
+		log.LogLevel.Set(log.Debug)
 	}
 
-	logger := log.New(os.Stdout)
+	logger := log.NewFormattedLogger(os.Stdout)
 	log.SetDefault(logger)
 
 	log.DefaultLogger = func() *log.Logger {

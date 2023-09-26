@@ -33,6 +33,7 @@ func (i Interrupt) LogValue() log.Value {
 			as = append(as, log.String(pl.String(), isr.String()))
 		}
 	}
+
 	return log.GroupValue(as...)
 }
 

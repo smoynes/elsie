@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"log/slog"
+
 	"github.com/smoynes/elsie/internal/log"
 )
 
@@ -33,7 +35,7 @@ func (t *testHarness) Make() *LC3 {
 }
 
 func makeTestLogger(t *testing.T) *log.Logger {
-	return log.New(os.Stdout)
+	return slog.New(slog.NewTextHandler(os.Stdout, nil))
 }
 
 func (t *testHarness) Write(b []byte) (n int, err error) {

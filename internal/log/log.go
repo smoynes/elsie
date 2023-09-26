@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"runtime"
 	"strings"
@@ -13,21 +14,22 @@ import (
 	"time"
 )
 
-// DefaultLogger returns the default, global logger. During application startup components can call
-// DefaultLogger and cache the result. The default will not change at runtime.
 var (
-	DefaultLogger func() *Logger = func() *Logger {
-		return New(os.Stderr)
-	}
+	// DefaultLogger returns the default, global logger. During application startup components can
+	// call DefaultLogger and cache the result. The default will not change at runtime.
+	DefaultLogger = func() *Logger { return NewFormattedLogger(os.Stderr) }
+
+	// SetDefault overrides the default logger.
+	SetDefault = slog.SetDefault
 
 	// LogLevel is a variable holding the log level. It can be changed at runtime.
-	LogLevel = &levelVar{}
+	LogLevel = &slog.LevelVar{}
 )
 
-// New returns a logger that uses a Handler to format and write logs to a Writer.
-func New(out io.Writer) *Logger {
+// NewFormattedLogger returns a logger that uses a Handler to format and write logs to a Writer.
+func NewFormattedLogger(out io.Writer) *Logger {
 	handler := NewHandler(out)
-	return newSlog(handler)
+	return slog.New(handler)
 }
 
 // Handler implements slog.Handler to produce formatted log output.
@@ -37,13 +39,13 @@ type Handler struct {
 	mut *sync.Mutex // Synchronizes writer.
 	out io.Writer
 
-	opts  *options
+	opts  *slog.HandlerOptions
 	group string
 	attrs []Attr
 }
 
 // The log options for Handlers.
-var logOptions = &options{
+var logOptions = &slog.HandlerOptions{
 	AddSource:   true,
 	Level:       LogLevel,
 	ReplaceAttr: cleanAttr,
@@ -69,7 +71,7 @@ func (h *Handler) Enabled(ctx context.Context, level Level) bool {
 // how it ought to behave. See the [slog handler guide].
 //
 // [slog handler guide]: https://github.com/golang/example/tree/d9923f6970e9ba7e0d23aa9448ead71ea57235ae/slog-handler-guide
-func (h *Handler) Handle(ctx context.Context, rec record) error {
+func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
 	buf := make([]byte, 0, 4096) // TODO: buffer pool
 	out := bytes.NewBuffer(buf)
 
@@ -117,7 +119,7 @@ func (h *Handler) Handle(ctx context.Context, rec record) error {
 	return err
 }
 
-func (h *Handler) WithGroup(name string) handler {
+func (h *Handler) WithGroup(name string) slog.Handler {
 	if name == "" {
 		return h
 	}
@@ -135,7 +137,7 @@ func (h *Handler) WithGroup(name string) handler {
 }
 
 // WithAttrs returns a new handler that combines the handler's attributes and those in the argument.
-func (h *Handler) WithAttrs(attrs []Attr) handler {
+func (h *Handler) WithAttrs(attrs []Attr) slog.Handler {
 	as := make([]Attr, 0, len(h.attrs)+len(attrs))
 	copy(as, h.attrs)
 	as = append(as, attrs...)
@@ -148,7 +150,7 @@ func (h *Handler) WithAttrs(attrs []Attr) handler {
 	}
 }
 
-func (h *Handler) appendAttr(out io.Writer, attr Attr, grouped bool) error {
+func (h *Handler) appendAttr(out io.Writer, attr slog.Attr, grouped bool) error {
 	var err error
 
 	attr.Value = attr.Value.Resolve()
@@ -160,13 +162,15 @@ func (h *Handler) appendAttr(out io.Writer, attr Attr, grouped bool) error {
 	case attr.Equal(Attr{}):
 		return nil
 
-	case value.Kind() != kindGroup:
+	case value.Kind() != slog.KindGroup:
 		if grouped {
 			fmt.Fprint(out, "  ")
 		}
+
 		_, err = fmt.Fprintf(out, "%10s : %v\n", key, value.Any())
+
 		return err
-	case value.Kind() == kindGroup && key != "":
+	case value.Kind() == slog.KindGroup && key != "":
 		_, err = fmt.Fprintf(out, "%10s :\n", key)
 		grouped = true
 		h.group = key
@@ -181,10 +185,11 @@ func (h *Handler) appendAttr(out io.Writer, attr Attr, grouped bool) error {
 			}
 		}
 
-	case attr.Value.Kind() == kindGroup && key == "":
+	case attr.Value.Kind() == slog.KindGroup && key == "":
 		if key == "STATE" {
 			fmt.Printf("h %+v\nk %v\nv %+v\n", h, value.Kind(), value.Group())
 		}
+
 		for _, a := range value.Group() {
 			err := h.appendAttr(out, a, grouped)
 			if err != nil {
@@ -205,3 +210,20 @@ func cleanAttr(groups []string, attr Attr) Attr {
 	// string paths and packages
 	return attr // TODO
 }
+
+type (
+	Attr   = slog.Attr
+	Level  = slog.Level
+	Logger = slog.Logger
+	Value  = slog.Value
+)
+
+var (
+	String     = slog.String
+	GroupValue = slog.GroupValue
+	Any        = slog.Any
+)
+
+const (
+	Debug = slog.LevelDebug
+)
