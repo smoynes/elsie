@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"io"
-	"log/slog"
 	"testing"
 	"time"
 
@@ -14,7 +13,7 @@ import (
 
 func init() {
 	log.DefaultLogger = func() *log.Logger {
-		return slog.New(slog.NewTextHandler(io.Discard, nil))
+		return log.New(io.Discard)
 	}
 }
 

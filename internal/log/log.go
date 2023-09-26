@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"runtime"
 	"strings"
@@ -18,17 +17,17 @@ import (
 // DefaultLogger and cache the result. The default will not change at runtime.
 var (
 	DefaultLogger func() *Logger = func() *Logger {
-		return NewFormattedLogger(os.Stderr)
+		return New(os.Stderr)
 	}
 
 	// LogLevel is a variable holding the log level. It can be changed at runtime.
-	LogLevel = &slog.LevelVar{}
+	LogLevel = &levelVar{}
 )
 
-// NewFormattedLogger returns a logger that uses a Handler to format and write logs to a Writer.
-func NewFormattedLogger(out io.Writer) *Logger {
+// New returns a logger that uses a Handler to format and write logs to a Writer.
+func New(out io.Writer) *Logger {
 	handler := NewHandler(out)
-	return slog.New(handler)
+	return newSlog(handler)
 }
 
 // Handler implements slog.Handler to produce formatted log output.
@@ -38,13 +37,13 @@ type Handler struct {
 	mut *sync.Mutex // Synchronizes writer.
 	out io.Writer
 
-	opts  *slog.HandlerOptions
+	opts  *options
 	group string
 	attrs []Attr
 }
 
 // The log options for Handlers.
-var logOptions = &slog.HandlerOptions{
+var logOptions = &options{
 	AddSource:   true,
 	Level:       LogLevel,
 	ReplaceAttr: cleanAttr,
@@ -62,7 +61,7 @@ func NewHandler(out io.Writer) *Handler {
 }
 
 // Enabled returns true if the level is greater than the current logging level.
-func (h *Handler) Enabled(ctx context.Context, level slog.Level) bool {
+func (h *Handler) Enabled(ctx context.Context, level Level) bool {
 	return level >= h.opts.Level.Level()
 }
 
@@ -70,7 +69,7 @@ func (h *Handler) Enabled(ctx context.Context, level slog.Level) bool {
 // how it ought to behave. See the [slog handler guide].
 //
 // [slog handler guide]: https://github.com/golang/example/tree/d9923f6970e9ba7e0d23aa9448ead71ea57235ae/slog-handler-guide
-func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
+func (h *Handler) Handle(ctx context.Context, rec record) error {
 	buf := make([]byte, 0, 4096) // TODO: buffer pool
 	out := bytes.NewBuffer(buf)
 
@@ -100,7 +99,7 @@ func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
 		}
 	}
 
-	rec.Attrs(func(attr slog.Attr) bool {
+	rec.Attrs(func(attr Attr) bool {
 		err := h.appendAttr(out, attr, false)
 		if err != nil {
 			panic(err)
@@ -118,7 +117,7 @@ func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
 	return err
 }
 
-func (h *Handler) WithGroup(name string) slog.Handler {
+func (h *Handler) WithGroup(name string) handler {
 	if name == "" {
 		return h
 	}
@@ -136,7 +135,7 @@ func (h *Handler) WithGroup(name string) slog.Handler {
 }
 
 // WithAttrs returns a new handler that combines the handler's attributes and those in the argument.
-func (h *Handler) WithAttrs(attrs []slog.Attr) slog.Handler {
+func (h *Handler) WithAttrs(attrs []Attr) handler {
 	as := make([]Attr, 0, len(h.attrs)+len(attrs))
 	copy(as, h.attrs)
 	as = append(as, attrs...)
@@ -149,7 +148,7 @@ func (h *Handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	}
 }
 
-func (h *Handler) appendAttr(out io.Writer, attr slog.Attr, grouped bool) error {
+func (h *Handler) appendAttr(out io.Writer, attr Attr, grouped bool) error {
 	var err error
 
 	attr.Value = attr.Value.Resolve()
@@ -158,16 +157,16 @@ func (h *Handler) appendAttr(out io.Writer, attr slog.Attr, grouped bool) error 
 	key, value := strings.ToUpper(attr.Key), attr.Value
 
 	switch {
-	case attr.Equal(slog.Attr{}):
+	case attr.Equal(Attr{}):
 		return nil
 
-	case value.Kind() != slog.KindGroup:
+	case value.Kind() != kindGroup:
 		if grouped {
 			fmt.Fprint(out, "  ")
 		}
 		_, err = fmt.Fprintf(out, "%10s : %v\n", key, value.Any())
 		return err
-	case value.Kind() == slog.KindGroup && key != "":
+	case value.Kind() == kindGroup && key != "":
 		_, err = fmt.Fprintf(out, "%10s :\n", key)
 		grouped = true
 		h.group = key
@@ -182,7 +181,7 @@ func (h *Handler) appendAttr(out io.Writer, attr slog.Attr, grouped bool) error 
 			}
 		}
 
-	case attr.Value.Kind() == slog.KindGroup && key == "":
+	case attr.Value.Kind() == kindGroup && key == "":
 		if key == "STATE" {
 			fmt.Printf("h %+v\nk %v\nv %+v\n", h, value.Kind(), value.Group())
 		}
@@ -202,30 +201,7 @@ type Loggable interface {
 	WithLogger(*Logger)
 }
 
-func cleanAttr(groups []string, attr slog.Attr) slog.Attr {
+func cleanAttr(groups []string, attr Attr) Attr {
 	// string paths and packages
 	return attr // TODO
 }
-
-type (
-	Logger = slog.Logger
-	Value  = slog.Value
-	Attr   = slog.Attr
-)
-
-var (
-	AnyValue      = slog.AnyValue
-	BoolValue     = slog.BoolValue
-	DurationValue = slog.DurationValue
-	Float64Value  = slog.Float64Value
-	GroupValue    = slog.GroupValue
-	Int64Value    = slog.Int64Value
-	IntValue      = slog.IntValue
-	StringValue   = slog.StringValue
-	TimeValue     = slog.TimeValue
-	Uint64Value   = slog.Uint64Value
-
-	Any    = slog.Any
-	String = slog.String
-	Group  = slog.Group
-)

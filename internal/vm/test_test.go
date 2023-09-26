@@ -33,7 +33,7 @@ func (t *testHarness) Make() *LC3 {
 }
 
 func makeTestLogger(t *testing.T) *log.Logger {
-	return log.NewFormattedLogger(os.Stdout)
+	return log.New(os.Stdout)
 }
 
 func (t *testHarness) Write(b []byte) (n int, err error) {

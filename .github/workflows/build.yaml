@@ -19,7 +19,7 @@ jobs:
             matrix:
                 go-version:
                     - 'stable'    # 1.21.1
-                    - 'oldstable' # 1.19.12 at time of writing
+                    - '>1.21'
 
         steps:
             - uses: actions/checkout@v3

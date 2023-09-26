@@ -4,7 +4,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"log/slog"
 	"os"
 
 	"github.com/smoynes/elsie/cmd/internal/cli"
@@ -32,11 +31,11 @@ func (d *demo) FlagSet() *cli.FlagSet {
 
 func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logger) {
 	if d.debug {
-		log.LogLevel.Set(slog.LevelDebug)
+		log.LogLevel.Set(log.LevelDebug)
 	}
 
-	logger := log.NewFormattedLogger(os.Stdout)
-	slog.SetDefault(logger)
+	logger := log.New(os.Stdout)
+	log.SetDefault(logger)
 
 	log.DefaultLogger = func() *log.Logger {
 		return logger

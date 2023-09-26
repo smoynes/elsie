@@ -5,7 +5,6 @@ import (
 	"context"
 	"flag"
 	"io"
-	"log/slog"
 	"os"
 
 	"github.com/smoynes/elsie/internal/log"
@@ -64,10 +63,10 @@ func (cli *Commander) WithHelp(cmd Command) *Commander {
 }
 
 func (cli *Commander) WithLogger(out *os.File) *Commander {
-	log := log.NewFormattedLogger(os.Stderr)
-	cli.log = log
+	logger := log.New(os.Stderr)
+	cli.log = logger
 
-	slog.SetDefault(log)
+	log.SetDefault(logger)
 
 	return cli
 }
