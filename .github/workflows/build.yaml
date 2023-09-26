@@ -3,7 +3,6 @@ name: Build
 on:
   push:
     branches:
-      - master
 
   pull_request:
     branches:
@@ -29,6 +28,11 @@ jobs:
 
     - name: Test
       run: go test -v ./...
+
+    - name: TTY test
+      run : |
+        go test -c  ./cmd/internal/tty
+        ./tty.test -test.v
 
   lint:
     name: lint
