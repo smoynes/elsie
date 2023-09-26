@@ -5,6 +5,7 @@ import (
 	"flag"
 	"io"
 	"log/slog"
+	"os"
 
 	"github.com/smoynes/elsie/cmd/internal/cli"
 	"github.com/smoynes/elsie/internal/log"
@@ -29,20 +30,24 @@ func (d *demo) FlagSet() *cli.FlagSet {
 	return fs
 }
 
-func (d demo) Run(ctx context.Context, args []string, out io.Writer, logger *log.Logger) {
+func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logger) {
 	if d.debug {
 		log.LogLevel.Set(slog.LevelDebug)
-		logger.Debug("Debug tracing enabled")
 	}
 
-	var program vm.Register
+	logger := log.NewFormattedLogger(os.Stdout)
+	slog.SetDefault(logger)
+
+	log.DefaultLogger = func() *log.Logger {
+		return logger
+	}
 
 	logger.Info("Initializing machine")
+	machine := vm.New(vm.WithLogger(logger))
 
-	machine := vm.New(
-		vm.WithLogger(logger),
-	)
 	logger.Info("Loading trap handlers")
+
+	var program vm.Register
 
 	// TRAP HALT handler
 	program = vm.Register(0x1000)

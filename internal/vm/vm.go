@@ -47,8 +47,6 @@ func New(opts ...OptionFn) *LC3 {
 		INT: Interrupt{},
 	}
 
-	vm.withLogger(log.DefaultLogger())
-
 	// Initialize general purpose registers to a pleasing pattern.
 	copy(vm.REG[:], []Register{
 		0xffff, 0x0000,
@@ -80,6 +78,8 @@ func New(opts ...OptionFn) *LC3 {
 			DDRAddr:  displayDriver,
 		}
 	)
+
+	vm.withLogger(log.DefaultLogger())
 
 	// Run early init.
 	for _, fn := range opts {

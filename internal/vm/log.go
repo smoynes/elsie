@@ -14,9 +14,9 @@ func WithLogger(log *log.Logger) OptionFn {
 // TODO: This is weird.
 func (vm *LC3) withLogger(logger *log.Logger) {
 	vm.log = logger
-	vm.Mem.log = logger.With(log.String("subsytem", "MEM"))
-	vm.Mem.Devices.log = logger.With(log.String("subsytem", "MMIO"))
-	vm.INT.log = logger.With(log.String("subystem", "INTR"))
+	vm.Mem.log = logger.With(log.String("subsystem", "MEM"))
+	vm.Mem.Devices.log = logger.With(log.String("subsystem", "MMIO"))
+	vm.INT.log = logger.With(log.String("subsystem", "INTR"))
 }
 
 func (vm *LC3) LogValue() log.Value {
@@ -27,6 +27,8 @@ func (vm *LC3) LogValue() log.Value {
 		log.String("USP", vm.USP.String()),
 		log.String("SSP", vm.SSP.String()),
 		log.String("MCR", vm.MCR.String()),
+		log.String("MAR", vm.Mem.MAR.String()),
+		log.String("MDR", vm.Mem.MDR.String()),
 		log.Any("INT", vm.INT),
 		log.Any("REG", vm.REG),
 	)

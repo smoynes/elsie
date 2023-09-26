@@ -14,12 +14,15 @@ import (
 	"time"
 )
 
-// DefaultLogger returns the default, global logger. Application components can call DefaultLogger
-// and cache the result. The default will not change at runtime.
+// DefaultLogger returns the default, global logger. During application startup components can call
+// DefaultLogger and cache the result. The default will not change at runtime.
 var (
 	DefaultLogger func() *Logger = func() *Logger {
 		return NewFormattedLogger(os.Stderr)
 	}
+
+	// LogLevel is a variable holding the log level. It can be changed at runtime.
+	LogLevel = &slog.LevelVar{}
 )
 
 // NewFormattedLogger returns a logger that uses a Handler to format and write logs to a Writer.
@@ -32,30 +35,43 @@ func NewFormattedLogger(out io.Writer) *Logger {
 //
 // (It exists as an exercise in learning about the slog module.)
 type Handler struct {
-	out io.Writer
 	mut *sync.Mutex // Synchronizes writer.
+	out io.Writer
 
-	opts  slog.HandlerOptions
+	opts  *slog.HandlerOptions
 	group string
 	attrs []Attr
 }
 
+// The log options for Handlers.
+var logOptions = &slog.HandlerOptions{
+	AddSource:   true,
+	Level:       LogLevel,
+	ReplaceAttr: cleanAttr,
+}
+
+// NewHandler creates and initializes a Handler with a writer.
 func NewHandler(out io.Writer) *Handler {
 	h := Handler{
 		out:  out,
 		mut:  new(sync.Mutex),
-		opts: *logOptions,
+		opts: logOptions,
 	}
 
 	return &h
 }
 
+// Enabled returns true if the level is greater than the current logging level.
 func (h *Handler) Enabled(ctx context.Context, level slog.Level) bool {
 	return level >= h.opts.Level.Level()
 }
 
+// Handle formats and writes a log record to the handler's writer. There are some subtle rules about
+// how it ought to behave. See the [slog handler guide].
+//
+// [slog handler guide]: https://github.com/golang/example/tree/d9923f6970e9ba7e0d23aa9448ead71ea57235ae/slog-handler-guide
 func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
-	buf := make([]byte, 0, 128) // TODO: buffer pool
+	buf := make([]byte, 0, 4096) // TODO: buffer pool
 	out := bytes.NewBuffer(buf)
 
 	if !rec.Time.IsZero() {
@@ -78,11 +94,17 @@ func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
 	fmt.Fprintf(out, "%10s : %s\n", "MESSAGE", rec.Message)
 
 	for _, a := range h.attrs {
-		h.appendAttr(out, a, false)
+		err := h.appendAttr(out, a, false)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	rec.Attrs(func(attr slog.Attr) bool {
-		h.appendAttr(out, attr, false)
+		err := h.appendAttr(out, attr, false)
+		if err != nil {
+			panic(err)
+		}
 		return true
 	})
 
@@ -128,6 +150,8 @@ func (h *Handler) WithAttrs(attrs []slog.Attr) slog.Handler {
 }
 
 func (h *Handler) appendAttr(out io.Writer, attr slog.Attr, grouped bool) error {
+	var err error
+
 	attr.Value = attr.Value.Resolve()
 	attr = h.opts.ReplaceAttr([]string{h.group}, attr)
 
@@ -141,17 +165,33 @@ func (h *Handler) appendAttr(out io.Writer, attr slog.Attr, grouped bool) error 
 		if grouped {
 			fmt.Fprint(out, "  ")
 		}
-		fmt.Fprintf(out, "%10s : %v\n", key, value.Any())
-
+		_, err = fmt.Fprintf(out, "%10s : %v\n", key, value.Any())
+		return err
 	case value.Kind() == slog.KindGroup && key != "":
-		fmt.Fprintf(out, "%10s :\n", key)
+		_, err = fmt.Fprintf(out, "%10s :\n", key)
 		grouped = true
 		h.group = key
-		fallthrough
+
+		if err != nil {
+			return err
+		}
+
+		for _, a := range value.Group() {
+			if err := h.appendAttr(out, a, grouped); err != nil {
+				return err
+			}
+		}
 
 	case attr.Value.Kind() == slog.KindGroup && key == "":
+		if key == "STATE" {
+			fmt.Printf("h %+v\nk %v\nv %+v\n", h, value.Kind(), value.Group())
+		}
 		for _, a := range value.Group() {
-			h.appendAttr(out, a, grouped)
+			err := h.appendAttr(out, a, grouped)
+			if err != nil {
+				fmt.Printf("%v\n", err)
+				return err
+			}
 		}
 	}
 
@@ -162,17 +202,10 @@ type Loggable interface {
 	WithLogger(*Logger)
 }
 
-var (
-	LogLevel   = &slog.LevelVar{}
-	logOptions = &slog.HandlerOptions{
-		AddSource: true,
-		Level:     LogLevel,
-		ReplaceAttr: func(groups []string, attr slog.Attr) slog.Attr {
-			// string paths and packages
-			return attr // TODO
-		},
-	}
-)
+func cleanAttr(groups []string, attr slog.Attr) slog.Attr {
+	// string paths and packages
+	return attr // TODO
+}
 
 type (
 	Logger = slog.Logger

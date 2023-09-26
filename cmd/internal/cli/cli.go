@@ -43,13 +43,13 @@ func (cli *Commander) Execute(args []string) int {
 	}
 
 	fs := found.FlagSet()
+	err := fs.Parse(args[1:])
+	if err != nil {
+		cli.log.Error("parse error", "err", err)
+		return 1
+	}
 
-	fs.Parse(args[1:])
 	found.Run(cli.ctx, fs.Args(), os.Stdout, cli.log)
-
-	// Initialize flags
-	// Parse flags
-	// Delegate execution
 	return 0
 }
 
