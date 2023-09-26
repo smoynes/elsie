@@ -1,48 +1,50 @@
 name: Build
 
 on:
-  push:
-    branches:
+    push:
+      branches:
 
-  pull_request:
-    branches:
-      - master
+    pull_request:
+      branches:
+        - master
 
 permissions:
-  contents: read
+    contents: read
 
 jobs:
+    build:
+        runs-on: ubuntu-latest
 
-  build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
+        strategy:
+            matrix:
+                go-version:
+                    - 'stable'    # 1.21.1
+                    - 'oldstable' # 1.19.12 at time of writing
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
+        steps:
+            - uses: actions/checkout@v3
 
-    - name: Build
-      run: go build -v ./...
+            - name: Set up Go
+              uses: actions/setup-go@v4
+              with:
+                  go-version: ${{ matrix.go-version }}
 
-    - name: Test
-      run: go test -v ./...
+            - name: Build
+              run: go build -v ./...
 
-    - name: TTY test
-      run : |
-        go test -c  ./cmd/internal/tty
-        ./tty.test -test.v
+            - name: Test
+              run: go test -v ./...
 
-  lint:
-    name: lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-go@v4
-        with:
-          go-version: '1.21'
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: latest
+    lint:
+        runs-on: ubuntu-latest
+        steps:
+          - uses: actions/checkout@v3
+
+          - uses: actions/setup-go@v4
+            with:
+              go-version: 'stable'
+
+          - name: golangci-lint
+            uses: golangci/golangci-lint-action@v3
+            with:
+              version: latest
