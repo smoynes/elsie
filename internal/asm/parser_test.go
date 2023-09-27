@@ -6,7 +6,10 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path"
+	"strings"
 	"testing"
+	"testing/iotest"
 
 	. "github.com/smoynes/elsie/internal/asm"
 	"github.com/smoynes/elsie/internal/log"
@@ -21,69 +24,135 @@ type harness struct {
 	*testing.T
 }
 
-func (*harness) logger() *log.Logger {
+func (h *harness) logger() *log.Logger {
+	buf := bufio.NewWriter(os.Stderr)
+
+	h.T.Cleanup(func() { buf.Flush() })
+
 	return slog.New(
-		slog.NewTextHandler(
-			bufio.NewWriter(os.Stdout), log.Options, // ⍟
-		),
+		slog.NewTextHandler(buf, log.Options),
 	)
 }
 
 // Parser is a factory method for a parser under test. It creates a new parser and does an initial
-// read on the input stream and returns the parser.
+// read on the input stream and returns the parser. The caller should assert against Parser.Err, etc.
 func (h *harness) Parse(in io.ReadCloser) Parser {
+	h.T.Helper()
+
 	if parser := NewParser(h.logger()); parser == nil {
 		h.T.Fatal("parser: nil")
 		return parser
 	} else {
-		parser.Read(in)
+		parser.Parse(in)
 		return parser
 	}
 }
 
-func (h *harness) inputString(in string) io.ReadCloser {
+func (harness) inputString(in string) io.ReadCloser {
 	reader := bytes.NewReader([]byte(in))
 	return io.NopCloser(reader)
 }
 
-func (h *harness) inputError() io.ReadCloser {
-	return io.NopCloser(&errorReader{})
+func (h harness) inputFixture(in string) io.ReadCloser {
+	reader, err := os.Open(path.Join("testdata", in))
+	if err != nil {
+		h.Errorf("fixture: %s", err)
+	}
+	return reader
 }
 
-func TestTokenizer(tt *testing.T) {
-	t := &harness{tt}
+func (harness) inputError() io.ReadCloser {
+	return io.NopCloser(iotest.ErrReader(os.ErrInvalid))
+}
 
-	var emptySyms = map[string]struct {
-		in io.ReadCloser
-	}{
-		"empty": {in: t.inputString("")},
-		"error": {in: t.inputError()},
+const ValidSyntax = (`
+; Let's go!
+
+ .ORIG 0x1000       ; origin
+
+START:;instructions
+     ;; immediate mode
+     TEST R1,#1      ; decimal
+     TEST R2,#0o2    ; octal
+     TEST R3,#0xdada ; hex
+     TEST
+     TEST R1,R2
+     TEST R1,R2,R3
+     TEST R6, R7, R0    ; spaces
+
+     TEST R0,[R5]
+END: TEST R0, LABEL
+
+	TEST	TABS
+
+LOOP:TEST R3,R3,R2
+     TEST R3,R3,#-1
+     TEST LOOP
+
+     .ORIG 0x3100
+
+LABEL:
+decimal:
+    .DW #0
+hex:
+    .DW x0001
+octal:
+    .DW o002
+binary:
+    .DW b0000_0000_0000_0111
+under_score:
+hyphen-ate:
+d1g1t1:
+eof:`)
+
+func TestParser(tt *testing.T) {
+	t := harness{tt}
+
+	parser := t.Parse(
+		io.NopCloser(strings.NewReader(ValidSyntax)),
+	)
+
+	if err := parser.Err(); err != nil {
+		t.Fatal(err)
 	}
 
-	for n, tc := range emptySyms {
-		t.Run(n, func(tt *testing.T) {
-			t := &harness{tt}
+	symbols := parser.Symbols()
 
-			parser := t.Parse(tc.in)
-			err := parser.Err()
+	if len(symbols) == 0 {
+		t.Fatal("no symbols")
+	}
 
-			if err != nil {
-				t.Errorf("unexpected parse error: got %v", err)
-			}
+	assertSymbol(t, symbols, "START", 0x1000)
+	assertSymbol(t, symbols, "END", 0x1008)
+	assertSymbol(t, symbols, "LOOP", 0x1009)
+	assertSymbol(t, symbols, "LABEL", 0x3100)
+	assertSymbol(t, symbols, "decimal", 0x3100)
+	assertSymbol(t, symbols, "hex", 0x3101)
+	assertSymbol(t, symbols, "octal", 0x3102)
+	assertSymbol(t, symbols, "binary", 0x3103)
+	assertSymbol(t, symbols, "under_score", 0x3104)
+	assertSymbol(t, symbols, "hyphen-ate", 0x3104)
+	assertSymbol(t, symbols, "d1g1t1", 0x3104)
+	assertSymbol(t, symbols, "eof", 0x3104)
 
-			syms := parser.Symbols()
-			if syms == nil {
-				t.Error("symbol table: nil")
-			} else if len(syms) != 0 {
-				t.Error("len(symbols) != 0:", len(syms))
-			}
+	if len(symbols) != 12 {
+		t.Errorf("unexpected symbols: want: %d, got: %d", 11, len(symbols))
+		t.Log("Symbol table:")
 
-		})
+		for k := range symbols {
+			t.Log(" ", k)
+		}
+	}
+
 	}
 }
 
-type errorReader struct{}
+func assertSymbol(t harness, symbols SymbolTable, label string, want int) {
+	t.Helper()
 
-func (errorReader) Read([]byte) (int, error) {
-	return 0, io.ErrNoProgress
+	if got, ok := symbols[label]; !ok {
+		t.Errorf("symbol: %s, missing", label)
+	} else if got != want {
+		t.Errorf("symbol: %s, want: %0#4x, got: %0#4x", label, want, got)
+	}
 }
