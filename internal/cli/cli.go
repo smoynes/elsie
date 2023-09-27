@@ -59,12 +59,10 @@ func (cli *Commander) Execute(args []string) int {
 		}
 	}
 
-	// We found our command to run (or the help command). Now, parse the command's flags.
+	// We found our command to run (or the help command). Now, we slice off the first argument, the
+	// program name, and parse the command's flags.
 	fs := found.FlagSet()
-
-	// Slice off the first argume, ie. the sub-command naes.
 	args = args[1:]
-
 	if err := fs.Parse(args); err != nil {
 		cli.log.Error("parse error", "err", err)
 		return 1
@@ -73,16 +71,20 @@ func (cli *Commander) Execute(args []string) int {
 	return found.Run(cli.ctx, fs.Args(), os.Stdout, cli.log)
 }
 
+// WithCommands adds a list of commands as sub-commands.
 func (cli *Commander) WithCommands(cmds []Command) *Commander {
 	cli.commands = append([]Command(nil), cmds...)
 	return cli
 }
 
+// WithHelp configures the help message a command.
 func (cli *Commander) WithHelp(cmd Command) *Commander {
 	cli.help = cmd
 	return cli
 }
 
+// WithLogger configures the logger for the CLI. Logs are written to os.Stderr to leave os.Stdout
+// for program output.
 func (cli *Commander) WithLogger(out *os.File) *Commander {
 	logger := log.NewFormattedLogger(os.Stderr)
 	cli.log = logger
