@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"context"
 	"errors"
-	"log/slog"
-	"os"
 	"testing"
 	"time"
 
@@ -16,12 +14,6 @@ import (
 var logBuffer bufio.Writer
 
 func init() {
-	// Buffer log output. Without buffering, for each emitted log call, a write is issued to the
-	// output stream. By buffering a little bit, the test is about 10x faster.
-	//logBuffer := bufio.NewWriter(os.Stderr)
-	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	log.SetDefault(logger)
-	log.LogLevel.Set(log.Error)
 }
 
 type testHarness struct {
@@ -58,6 +50,9 @@ func TestMain(tt *testing.T) {
 	t := testHarness{tt}
 	start := time.Now()
 	machine := t.Make()
+	// Buffer log output. Without buffering, for each emitted log call, a write is issued to the
+	// output stream. By buffering a little bit, the test is about 10x faster.
+	log.LogLevel.Set(log.Error)
 
 	ctx, cause, cancel := t.Context()
 	defer cancel()
