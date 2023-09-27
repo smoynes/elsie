@@ -99,13 +99,11 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 
 Focus right now:
 
-- logging
-- cli
+- assembler
 
 On deck:
 
 - keyboard interrupts
-- assembler
 - BIOS
 
 See [TODO.md](`TODO.md`) for ideas.
