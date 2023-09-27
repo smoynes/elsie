@@ -213,7 +213,7 @@ func (vm *LC3) FetchOperands(op operation) {
 func (vm *LC3) Execute(op operation) {
 	if op, ok := op.(executable); ok && op.Err() == nil {
 		op.Execute()
-		vm.log.Debug("exec", "OP", op.String())
+		vm.log.Debug("exec", log.String("OP", op.String()))
 	}
 }
 
