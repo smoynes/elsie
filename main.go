@@ -5,8 +5,8 @@ import (
 	"context"
 	"os"
 
-	"github.com/smoynes/elsie/cmd/internal/cli"
-	"github.com/smoynes/elsie/cmd/internal/cli/cmd"
+	"github.com/smoynes/elsie/internal/cli"
+	"github.com/smoynes/elsie/internal/cli/cmd"
 )
 
 var (

@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/smoynes/elsie/cmd/internal/cli"
+	"github.com/smoynes/elsie/internal/cli"
 	"github.com/smoynes/elsie/internal/log"
 )
 
 type help struct {
-	cmd []cli.Command
+	cmd   []cli.Command
+	debug *bool
 }
 
 var _ cli.Command = (*help)(nil)
@@ -54,14 +55,13 @@ func (h help) Run(_ context.Context, args []string, out io.Writer, log *log.Logg
 func (h *help) printCommandHelp(cmd cli.Command) {
 	out := flag.CommandLine.Output()
 
-	_ = cmd.FlagSet().Parse(nil)
-
 	fmt.Fprintln(out, "Usage:")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "        elsie demo [option]... [arg]...")
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Run demonstration program while displaying VM state.")
 	fmt.Fprintln(out)
+	cmd.FlagSet().Parse(nil)
 	fmt.Fprintln(out, "Options:")
 	cmd.FlagSet().PrintDefaults()
 }

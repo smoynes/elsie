@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/smoynes/elsie/cmd/internal/tty"
+	"github.com/smoynes/elsie/internal/tty"
 	"github.com/smoynes/elsie/internal/vm"
 )
 

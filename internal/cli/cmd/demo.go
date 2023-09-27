@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/smoynes/elsie/cmd/internal/cli"
+	"github.com/smoynes/elsie/internal/cli"
 	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/vm"
 )

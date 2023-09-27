@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/smoynes/elsie/cmd/internal/tty"
 	logl "github.com/smoynes/elsie/internal/log"
+	"github.com/smoynes/elsie/internal/tty"
 	"github.com/smoynes/elsie/internal/vm"
 )
 
