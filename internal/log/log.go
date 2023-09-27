@@ -219,11 +219,17 @@ type (
 )
 
 var (
-	String     = slog.String
-	GroupValue = slog.GroupValue
-	Any        = slog.Any
+	String      = slog.String
+	StringValue = slog.StringValue
+	Group       = slog.Group
+	GroupValue  = slog.GroupValue
+	Any         = slog.Any
+	AnyValue    = slog.AnyValue
 )
 
 const (
 	Debug = slog.LevelDebug
+	Info  = slog.LevelInfo
+	Warn  = slog.LevelWarn
+	Error = slog.LevelError
 )

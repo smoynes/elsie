@@ -5,14 +5,15 @@ package vm
 import (
 	"context"
 	"fmt"
+
+	"github.com/smoynes/elsie/internal/log"
 )
 
 // Run starts and executes the instruction cycle until the program halts.
 func (vm *LC3) Run(ctx context.Context) error {
 	var err error
 
-	log := vm.log.With("STATE", vm)
-	log.Info("START")
+	vm.log.Info("START", log.Group("STATE", vm))
 
 	for {
 		if err := ctx.Err(); err != nil {
@@ -26,12 +27,10 @@ func (vm *LC3) Run(ctx context.Context) error {
 			break
 		}
 
-		err = vm.serviceInterrupts()
-
-		log.Info("EXEC")
+		vm.log.Info("EXEC", log.Group("STATE", vm))
 	}
 
-	log.Info("HALTED (HCF)")
+	vm.log.Info("HALTED (HCF)", log.Group("STATE", vm))
 
 	return err
 }

@@ -1,10 +1,11 @@
 package main_test
 
 import (
+	"bufio"
 	"context"
 	"errors"
-	"io"
 	"log/slog"
+	"os"
 	"testing"
 	"time"
 
@@ -12,10 +13,15 @@ import (
 	"github.com/smoynes/elsie/internal/vm"
 )
 
+var logBuffer bufio.Writer
+
 func init() {
-	log.DefaultLogger = func() *log.Logger {
-		return slog.New(slog.NewTextHandler(io.Discard, nil)) // Log output slow.
-	}
+	// Buffer log output. Without buffering, for each emitted log call, a write is issued to the
+	// output stream. By buffering a little bit, the test is about 10x faster.
+	//logBuffer := bufio.NewWriter(os.Stderr)
+	logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
+	log.SetDefault(logger)
+	log.LogLevel.Set(log.Error)
 }
 
 type testHarness struct {
@@ -26,6 +32,13 @@ func (testHarness) Make() *vm.LC3 {
 	return vm.New()
 }
 
+var (
+	// timeout is how long to wait for the machine to stop running. It is very likely to take
+	// less than 200 ms.
+	timeout    = 1 * time.Second
+	statusTick = 25 * time.Millisecond
+)
+
 // Context creates a test context. The context is cancelled after a timeout.
 func (testHarness) Context() (ctx context.Context,
 	cause context.CancelCauseFunc,
@@ -35,14 +48,11 @@ func (testHarness) Context() (ctx context.Context,
 	ctx, cause = context.WithCancelCause(ctx)
 	ctx, cancel = context.WithTimeout(ctx, timeout)
 
-	return ctx, cause, cancel
+	return ctx, func(err error) {
+		logBuffer.Flush()
+		cause(err)
+	}, cancel
 }
-
-var (
-	// timeout is how long to wait for the machine to stop running. It is very likely to take
-	// less than 200 ms.
-	timeout = time.Second
-)
 
 func TestMain(tt *testing.T) {
 	t := testHarness{tt}
@@ -55,7 +65,7 @@ func TestMain(tt *testing.T) {
 	go func() {
 		for {
 			select {
-			case <-time.After(80 * time.Millisecond):
+			case <-time.After(statusTick):
 				// This seems... racy.
 				t.Log("in progress, PC:", machine.PC.String(), "MCR:", machine.MCR.String())
 			case <-ctx.Done():
@@ -70,6 +80,12 @@ func TestMain(tt *testing.T) {
 		err := machine.Run(ctx)
 
 		// We expect the program to eventually reach protected I/O address space.
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
 		if !errors.Is(err, vm.ErrNoDevice) {
 			t.Error(err)
 			cause(err)
@@ -92,6 +108,6 @@ func TestMain(tt *testing.T) {
 		t.Logf("test: ok, err: %s, elapsed: %s", err, elapsed)
 	default:
 		err = context.Cause(ctx)
-		t.Errorf("%s: elapsed: %s", err, elapsed)
+		t.Errorf("test: error: %s: elapsed: %s, %s", err, elapsed, timeout)
 	}
 }
