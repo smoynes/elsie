@@ -16,8 +16,11 @@ type Command interface {
 	// FlagSet returns a set of command options the command accepts.
 	FlagSet() *flag.FlagSet
 
-	// Usage displays help information fro the command. It should be quite short.
-	Usage() string
+	// Description returns a brief description of the command's function.
+	Description() string
+
+	// Usage prints detailed command documentation.
+	Usage(out io.Writer) error
 
 	// Run executes the command with arguments. Command output should be written to |out|. It
 	// returns an exit code. TODO: Should be an enum, instead of an exit code.
@@ -63,6 +66,7 @@ func (cli *Commander) Execute(args []string) int {
 	// program name, and parse the command's flags.
 	fs := found.FlagSet()
 	args = args[1:]
+
 	if err := fs.Parse(args); err != nil {
 		cli.log.Error("parse error", "err", err)
 		return 1

@@ -12,6 +12,7 @@ import (
 var (
 	commands = []cli.Command{
 		cmd.Demo(),
+		cmd.Assembler(),
 	}
 )
 

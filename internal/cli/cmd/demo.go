@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"flag"
+	"fmt"
 	"io"
 	"os"
 
@@ -19,7 +20,19 @@ type demo struct {
 	debug bool
 }
 
-func (demo) Usage() string { return "run demo program" }
+func (demo) Description() string {
+	return "run demo program"
+}
+
+func (d demo) Usage(out io.Writer) error {
+	var err error
+	_, err = fmt.Fprintln(out, `
+demo [-debug]
+
+Run demonstration program while displaying VM state.`)
+
+	return err
+}
 
 func (d *demo) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("demo", flag.ExitOnError)
