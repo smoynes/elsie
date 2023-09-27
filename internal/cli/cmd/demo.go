@@ -19,7 +19,7 @@ type demo struct {
 	debug bool
 }
 
-func (demo) Help() string { return "run demo program" }
+func (demo) Usage() string { return "run demo program" }
 
 func (d *demo) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("demo", flag.ExitOnError)
@@ -29,7 +29,7 @@ func (d *demo) FlagSet() *cli.FlagSet {
 	return fs
 }
 
-func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logger) {
+func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logger) int {
 	if d.debug {
 		log.LogLevel.Set(log.Debug)
 	}
@@ -55,7 +55,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 
 	if err := machine.Mem.Store(); err != nil {
 		logger.Error(err.Error())
-		return
+		return 2
 	}
 
 	// AND R0,R0,0 ; clear R0
@@ -65,7 +65,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 
 	if err := machine.Mem.Store(); err != nil {
 		logger.Error(err.Error())
-		return
+		return 2
 	}
 
 	// LEA R1,[MCR] ; load MCR addr into R1
@@ -75,7 +75,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 
 	if err := machine.Mem.Store(); err != nil {
 		logger.Error(err.Error())
-		return
+		return 2
 	}
 
 	// STR R0,R1,0
@@ -85,7 +85,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 
 	if err := machine.Mem.Store(); err != nil {
 		logger.Error(err.Error())
-		return
+		return 2
 	}
 
 	// Store MCR addr
@@ -94,7 +94,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 
 	if err := machine.Mem.Store(); err != nil {
 		logger.Error(err.Error())
-		return
+		return 2
 	}
 
 	logger.Info("Loading program")
@@ -106,15 +106,17 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 
 	if err := machine.Mem.Store(); err != nil {
 		logger.Error(err.Error())
-		return
+		return 2
 	}
 
 	logger.Info("Starting machine")
 
 	if err := machine.Run(ctx); err != nil {
 		logger.Error(err.Error())
-		return
+		return 2
 	}
 
 	logger.Info("Demo completed")
+
+	return 0
 }

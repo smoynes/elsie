@@ -16,13 +16,13 @@ type help struct {
 
 var _ cli.Command = (*help)(nil)
 
-func (help) Help() string { return "display help for commands" }
+func (help) Usage() string { return "display help for commands" }
 
 func (h help) FlagSet() *cli.FlagSet {
 	return flag.NewFlagSet("help", flag.ExitOnError)
 }
 
-func (h help) Run(_ context.Context, args []string, out io.Writer, log *log.Logger) {
+func (h help) Run(_ context.Context, args []string, out io.Writer, log *log.Logger) int {
 	if len(args) == 1 {
 		for _, cmd := range h.cmd {
 			if args[0] == cmd.FlagSet().Name() {
@@ -42,13 +42,15 @@ func (h help) Run(_ context.Context, args []string, out io.Writer, log *log.Logg
 
 		for _, cmd := range h.cmd {
 			fs := cmd.FlagSet()
-			fmt.Fprintf(out, "  %-20s %s\n", fs.Name(), cmd.Help())
+			fmt.Fprintf(out, "  %-20s %s\n", fs.Name(), cmd.Usage())
 		}
 
-		fmt.Fprintf(out, "  %-20s %s\n", h.FlagSet().Name(), h.Help())
+		fmt.Fprintf(out, "  %-20s %s\n", h.FlagSet().Name(), h.Usage())
 		fmt.Fprintln(out)
 		fmt.Fprintln(out, "Use `elsie help <command>` to get help for a command.")
 	}
+
+	return 0
 }
 
 func (h *help) printCommandHelp(cmd cli.Command) {
