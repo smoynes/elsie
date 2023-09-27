@@ -28,6 +28,11 @@ func (vm *LC3) Run(ctx context.Context) error {
 		}
 
 		vm.log.Info("EXEC", log.Group("STATE", vm))
+
+		err = vm.serviceInterrupts()
+		if err != nil {
+			break
+		}
 	}
 
 	vm.log.Info("HALTED (HCF)", log.Group("STATE", vm))

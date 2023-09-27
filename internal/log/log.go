@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path"
 	"runtime"
 	"strings"
 	"sync"
@@ -48,7 +49,7 @@ type Handler struct {
 var logOptions = &slog.HandlerOptions{
 	AddSource:   true,
 	Level:       LogLevel,
-	ReplaceAttr: cleanAttr,
+	ReplaceAttr: func(_ []string, attr Attr) Attr { return attr },
 }
 
 // NewHandler creates and initializes a Handler with a writer.
@@ -84,11 +85,12 @@ func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
 	if h.opts.AddSource && rec.PC != 0 {
 		frames := runtime.CallersFrames([]uintptr{rec.PC})
 		f, _ := frames.Next()
-
-		fmt.Fprintf(out, "%10s : %s:%d\n", "SOURCE", f.File, f.Line)
+		_, file := path.Split(f.File)
+		fmt.Fprintf(out, "%10s : %s:%d\n", "SOURCE", file, f.Line)
 
 		if f.Func != nil {
-			fmt.Fprintf(out, "%10s : %s\n", "FUNCTION", f.Function)
+			splits := strings.Split(f.Function, "/")
+			fmt.Fprintf(out, "%10s : %s\n", "FUNCTION", splits[len(splits)-1])
 		}
 	}
 
@@ -204,11 +206,6 @@ func (h *Handler) appendAttr(out io.Writer, attr slog.Attr, grouped bool) error 
 
 type Loggable interface {
 	WithLogger(*Logger)
-}
-
-func cleanAttr(groups []string, attr Attr) Attr {
-	// string paths and packages
-	return attr // TODO
 }
 
 type (
