@@ -39,6 +39,8 @@ func (h *harness) logger() *log.Logger {
 func (h *harness) Parse(in io.ReadCloser) Parser {
 	h.T.Helper()
 
+	AddOperatorForTesting("TEST", &fakeOper{})
+
 	if parser := NewParser(h.logger()); parser == nil {
 		h.T.Fatal("parser: nil")
 		return parser
@@ -63,6 +65,16 @@ func (h harness) inputFixture(in string) io.ReadCloser {
 
 func (harness) inputError() io.ReadCloser {
 	return io.NopCloser(iotest.ErrReader(os.ErrInvalid))
+}
+
+type fakeOper struct{}
+
+var _ Instruction = (*fakeOper)(nil)
+
+func (fakeOper) String() string { return "TEST" }
+
+func (fake *fakeOper) Parse(oper string, opers []string) (Instruction, error) {
+	return &(*fake), nil // Too clever copy.
 }
 
 const ValidSyntax = (`
@@ -144,6 +156,9 @@ func TestParser(tt *testing.T) {
 		}
 	}
 
+	instructions := parser.Instructions()
+	if len(instructions) == 0 {
+		t.Fatal("no instructions")
 	}
 }
 

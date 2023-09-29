@@ -25,6 +25,9 @@ type Parser interface {
 	// Symbols returns the symbol table.
 	Symbols() SymbolTable
 
+	// Instructions returns the parsed instructions.
+	Instructions() Instructions
+
 	// Err returns errors that occur during parsing. If an error occurs that prevents parsing from
 	// continuing, for example fs.PathError, the first such error is returned. Otherwise, an error
 	// is returned that callers unwrap into a slice of errors; these, in turn, may be unwrapped into
@@ -33,20 +36,29 @@ type Parser interface {
 }
 
 type parser struct {
-	operators OperatorTable
-
 	symbols SymbolTable
 	instr   Instructions
 	fatal   error
 	errs    []error
 
-	log *log.Logger
+	operators map[string]Instruction
+	log       *log.Logger
+}
+
+// Operators maps an opcode to a type which implements Instruction for the operator.
+var operators = map[string]Instruction{
+	"AND": &iAnd{},
+}
+
+func AddOperatorForTesting(op string, ins Instruction) {
+	operators[op] = ins
 }
 
 func NewParser(log *log.Logger) Parser {
 	return &parser{
-		symbols: make(SymbolTable),
-		log:     log,
+		operators: operators,
+		symbols:   make(SymbolTable),
+		log:       log,
 	}
 }
 
@@ -56,6 +68,17 @@ func (p *parser) Symbols() SymbolTable {
 
 func (p *parser) AddSymbol(sym string, loc int) {
 	p.symbols[sym] = loc
+}
+
+func (p *parser) Instructions() Instructions {
+	return p.instr
+}
+
+func (p *parser) AddInstruction(inst Instruction) {
+	if inst == nil {
+		panic("nil instruction")
+	}
+	p.instr = append(p.instr, inst)
 }
 
 func (p *parser) SyntaxError(loc int, pos int, line string) {
@@ -159,6 +182,17 @@ func (p *parser) parseLine(loc int, pos int, line string) (int, error) {
 	}
 
 	if matched := instructionPattern.FindStringSubmatch(remain); len(matched) > 2 {
+		operator, operands := matched[1], matched[2]
+		inst, err := p.parseInstruction(operator, operands)
+
+		p.log.Debug("parse result", "inst", inst, "err", err, log.String("type", fmt.Sprintf("%T", err)))
+
+		if err == nil {
+			p.AddInstruction(inst)
+		} else {
+			p.SyntaxError(loc, pos, line)
+		}
+
 		return loc + 1, nil
 	}
 

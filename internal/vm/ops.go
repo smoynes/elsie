@@ -34,17 +34,14 @@ const (
 	RET  = Opcode(JMP | 0x0f00)
 )
 
-type mo struct { // no, mo is NOT a monad. ( ._.)
+type mo struct { // no, mo is NOT a monad. /( ._.)\
 	vm  *LC3
 	err error
 }
 
-func (op mo) Err() error      { return op.err }
+func (op *mo) Err() error     { return op.err }
 func (op *mo) Fail(err error) { op.err = err }
-
-func (op mo) String() string {
-	return fmt.Sprintf("ins: %s", op.vm.IR.Opcode())
-}
+func (op *mo) String() string { return fmt.Sprintf("ins: %s", op.vm.IR.Opcode()) }
 
 // BR: Conditional branch
 //
