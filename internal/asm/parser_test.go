@@ -19,12 +19,12 @@ func init() {
 	log.LogLevel.Set(log.Debug)
 }
 
-// harness holds the test state and provides helpers.
-type harness struct {
+// parserHarness holds the test state and provides helpers.
+type parserHarness struct {
 	*testing.T
 }
 
-func (h *harness) logger() *log.Logger {
+func (h *parserHarness) logger() *log.Logger {
 	buf := bufio.NewWriter(os.Stderr)
 
 	h.T.Cleanup(func() { buf.Flush() })
@@ -36,7 +36,7 @@ func (h *harness) logger() *log.Logger {
 
 // Parser is a factory method for a parser under test. It creates a new parser and does an initial
 // read on the input stream and returns the parser. The caller should assert against Parser.Err, etc.
-func (h *harness) Parse(in io.ReadCloser) Parser {
+func (h *parserHarness) ParseStream(in io.ReadCloser) *Parser {
 	h.T.Helper()
 
 	AddOperatorForTesting("TEST", &fakeOper{})
@@ -50,12 +50,12 @@ func (h *harness) Parse(in io.ReadCloser) Parser {
 	}
 }
 
-func (harness) inputString(in string) io.ReadCloser {
+func (parserHarness) inputString(in string) io.ReadCloser {
 	reader := bytes.NewReader([]byte(in))
 	return io.NopCloser(reader)
 }
 
-func (h harness) inputFixture(in string) io.ReadCloser {
+func (h parserHarness) inputFixture(in string) io.ReadCloser {
 	reader, err := os.Open(path.Join("testdata", in))
 	if err != nil {
 		h.Errorf("fixture: %s", err)
@@ -63,7 +63,7 @@ func (h harness) inputFixture(in string) io.ReadCloser {
 	return reader
 }
 
-func (harness) inputError() io.ReadCloser {
+func (parserHarness) inputError() io.ReadCloser {
 	return io.NopCloser(iotest.ErrReader(os.ErrInvalid))
 }
 
@@ -118,9 +118,9 @@ d1g1t1:
 eof:`)
 
 func TestParser(tt *testing.T) {
-	t := harness{tt}
+	t := parserHarness{tt}
 
-	parser := t.Parse(
+	parser := t.ParseStream(
 		io.NopCloser(strings.NewReader(ValidSyntax)),
 	)
 
@@ -162,7 +162,7 @@ func TestParser(tt *testing.T) {
 	}
 }
 
-func assertSymbol(t harness, symbols SymbolTable, label string, want int) {
+func assertSymbol(t parserHarness, symbols SymbolTable, label string, want int) {
 	t.Helper()
 
 	if got, ok := symbols[label]; !ok {

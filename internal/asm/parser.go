@@ -13,29 +13,20 @@ import (
 )
 
 // Parser reads source code and produces a symbol table, a parse table and a collection of errors,
-// if any. The user calls |Parse| one or more times and then ask the parser for the results. The
-// caller may parse multiple streams and results are accumulated.
+// if any. The user calls |Parse| one or more times and then ask the Parser for the accumulated
+// results. Some simple syntax checking is done during parsing, but it is not complete. The second
+// pass does most of syntactic analysis as well as code generation.
 //
-// Some basic syntax checking is done during parsing, but it is not complete. The second pass does
-// most of analysis and code generation.
-type Parser interface {
-	// Parse parses an input stream. The parser takes ownership of the stream and will close it.
-	Parse(in io.ReadCloser)
-
-	// Symbols returns the symbol table.
-	Symbols() SymbolTable
-
-	// Instructions returns the parsed instructions.
-	Instructions() Instructions
-
-	// Err returns errors that occur during parsing. If an error occurs that prevents parsing from
-	// continuing, for example fs.PathError, the first such error is returned. Otherwise, an error
-	// is returned that callers unwrap into a slice of errors; these, in turn, may be unwrapped into
-	// a SyntaxError.
-	Err() error
-}
-
-type parser struct {
+//	p := NewParser(logger)
+//	_ = p.Parse(os.Open("file1.asm"))
+//	_ = p.Parse(os.Open("file2.asm"))
+//	_ = p.Parse(os.Open("file3.asm"))
+//	err := err.Err()
+//	println(errors.Is(err, SyntaxError{})) // true
+//	for _, err := range err.(interface { Unwrap() []error }).Unwrap() {
+//		println(err.Error()) // SyntaxError
+//	}
+type Parser struct {
 	symbols SymbolTable
 	instr   Instructions
 	fatal   error
@@ -45,51 +36,60 @@ type parser struct {
 	log       *log.Logger
 }
 
-// Operators maps an opcode to a type which implements Instruction for the operator.
-var operators = map[string]Instruction{
-	"AND": &iAnd{},
-}
-
+// AddOperatorForTesting updates the operator table for the sake of testing the parser.
 func AddOperatorForTesting(op string, ins Instruction) {
 	operators[op] = ins
 }
 
-func NewParser(log *log.Logger) Parser {
-	return &parser{
+func NewParser(log *log.Logger) *Parser {
+	return &Parser{
 		operators: operators,
 		symbols:   make(SymbolTable),
 		log:       log,
 	}
 }
 
-func (p *parser) Symbols() SymbolTable {
+// Symbols returns the symbol table constructed so far.
+func (p *Parser) Symbols() SymbolTable {
 	return p.symbols
 }
 
-func (p *parser) AddSymbol(sym string, loc int) {
+// AddSymbol adds a new symbol to the symbol table.
+func (p *Parser) AddSymbol(sym string, loc int) {
+	if sym == "" {
+		panic("empty symbol")
+	}
 	p.symbols[sym] = loc
 }
 
-func (p *parser) Instructions() Instructions {
+// Instructions returns the abstract syntax "tree".
+func (p *Parser) Instructions() Instructions {
 	return p.instr
 }
 
-func (p *parser) AddInstruction(inst Instruction) {
+// Add instruction appends an instruction to the list of instructions.
+func (p *Parser) AddInstruction(inst Instruction) {
 	if inst == nil {
 		panic("nil instruction")
 	}
 	p.instr = append(p.instr, inst)
 }
 
-func (p *parser) SyntaxError(loc int, pos int, line string) {
+// SyntaxError adds an error to the parser errors.
+func (p *Parser) SyntaxError(loc int, pos int, line string) {
 	p.errs = append(p.errs, &SyntaxError{Loc: loc, Pos: pos, Line: line})
 }
 
-func (p *parser) Err() error {
+// Err returns errors that occur during parsing. If a fatal error occurs that prevents parsing from
+// continuing (e.g., a fs.PathError), the error is returned. Otherwise, the parser collects syntax
+// errors during parsing and returns an error that wraps and joins them all. Callers can inspect the
+// cause with the errors package.
+func (p *Parser) Err() error {
 	return errors.Join(p.errs...)
 }
 
-func (p *parser) Parse(in io.ReadCloser) {
+// Parse parses an input stream. The parser takes ownership of the stream and will close it.
+func (p *Parser) Parse(in io.ReadCloser) {
 	defer func() {
 		_ = in.Close()
 	}()
@@ -139,7 +139,7 @@ var (
 )
 
 // Parse line uses regular expressions to parse a line of source code.
-func (p *parser) parseLine(loc int, pos int, line string) (int, error) {
+func (p *Parser) parseLine(loc int, pos int, line string) (int, error) {
 	var (
 		label  string        // Label, if any.
 		remain string = line // Remaining unparsed line.
@@ -204,7 +204,7 @@ func (p *parser) parseLine(loc int, pos int, line string) (int, error) {
 }
 
 // parseInstruction parses strings for an operator and its operands and returns an instruction.
-func (p *parser) parseInstruction(oper string, operands string) (Instruction, error) {
+func (p *Parser) parseInstruction(oper string, operands string) (Instruction, error) {
 	opers := strings.Split(operands, ",")
 	for i := range opers {
 		opers[i] = strings.TrimSpace(opers[i])
@@ -215,15 +215,6 @@ func (p *parser) parseInstruction(oper string, operands string) (Instruction, er
 	} else {
 		return nil, fmt.Errorf("unknown operator")
 	}
-}
-
-// iAnd is an AND instruction.
-type iAnd struct{}
-
-func (ins iAnd) String() string { return "AND" }
-
-func (ins iAnd) Parse(oper string, opers []string) (Instruction, error) {
-	return iAnd{}, nil
 }
 
 // SymbolTable maps symbol literal to its location.
