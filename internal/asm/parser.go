@@ -226,6 +226,8 @@ type Instructions []Instruction
 type Instruction interface {
 	Parse(operator string, operands []string) (Instruction, error)
 
+	// TODO: Generate(pc int16, symbols SymbolTable) (uint16, error)
+
 	fmt.Stringer
 }
 

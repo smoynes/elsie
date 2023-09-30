@@ -1,14 +1,28 @@
-// inst.go implements parsing and code generation for each instruction opcode.
-
 package asm
+
+// gen.go implements code generation for each instruction opcode.
 
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
+
+	"github.com/smoynes/elsie/internal/vm"
 )
 
-// Operators maps an opcode to a type which implements Instruction for the operator.
+// AddressingMode represents how an instruction addresses its operands.
+type AddressingMode uint8
+
+//go:generate go run golang.org/x/tools/cmd/stringer -type AddressingMode -output strings_gen.go
+
+const (
+	ImmediateMode AddressingMode = iota // IMM
+	RegisterMode                        // REG
+	IndirectMode                        // IND
+)
+
+// Operators maps an opcode to a type which implements Instruction.
 var operators = map[string]Instruction{
 	"AND": _AND,
 	"BR":  _BR,
@@ -21,10 +35,19 @@ var (
 	_BR  Instruction = &AND{}
 )
 
-// AND is the bitwise AND binary operator with register and immediate modes.
+// AND: Bitwise AND binary operator
 //
-//	AND REG, REG, REG
-//	AND REG, REG, LITERAL
+//	AND DR,SR1,SR2                 ; (register mode)
+//
+//	| 0101 | DR | SR1 | 0 | 00 | SR2 |
+//	|------+----+-----+---+----+-----|
+//	|15  12|11 9|8   6| 5 |4  3|2   0|
+//
+//	AND DR,SR1,[ LITERAL | IDENT ] ; (immediate mode)
+//
+//	| 0101 | DR | SR1 | 1 |   IMM5   |
+//	|------+----+-----+---+----------|
+//	|15  12|11 9|8   6| 5 |4        0|
 type AND struct {
 	Mode AddressingMode
 
@@ -33,17 +56,52 @@ type AND struct {
 	LIT     string // Set when Mode is Immediate.
 }
 
-// AddressingMode represents how an address addresses its operands.
-type AddressingMode uint8
+type Opcode = vm.Opcode // TODO: move opcode
 
-//go:generate go run golang.org/x/tools/cmd/stringer -type AddressingMode -output strings_gen.go
+func (and AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
+	var code uint16
 
-// Addressing modes.
-const (
-	ImmediateMode AddressingMode = iota // IMM
-	RegisterMode                        // REG
-	IndirectMode                        // IND
-)
+	dr := register(and.DR)
+	sr1 := register(and.SR1)
+
+	code |= 0o6 << 12
+	code |= dr << 9
+	code |= sr1 << 6
+
+	switch and.Mode {
+	case RegisterMode:
+		sr2 := register(and.SR2)
+		code |= sr2
+
+		if code != 0xffff {
+			return 0xffff, errors.New("codegen: no register")
+		}
+
+		return code, nil
+	case ImmediateMode:
+		imm5, litErr := literalVal(and.LIT, 5)
+		loc, symErr := symbolVal(and.LIT, symbols, pc)
+
+		switch {
+		case litErr == nil:
+			code |= 1 << 5
+			code |= imm5 & 0x001f
+
+			return code, nil
+
+		case litErr != nil && symErr == nil:
+			code = loc
+			code = pc
+
+			return code, nil
+		default:
+			return 0xffff, fmt.Errorf("codegen: immediate mode operand: %s %s", litErr, symErr)
+		}
+
+	default:
+		return 0xffff, errors.New("codegen: address mode error")
+	}
+}
 
 func (ins AND) String() string { return "AND" }
 
@@ -117,6 +175,30 @@ func (BR) Parse(oper string, opers []string) (Instruction, error) {
 	return br, nil
 }
 
+func register(reg string) uint16 {
+	switch reg {
+	case "R0":
+		return 0
+	case "R1":
+		return 1
+	case "R2":
+		return 2
+	case "R3":
+		return 3
+	case "R4":
+		return 4
+	case "R5":
+		return 5
+	case "R6":
+		return 6
+	case "R7":
+		return 7
+	default:
+		return 0xffff
+	}
+
+}
+
 func registerOperand(oper string) string {
 	switch oper {
 	case
@@ -126,6 +208,35 @@ func registerOperand(oper string) string {
 	default:
 		return ""
 	}
+}
+
+// TODO: Refactor to extract
+type Word = vm.Word
+
+func literalVal(oper string, n uint8) (uint16, error) {
+	if len(oper) < 2 {
+		return 0xffff, fmt.Errorf("codegen: literal error: %s", oper[2:])
+	}
+
+	switch pref, lit := oper[:2], oper[2:]; pref {
+	case "#x":
+		i, err := strconv.ParseUint(lit, 16, 16)
+		if err != nil {
+			return 0xffff, fmt.Errorf("codegen: literal error: %s (%s)", err, lit)
+		}
+
+		val := Word(i)
+		val.Sext(n)
+
+		return uint16(val), nil
+	default:
+		return 0xffff, fmt.Errorf("codegen: literal error: %s", lit)
+	}
+
+}
+
+func symbolVal(oper string, sym SymbolTable, pc uint16) (uint16, error) {
+	return 0xffff, errors.New("codegen: symbolic ref: not implemented")
 }
 
 func immediateOperand(oper string) string {

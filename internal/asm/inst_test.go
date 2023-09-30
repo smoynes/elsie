@@ -199,6 +199,35 @@ func TestBR_Parse(t *testing.T) {
 	}
 }
 
-func TestCodeGen_SyntaxAnalysis(t *testing.T) {
+func TestAND_Generate(t *testing.T) {
+	var inst Instructions = []Instruction{
+		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", LIT: "#x0010"},
+		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", LIT: "LABEL"},
+		&BR{NZP: 0x3, LIT: "LABEL"},
+	}
 
+	pc := uint16(0x3000)
+	symbols := map[string]int{
+		"LABEL": 0x3100,
+	}
+
+	if mc, err := inst[0].(*AND).Generate(symbols, pc); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("Code: %#v == generated ==> %0#4x", inst[0], mc)
+
+		if mc == 0xffff {
+			t.Error("invalid machine code")
+		}
+	}
+
+	if mc, err := inst[1].(*AND).Generate(symbols, pc); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("Code: %#v == generated ==> %0#4x", inst[0], mc)
+
+		if mc == 0xffff {
+			t.Error("invalid machine code")
+		}
+	}
 }

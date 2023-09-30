@@ -8,6 +8,8 @@ import (
 
 // An Opcode identifies the instruction to be executed by the CPU. The ISA has
 // 15 distinct opcodes, plus one reserved value that is undefined.
+//
+// TODO: Move to common definition for vm and assembler both.
 type Opcode uint16
 
 // Opcode constants.
@@ -108,15 +110,15 @@ func (op *not) Execute() {
 	op.vm.PSR.Set(op.vm.REG[op.dr])
 }
 
-// AND: Bitwise AND binary operator (registers)
+// AND: Bitwise AND binary operator
 //
-// | 0101 | DR | SR1 | 0 | 00 | SR2 |
+// | 0101 | DR | SR1 | 0 | 00 | SR2 | (register mode)
 // |------+----+-----+---+----+-----|
 // |15  12|11 9|8   6| 5 |4  3|2   0|
 //
-// | 0101 | DR  | SR | 1 | IMM5 | (immediate)
-// |------+-----+----+---+------|
-// |15  12|11  9|8  6| 5 |4    0|
+// | 0101 | DR | SR1 | 1 |   IMM5   | (immediate mode)
+// |------+----+-----+---+----------|
+// |15  12|11 9|8   6| 5 |4        0|
 type and struct {
 	mo
 	dest GPR
@@ -125,7 +127,7 @@ type and struct {
 }
 
 func (op *and) String() string {
-	return fmt.Sprintf("AND{dr:%s,sr1:%s,sr2:%s}", op.dest.String(), op.sr1, op.sr2)
+	return fmt.Sprintf("AND{dr:%s,sr1:%s,sr2:%s}", op.dest, op.sr1, op.sr2)
 }
 
 func (a *and) Decode(vm *LC3) {
