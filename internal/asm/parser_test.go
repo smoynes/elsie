@@ -162,7 +162,7 @@ func TestParser(tt *testing.T) {
 	}
 }
 
-func assertSymbol(t parserHarness, symbols SymbolTable, label string, want int) {
+func assertSymbol(t parserHarness, symbols SymbolTable, label string, want uint16) {
 	t.Helper()
 
 	if got, ok := symbols[label]; !ok {

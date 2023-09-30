@@ -22,8 +22,8 @@ const (
 	IndirectMode                        // IND
 )
 
-// Operators maps an opcode to a type which implements Instruction.
-var operators = map[string]Instruction{
+// instructionTable maps assembly-language opcodes to instructions that generate machine code.
+var instructionTable = map[string]Instruction{
 	"AND": _AND,
 	"BR":  _BR,
 	"BRN": _BR, "BRZ": _BR, "BRP": _BR,
@@ -31,19 +31,19 @@ var operators = map[string]Instruction{
 }
 
 var (
+	_BR  Instruction = &BR{}
 	_AND Instruction = &AND{}
-	_BR  Instruction = &AND{}
 )
 
-// AND: Bitwise AND binary operator
+// AND: Bitwise AND binary operator.
 //
-//	AND DR,SR1,SR2                 ; (register mode)
+//	AND DR,SR1,SR2                    ; (register mode)
 //
 //	| 0101 | DR | SR1 | 0 | 00 | SR2 |
 //	|------+----+-----+---+----+-----|
 //	|15  12|11 9|8   6| 5 |4  3|2   0|
 //
-//	AND DR,SR1,[ LITERAL | IDENT ] ; (immediate mode)
+//	AND DR,SR1,[ LITERAL | IDENT ]    ; (immediate mode)
 //
 //	| 0101 | DR | SR1 | 1 |   IMM5   |
 //	|------+----+-----+---+----------|
@@ -58,6 +58,7 @@ type AND struct {
 
 type Opcode = vm.Opcode // TODO: move opcode
 
+// Generate returns the machine code for an AND instruction.
 func (and AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	var code uint16
 
@@ -90,8 +91,7 @@ func (and AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 			return code, nil
 
 		case litErr != nil && symErr == nil:
-			code = loc
-			code = pc
+			code |= pc - (loc & 0x1f)
 
 			return code, nil
 		default:
@@ -103,7 +103,7 @@ func (and AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	}
 }
 
-func (ins AND) String() string { return "AND" }
+func (ins AND) String() string { return fmt.Sprintf("AND(%#v)", ins) }
 
 func (ins AND) Parse(oper string, opers []string) (Instruction, error) {
 	if len(opers) != 3 {
@@ -127,20 +127,26 @@ func (ins AND) Parse(oper string, opers []string) (Instruction, error) {
 	return &and, nil
 }
 
-// BR is the branch instruction and implements several operator variations. All operators use immediate mode addressing.
+// BR: Conditional branch.
 //
-//	BRz   [ IDENT | LITERAL ]
-//	BRzn  [ IDENT | LITERAL ]
-//	BRznp [ IDENT | LITERAL ]
+// T
+//
+//	BR    [ IDENT | LITERAL ]
 //	BRn   [ IDENT | LITERAL ]
-//	BRnp  [ IDENT | LITERAL ]
+//	BRnz  [ IDENT | LITERAL ]
+//	BRz   [ IDENT | LITERAL ]
+//	BRzp  [ IDENT | LITERAL ]
 //	BRp   [ IDENT | LITERAL ]
+//
+//	| 0000 | NZP | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
 type BR struct {
 	NZP uint8
 	LIT string
 }
 
-func (br BR) String() string { return "BR" }
+func (br BR) String() string { return fmt.Sprintf("BR(%#v)", br) }
 
 func (BR) Parse(oper string, opers []string) (Instruction, error) {
 	var nzp uint8
@@ -213,30 +219,42 @@ func registerOperand(oper string) string {
 // TODO: Refactor to extract
 type Word = vm.Word
 
+// literalVal converts a operand as literal text in source code to an integer value. If the literal
+// is an integer that cannot be parsed, an error is returned.
 func literalVal(oper string, n uint8) (uint16, error) {
 	if len(oper) < 2 {
-		return 0xffff, fmt.Errorf("codegen: literal error: %s", oper[2:])
+		return 0xffff, fmt.Errorf("codegen: literal error: %s", oper)
 	}
 
-	switch pref, lit := oper[:2], oper[2:]; pref {
+	pref, lit := oper[:2], oper[2:]
+	base := 0
+
+	switch pref {
 	case "#x":
-		i, err := strconv.ParseUint(lit, 16, 16)
-		if err != nil {
-			return 0xffff, fmt.Errorf("codegen: literal error: %s (%s)", err, lit)
-		}
-
-		val := Word(i)
-		val.Sext(n)
-
-		return uint16(val), nil
+		base = 16
+	case "#o":
+		base = 8
+	case "#b":
+		base = 2
 	default:
-		return 0xffff, fmt.Errorf("codegen: literal error: %s", lit)
 	}
 
+	i, err := strconv.ParseUint(lit, base, 16)
+
+	if err != nil {
+		return 0xffff, fmt.Errorf("codegen: literal error: %s (%s)", err, oper)
+	}
+
+	val := int16(i) << (16 - n) >> (16 - n)
+	return uint16(val), nil
 }
 
 func symbolVal(oper string, sym SymbolTable, pc uint16) (uint16, error) {
-	return 0xffff, errors.New("codegen: symbolic ref: not implemented")
+	if val, ok := sym[oper]; ok {
+		return val, nil
+	} else {
+		return 0xffff, errors.New("codegen: symbolic ref: not implemented")
+	}
 }
 
 func immediateOperand(oper string) string {

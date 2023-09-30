@@ -38,12 +38,12 @@ type Parser struct {
 
 // AddOperatorForTesting updates the operator table for the sake of testing the parser.
 func AddOperatorForTesting(op string, ins Instruction) {
-	operators[op] = ins
+	instructionTable[op] = ins
 }
 
 func NewParser(log *log.Logger) *Parser {
 	return &Parser{
-		operators: operators,
+		operators: instructionTable,
 		symbols:   make(SymbolTable),
 		log:       log,
 	}
@@ -55,7 +55,7 @@ func (p *Parser) Symbols() SymbolTable {
 }
 
 // AddSymbol adds a new symbol to the symbol table.
-func (p *Parser) AddSymbol(sym string, loc int) {
+func (p *Parser) AddSymbol(sym string, loc uint16) {
 	if sym == "" {
 		panic("empty symbol")
 	}
@@ -76,7 +76,7 @@ func (p *Parser) AddInstruction(inst Instruction) {
 }
 
 // SyntaxError adds an error to the parser errors.
-func (p *Parser) SyntaxError(loc int, pos int, line string) {
+func (p *Parser) SyntaxError(loc uint16, pos uint16, line string) {
 	p.errs = append(p.errs, &SyntaxError{Loc: loc, Pos: pos, Line: line})
 }
 
@@ -98,8 +98,8 @@ func (p *Parser) Parse(in io.ReadCloser) {
 
 	// Keep track of our location in memory, our line number in the source and any parsing errors.
 	var (
-		loc int // Location counter.
-		pos int // Line number.
+		loc uint16 // Location counter.
+		pos uint16 // Line number.
 	)
 
 scan:
@@ -139,7 +139,7 @@ var (
 )
 
 // Parse line uses regular expressions to parse a line of source code.
-func (p *Parser) parseLine(loc int, pos int, line string) (int, error) {
+func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) {
 	var (
 		label  string        // Label, if any.
 		remain string = line // Remaining unparsed line.
@@ -163,7 +163,7 @@ func (p *Parser) parseLine(loc int, pos int, line string) (int, error) {
 				return 0, nil
 			}
 
-			return int(val), nil
+			return uint16(val), nil
 		case "DW":
 			return loc + 1, nil
 		}
@@ -218,7 +218,7 @@ func (p *Parser) parseInstruction(oper string, operands string) (Instruction, er
 }
 
 // SymbolTable maps symbol literal to its location.
-type SymbolTable map[string]int
+type SymbolTable map[string]uint16
 
 // Syntax is a list of the parsed instructions.
 type Instructions []Instruction
@@ -232,7 +232,7 @@ type Instruction interface {
 }
 
 type SyntaxError struct {
-	Loc, Pos int
+	Loc, Pos uint16
 	Line     string
 }
 

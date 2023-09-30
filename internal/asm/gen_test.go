@@ -7,6 +7,7 @@ import (
 	"testing"
 )
 
+// I still don't these style of table tests.
 func TestAND_Parse(t *testing.T) {
 	type fields struct {
 		Mode    AddressingMode
@@ -207,7 +208,7 @@ func TestAND_Generate(t *testing.T) {
 	}
 
 	pc := uint16(0x3000)
-	symbols := map[string]int{
+	symbols := SymbolTable{
 		"LABEL": 0x3100,
 	}
 
@@ -222,9 +223,9 @@ func TestAND_Generate(t *testing.T) {
 	}
 
 	if mc, err := inst[1].(*AND).Generate(symbols, pc); err != nil {
-		t.Fatal(err)
+		t.Fatalf("Code: %#v == error    ==> %s", inst[1], err)
 	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", inst[0], mc)
+		t.Logf("Code: %#v == generated ==> %0#4x", inst[1], mc)
 
 		if mc == 0xffff {
 			t.Error("invalid machine code")
