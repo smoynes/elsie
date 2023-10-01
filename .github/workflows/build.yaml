@@ -29,17 +29,16 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
-      - name: Build
-        run: go build -v ./...
+      - name: Install test runner
+        run: go install gotest.tools/gotestsum@latest
 
       - name: Test
-        run: go test -v ./...
+        run: gotestsum -f github-actions ./...
 
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-go@v4
         with:
           go-version: 'stable'
