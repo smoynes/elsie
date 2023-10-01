@@ -9,6 +9,9 @@ import (
 
 // I still don't quite like this style of table tests.
 func TestAND_Parse(t *testing.T) {
+
+	ins := AND{}
+
 	type args struct {
 		oper  string
 		opers []string
@@ -92,8 +95,8 @@ func TestAND_Parse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			ins := AND{}
 			got, err := ins.Parse(tt.args.oper, tt.args.opers)
+
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AND.Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -106,6 +109,8 @@ func TestAND_Parse(t *testing.T) {
 }
 
 func TestBR_Parse(t *testing.T) {
+	br := BR{}
+
 	type args struct {
 		oper  string
 		opers []string
@@ -180,8 +185,7 @@ func TestBR_Parse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := BR{}
-			got, err := b.Parse(tt.args.oper, tt.args.opers)
+			got, err := br.Parse(tt.args.oper, tt.args.opers)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BR.Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return

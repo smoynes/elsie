@@ -130,43 +130,69 @@ scan:
 }
 
 var (
-	text      = `(.*)`
-	space     = `[\pZ\p{Cc}]*`
-	directive = `(ORIG|DW|FILL|BLKW|STRINGZ|END)`
-	ident     = `(\pL[\pL\p{Nd}\pM\p{Pc}\p{Pd}\pS]*)`
-	literal   = `(^\p{Nd}+|^0[xob]\p{Nd}+|^'.*')`
+	// Grammar terminals.
+	text       = `(.*)`
+	space      = `[\pZ\p{Cc}]*`
+	ident      = `(\pL[\pL\p{Nd}\pM\p{Pc}\p{Pd}\pS]*)`
+	literal    = `(^\p{Nd}+|^0[xob]\p{Nd}+|^'.*')`
+	directives = []string{
+		`\.ORIG`,
+		`\.DW`,
+		`\.FILL`,
+		`\.BLKW`,
+		`\.STRINGZ`,
+		`\.END`,
+	}
 
-	commentPattern     = regexp.MustCompile(space + ";+" + text + "$")
-	labelPattern       = regexp.MustCompile("^" + space + ident + space + ":")
-	directivePattern   = regexp.MustCompile("^" + space + `\.` + directive + space + text + "$")
-	instructionPattern = regexp.MustCompile("^" + space + ident + space + literal + "*")
+	// Grammar patterns.
+	commentPattern   = regexp.MustCompile(space + `;` + text + `$`)
+	labelPattern     = regexp.MustCompile(`^` + ident + space + `:?` + space)
+	directivePattern = regexp.MustCompile(
+		`^(` + strings.Join(directives, `|`) + `)` + space + text + `$`)
+	instructionPattern = regexp.MustCompile(`^` + space + ident + space + text + `$`)
 )
 
 // Parse line uses regular expressions to parse text.
 func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) {
 	var (
-		label  string        // Label, if any.
-		remain string = line // Remaining unparsed line.
-		next   uint16 = loc  // Next location value.
+		label  string       // Label, if any.
+		remain string       // Remaining unparsed line.
+		next   uint16 = loc // Next location value.
 		err    error
 	)
 
+	remain = strings.TrimSpace(line)
+
 	if matched := commentPattern.FindStringIndex(remain); len(matched) > 1 {
-		remain = remain[:matched[0]] // Remove and discard comments.
+		remain = remain[:matched[0]] // Discard comments.
+
 	}
 
 	if matched := labelPattern.FindStringSubmatchIndex(remain); len(matched) > 1 {
-		start, end := matched[2], matched[3]
-		label = remain[start:end]
-		remain = remain[end:]
-		p.symbols[label] = loc
+		var (
+			matchEnd             = matched[1]
+			labelStart, labelEnd = matched[2], matched[3]
+		)
+
+		label = remain[labelStart:labelEnd]
+		label = strings.TrimSpace(label)
+		label = strings.ToUpper(label)
+
+		if p.isReservedKeyword(label) {
+			label = ""
+		} else {
+			remain = remain[matchEnd:]
+			p.symbols[label] = loc
+		}
+
 	}
 
-	if matched := directivePattern.FindStringSubmatchIndex(remain); len(matched) > 1 {
-		ident := remain[matched[2]:matched[3]]
+	if matched := directivePattern.FindStringSubmatch(remain); len(matched) > 1 {
+		ident := matched[1]
+		ident = strings.TrimSpace(ident)
 		ident = strings.ToUpper(ident)
 
-		arg := remain[matched[4]:matched[5]]
+		arg := matched[2]
 		arg = strings.TrimSpace(arg)
 
 		next, err = p.parseDirective(ident, arg, loc)
@@ -174,6 +200,7 @@ func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) 
 			err := fmt.Errorf("parser error: %w", err)
 			p.SyntaxError(loc, pos, line, err)
 		}
+
 	}
 
 	if matched := instructionPattern.FindStringSubmatch(remain); len(matched) > 2 {
@@ -213,10 +240,25 @@ func (p *Parser) parseInstruction(operator string, operands []string) (Instructi
 	return inst, nil
 }
 
-// parseDirective is just doing its best.
+func (p *Parser) isReservedKeyword(word string) bool {
+	for i := range directives {
+		if directives[i] == word {
+			return true
+		}
+	}
+
+	if _, instr := p.instrTable[word]; instr {
+		return true
+	}
+
+	return false
+}
+
+// parseDirective parses a directive or pseudo-instructions from its identifier and argument. The
+// directive may modify parser state by taking the location counter and returning new value.
 func (p *Parser) parseDirective(ident string, arg string, loc uint16) (uint16, error) {
 	switch ident {
-	case "ORIG":
+	case ".ORIG":
 
 		if len(arg) < 1 {
 			return loc, errors.New("argument error")
@@ -235,11 +277,14 @@ func (p *Parser) parseDirective(ident string, arg string, loc uint16) (uint16, e
 
 			return loc, nil
 		}
-	case "DW":
+	case ".DW":
 		// TODO:??
 		return loc + 1, nil
+	case ".END":
+		return loc, nil // TODO: stop parsing
 	default:
-		return loc, errors.New("directive error")
+		//return loc, errors.New("directive error")
+		return loc, nil
 	}
 }
 

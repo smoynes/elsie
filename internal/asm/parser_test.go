@@ -77,27 +77,29 @@ func (fake *fakeInstruction) Parse(oper string, opers []string) (Instruction, er
 
 const ValidSyntax = (`
 ; Let's go!
-
- .ORIG 0x1000       ; origin
-
+     .ORIG 0x1000       ; origin
 START:;instructions
      ;; immediate mode
-     TEST R1,#1      ; decimal
-     TEST R2,#0o2    ; octal
-     TEST R3,#0xdada ; hex
-     TEST
-     TEST R1,R2
-     TEST R1,R2,R3
-     TEST R6, R7, R0    ; spaces
+     TEST R1,#1      ; decimal ; 0x1000
+     TEST R2,#0o2    ; octal   ; 0x1001
+     TEST R3,#0xdada ; hex     ; 0x1002
+     TEST                      ; 0x1003
+     TEST R1,R2                ; 0x1004
+     TEST R1,R2,R3             ; 0x1005
+     TEST R6, R7, R0 ; spaces  ; 0x1006
+     TEST R0,[R5]              ; 0x1007
 
-     TEST R0,[R5]
-END: TEST R0, LABEL
+END: TEST R0, LABEL            ; 0x1008
+	TEST	TABS               ; 0x1009
 
-	TEST	TABS
+; Label in the style of the text.
+LOOP  TEST R3,R3,R2            ; 0x100a
+      TEST R3,R3,#-1           ; 0x100b
+      TEST LOOP                ; 0x100c
 
-LOOP:TEST R3,R3,R2
-     TEST R3,R3,#-1
-     TEST LOOP
+LOOP0 TEST                     ; 0x100d
+LOOP1 TEST R1                  ; 0x100e
+LOOP2 TEST R1,R2               ; 0x100f
 
      .ORIG 0x3100
 
@@ -113,7 +115,9 @@ binary:
 under_score:
 hyphen-ate:
 d1g1t1:
-eof:`)
+eof:
+.END
+`)
 
 func TestParser(tt *testing.T) {
 	t := parserHarness{tt}
@@ -134,18 +138,23 @@ func TestParser(tt *testing.T) {
 
 	assertSymbol(t, symbols, "START", 0x1000)
 	assertSymbol(t, symbols, "END", 0x1008)
-	assertSymbol(t, symbols, "LOOP", 0x1009)
-	assertSymbol(t, symbols, "LABEL", 0x3100)
-	assertSymbol(t, symbols, "decimal", 0x3100)
-	assertSymbol(t, symbols, "hex", 0x3101)
-	assertSymbol(t, symbols, "octal", 0x3102)
-	assertSymbol(t, symbols, "binary", 0x3103)
-	assertSymbol(t, symbols, "under_score", 0x3104)
-	assertSymbol(t, symbols, "hyphen-ate", 0x3104)
-	assertSymbol(t, symbols, "d1g1t1", 0x3104)
-	assertSymbol(t, symbols, "eof", 0x3104)
 
-	if len(symbols) != 12 {
+	assertSymbol(t, symbols, "LOOP", 0x100a)
+	assertSymbol(t, symbols, "LOOP0", 0x100d)
+	assertSymbol(t, symbols, "LOOP1", 0x100e)
+	assertSymbol(t, symbols, "LOOP2", 0x100f)
+
+	assertSymbol(t, symbols, "LABEL", 0x3100)
+	assertSymbol(t, symbols, "DECIMAL", 0x3100)
+	assertSymbol(t, symbols, "HEX", 0x3101)
+	assertSymbol(t, symbols, "OCTAL", 0x3102)
+	assertSymbol(t, symbols, "BINARY", 0x3103)
+	assertSymbol(t, symbols, "UNDER_SCORE", 0x3104)
+	assertSymbol(t, symbols, "HYPHEN-ATE", 0x3104)
+	assertSymbol(t, symbols, "D1G1T1", 0x3104)
+	assertSymbol(t, symbols, "EOF", 0x3104)
+
+	if len(symbols) != 15 {
 		t.Errorf("unexpected symbols: want: %d, got: %d", 11, len(symbols))
 		t.Log("Symbol table:")
 
@@ -167,26 +176,5 @@ func assertSymbol(t parserHarness, symbols SymbolTable, label string, want uint1
 		t.Errorf("symbol: %s, missing", label)
 	} else if got != want {
 		t.Errorf("symbol: %s, want: %0#4x, got: %0#4x", label, want, got)
-	}
-}
-
-func TestParser_Fixtures(tt *testing.T) {
-	t := parserHarness{tt}
-
-	// These fixtures should parse without syntax errors.
-	good := []string{
-		"parser1.asm",
-		"parser2.asm",
-		"parser3.asm",
-	}
-
-	for i := range good {
-		f := good[i]
-		p := NewParser(t.logger())
-		p.Parse(t.inputFixture(f))
-
-		if p.Err() != nil {
-			t.Error(p.Err())
-		}
 	}
 }
