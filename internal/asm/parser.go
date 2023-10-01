@@ -134,7 +134,6 @@ var (
 	text       = `(.*)`
 	space      = `[\pZ\p{Cc}]*`
 	ident      = `(\pL[\pL\p{Nd}\pM\p{Pc}\p{Pd}\pS]*)`
-	literal    = `(^\p{Nd}+|^0[xob]\p{Nd}+|^'.*')`
 	directives = []string{
 		`\.ORIG`,
 		`\.DW`,

@@ -77,12 +77,12 @@ func (fake *fakeInstruction) Parse(oper string, opers []string) (Instruction, er
 
 const ValidSyntax = (`
 ; Let's go!
-     .ORIG 0x1000       ; origin
+     .ORIG x1000       ; origin
 START:;instructions
      ;; immediate mode
      TEST R1,#1      ; decimal ; 0x1000
-     TEST R2,#0o2    ; octal   ; 0x1001
-     TEST R3,#0xdada ; hex     ; 0x1002
+     TEST R2,#o2    ; octal   ; 0x1001
+     TEST R3,#xdada ; hex     ; 0x1002
      TEST                      ; 0x1003
      TEST R1,R2                ; 0x1004
      TEST R1,R2,R3             ; 0x1005
@@ -105,7 +105,7 @@ LOOP2 TEST R1,R2               ; 0x100f
 
 LABEL:
 decimal:
-    .DW #0
+    .DW 123
 hex:
     .DW x0001
 octal:
