@@ -201,7 +201,7 @@ func TestBR_Parse(t *testing.T) {
 }
 
 func TestAND_Generate(t *testing.T) {
-	var inst Instructions = []Instruction{
+	var instrs = []Instruction{
 		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", LIT: "#x0010"},
 		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", LIT: "LABEL"},
 		&BR{NZP: 0x3, LIT: "LABEL"},
@@ -212,20 +212,20 @@ func TestAND_Generate(t *testing.T) {
 		"LABEL": 0x3100,
 	}
 
-	if mc, err := inst[0].(*AND).Generate(symbols, pc); err != nil {
+	if mc, err := instrs[0].(*AND).Generate(symbols, pc); err != nil {
 		t.Fatal(err)
 	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", inst[0], mc)
+		t.Logf("Code: %#v == generated ==> %0#4x", instrs[0], mc)
 
 		if mc == 0xffff {
 			t.Error("invalid machine code")
 		}
 	}
 
-	if mc, err := inst[1].(*AND).Generate(symbols, pc); err != nil {
-		t.Fatalf("Code: %#v == error    ==> %s", inst[1], err)
+	if mc, err := instrs[1].(*AND).Generate(symbols, pc); err != nil {
+		t.Fatalf("Code: %#v == error    ==> %s", instrs[1], err)
 	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", inst[1], mc)
+		t.Logf("Code: %#v == generated ==> %0#4x", instrs[1], mc)
 
 		if mc == 0xffff {
 			t.Error("invalid machine code")

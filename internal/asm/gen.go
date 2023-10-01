@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-
-	"github.com/smoynes/elsie/internal/vm"
 )
 
 // AddressingMode represents how an instruction addresses its operands.
@@ -21,6 +19,21 @@ const (
 	RegisterMode                        // REG
 	IndirectMode                        // IND
 )
+
+// An Instruction represents a machine-code instruction. It is parsed from source code during the
+// first pass and encoded to a single word in object code.
+type Instruction interface {
+	// Parse creates a new instruction by parsing an operator and its operands as represented in
+	// source code. An error is returned if parsing the operands fails. The returned instruction may
+	// not be semantically or even syntactically correct.
+	Parse(operator string, operands []string) (Instruction, error)
+}
+
+type Generator interface {
+	Generate(symbols SymbolTable, pc uint16) (uint16, error)
+
+	fmt.Stringer
+}
 
 // instructionTable maps assembly-language opcodes to instructions that generate machine code.
 var instructionTable = map[string]Instruction{
@@ -56,7 +69,31 @@ type AND struct {
 	LIT     string // Set when Mode is Immediate.
 }
 
-type Opcode = vm.Opcode // TODO: move opcode
+func (ins AND) String() string { return fmt.Sprintf("AND(%#v)", ins) }
+
+// Parse parses an AND instruction from its opcode and operands.
+func (ins AND) Parse(oper string, opers []string) (Instruction, error) {
+	if len(opers) != 3 {
+		return nil, errors.New("and: operands")
+	}
+
+	and := AND{
+		DR:  opers[0],
+		SR1: opers[1],
+	}
+
+	if sr2 := parseRegister(opers[2]); sr2 != "" {
+		and.Mode = RegisterMode
+		and.SR2 = sr2
+	} else if lit := parseImmediate(opers[2]); lit != "" {
+		and.Mode = ImmediateMode
+		and.LIT = lit
+	} else {
+		return nil, errors.New("and: invalid mode")
+	}
+
+	return &and, nil
+}
 
 // Generate returns the machine code for an AND instruction.
 func (and AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
@@ -103,33 +140,7 @@ func (and AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	}
 }
 
-func (ins AND) String() string { return fmt.Sprintf("AND(%#v)", ins) }
-
-func (ins AND) Parse(oper string, opers []string) (Instruction, error) {
-	if len(opers) != 3 {
-		return nil, errors.New("and: operands")
-	}
-
-	and := AND{
-		DR:  opers[0],
-		SR1: opers[1],
-	}
-	if sr2 := registerOperand(opers[2]); sr2 != "" {
-		and.Mode = RegisterMode
-		and.SR2 = sr2
-	} else if lit := immediateOperand(opers[2]); lit != "" {
-		and.Mode = ImmediateMode
-		and.LIT = lit
-	} else {
-		return nil, errors.New("and: invalid mode")
-	}
-
-	return &and, nil
-}
-
 // BR: Conditional branch.
-//
-// T
 //
 //	BR    [ IDENT | LITERAL ]
 //	BRn   [ IDENT | LITERAL ]
@@ -175,12 +186,37 @@ func (BR) Parse(oper string, opers []string) (Instruction, error) {
 
 	br := &BR{
 		NZP: nzp,
-		LIT: immediateOperand(opers[0]),
+		LIT: parseImmediate(opers[0]),
 	}
 
 	return br, nil
 }
 
+func (br *BR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
+	var code uint16
+
+	code |= 0o0 << 12
+	code |= uint16(br.NZP) << 9
+
+	off9, litErr := literalVal(br.LIT, 9)
+	loc, symErr := symbolVal(br.LIT, symbols, pc)
+
+	switch {
+	case litErr == nil:
+		code |= off9 & 0x01ff
+
+		return code, nil
+
+	case litErr != nil && symErr == nil:
+		code |= pc - (loc & 0x1f)
+
+		return code, nil
+	default:
+		return 0xffff, fmt.Errorf("codegen: immediate mode operand: %s %s", litErr, symErr)
+	}
+}
+
+// register returns the register encoded as an integer or 0xffff if the register does not exist.
 func register(reg string) uint16 {
 	switch reg {
 	case "R0":
@@ -205,7 +241,8 @@ func register(reg string) uint16 {
 
 }
 
-func registerOperand(oper string) string {
+// parseRegister returns the register name or an empty value if the register does not exist.
+func parseRegister(oper string) string {
 	switch oper {
 	case
 		"R0", "R1", "R2", "R3",
@@ -216,11 +253,8 @@ func registerOperand(oper string) string {
 	}
 }
 
-// TODO: Refactor to extract
-type Word = vm.Word
-
-// literalVal converts a operand as literal text in source code to an integer value. If the literal
-// is an integer that cannot be parsed, an error is returned.
+// literalVal converts a operand as literal text to an integer value. If the literal cannot be
+// parsed, an error is returned.
 func literalVal(oper string, n uint8) (uint16, error) {
 	if len(oper) < 2 {
 		return 0xffff, fmt.Errorf("codegen: literal error: %s", oper)
@@ -237,6 +271,7 @@ func literalVal(oper string, n uint8) (uint16, error) {
 	case "#b":
 		base = 2
 	default:
+		lit = oper
 	}
 
 	i, err := strconv.ParseUint(lit, base, 16)
@@ -246,6 +281,7 @@ func literalVal(oper string, n uint8) (uint16, error) {
 	}
 
 	val := int16(i) << (16 - n) >> (16 - n)
+
 	return uint16(val), nil
 }
 
@@ -257,7 +293,7 @@ func symbolVal(oper string, sym SymbolTable, pc uint16) (uint16, error) {
 	}
 }
 
-func immediateOperand(oper string) string {
+func parseImmediate(oper string) string {
 	if len(oper) > 1 && oper[0] == '#' {
 		return oper[1:]
 	} else {

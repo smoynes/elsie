@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -21,31 +22,34 @@ import (
 //	_ = p.Parse(os.Open("file1.asm"))
 //	_ = p.Parse(os.Open("file2.asm"))
 //	_ = p.Parse(os.Open("file3.asm"))
+//
 //	err := err.Err()
 //	println(errors.Is(err, SyntaxError{})) // true
 //	for _, err := range err.(interface { Unwrap() []error }).Unwrap() {
 //		println(err.Error()) // SyntaxError
 //	}
 type Parser struct {
-	symbols SymbolTable
-	instr   Instructions
-	fatal   error
-	errs    []error
+	instrTable map[string]Instruction // Generators for each opcode.
+	symbols    SymbolTable            // Symbolic references.
+	instr      []Instruction          // Parsed instructions.
 
-	operators map[string]Instruction
-	log       *log.Logger
+	fatal error   // Error causing parsing to halt.
+	errs  []error // Syntax errors.
+
+	log *log.Logger
 }
 
 // AddOperatorForTesting updates the operator table for the sake of testing the parser.
 func AddOperatorForTesting(op string, ins Instruction) {
 	instructionTable[op] = ins
+	fmt.Printf("%#v\n%#v\n", op, instructionTable)
 }
 
 func NewParser(log *log.Logger) *Parser {
 	return &Parser{
-		operators: instructionTable,
-		symbols:   make(SymbolTable),
-		log:       log,
+		symbols:    make(SymbolTable),
+		instrTable: instructionTable,
+		log:        log,
 	}
 }
 
@@ -63,7 +67,7 @@ func (p *Parser) AddSymbol(sym string, loc uint16) {
 }
 
 // Instructions returns the abstract syntax "tree".
-func (p *Parser) Instructions() Instructions {
+func (p *Parser) Instructions() []Instruction {
 	return p.instr
 }
 
@@ -143,93 +147,94 @@ func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) 
 	var (
 		label  string        // Label, if any.
 		remain string = line // Remaining unparsed line.
+		next   uint16 = loc  // Next location value.
+		err    error
 	)
 
 	if matched := commentPattern.FindStringIndex(remain); len(matched) > 1 {
 		remain = remain[:matched[0]]
 	}
 
-	if matched := directivePattern.FindStringSubmatchIndex(remain); len(matched) > 1 {
-		ident := remain[matched[2]:matched[3]]
-		arg := remain[matched[4]:matched[5]]
-		ident = strings.ToUpper(ident)
-
-		switch ident {
-		case "ORIG":
-			arg = strings.TrimSpace(arg)
-			val, err := strconv.ParseInt(arg, 0, 16)
-			if err != nil {
-				p.errs = append(p.errs, err)
-				return 0, nil
-			}
-
-			return uint16(val), nil
-		case "DW":
-			return loc + 1, nil
-		}
-
-		return loc, nil
-	}
-
 	if matched := labelPattern.FindStringSubmatchIndex(remain); len(matched) > 1 {
 		start, end := matched[2], matched[3]
 		label = remain[start:end]
 		remain = remain[end:]
+		p.symbols[label] = loc
+	}
 
-		defer func() {
-			p.symbols[label] = loc
-		}()
+	if matched := directivePattern.FindStringSubmatchIndex(remain); len(matched) > 1 {
+		ident := remain[matched[2]:matched[3]]
+		ident = strings.ToUpper(ident)
+
+		arg := remain[matched[4]:matched[5]]
+		arg = strings.TrimSpace(arg)
+
+		next, err = p.parseDirective(ident, arg, loc)
+		if err != nil {
+			p.SyntaxError(loc, pos, line)
+		}
 	}
 
 	if matched := instructionPattern.FindStringSubmatch(remain); len(matched) > 2 {
-		operator, operands := matched[1], matched[2]
-		inst, err := p.parseInstruction(operator, operands)
+		var inst Instruction
 
-		p.log.Debug("parse result", "inst", inst, "err", err, log.String("type", fmt.Sprintf("%T", err)))
+		operator := matched[1]
+		operands := strings.Split(matched[2], ",")
 
-		if err == nil {
-			p.AddInstruction(inst)
-		} else {
-			p.SyntaxError(loc, pos, line)
+		for i := range operands {
+			operands[i] = strings.TrimSpace(operands[i])
 		}
 
+		inst, err = p.parseInstruction(operator, operands)
+		if err != nil {
+			p.SyntaxError(loc, pos, line)
+		} else {
+			p.AddInstruction(inst)
+			next += 1
+		}
+	}
+
+	return next, err
+}
+
+// parseInstruction dispatches parsing to an instruction parser based on the operator.
+func (p *Parser) parseInstruction(operator string, operands []string) (Instruction, error) {
+	proto, ok := p.instrTable[operator]
+	if !ok {
+		return nil, errors.New("operator error")
+	}
+
+	inst, err := proto.Parse(operator, operands)
+	if err != nil {
+		return nil, err
+	}
+
+	return inst, nil
+}
+
+// parseDirective
+func (p *Parser) parseDirective(ident string, arg string, loc uint16) (uint16, error) {
+	switch ident {
+	case "ORIG":
+		if val, err := strconv.ParseInt(arg, 0, 16); err != nil {
+			return loc, err
+		} else if loc < 0 || loc > math.MaxUint16 {
+			return loc, errors.New("directive error")
+		} else {
+			loc = uint16(val)
+
+			return loc, nil
+		}
+	case "DW":
+		// TODO:??
 		return loc + 1, nil
-	}
-
-	if label == "" && remain != "" {
-		p.SyntaxError(loc, pos, line)
-	}
-
-	return loc, nil
-}
-
-// parseInstruction parses strings for an operator and its operands and returns an instruction.
-func (p *Parser) parseInstruction(oper string, operands string) (Instruction, error) {
-	opers := strings.Split(operands, ",")
-	for i := range opers {
-		opers[i] = strings.TrimSpace(opers[i])
-	}
-
-	if proto, ok := p.operators[oper]; ok {
-		return proto.Parse(oper, opers)
-	} else {
-		return nil, fmt.Errorf("unknown operator")
+	default:
+		return loc, errors.New("directive error")
 	}
 }
 
-// SymbolTable maps symbol literal to its location.
+// SymbolTable maps a symbol reference to its location in object code.
 type SymbolTable map[string]uint16
-
-// Syntax is a list of the parsed instructions.
-type Instructions []Instruction
-
-type Instruction interface {
-	Parse(operator string, operands []string) (Instruction, error)
-
-	// TODO: Generate(pc int16, symbols SymbolTable) (uint16, error)
-
-	fmt.Stringer
-}
 
 type SyntaxError struct {
 	Loc, Pos uint16
