@@ -7,15 +7,8 @@ import (
 	"testing"
 )
 
-// I still don't these style of table tests.
+// I still don't quite like this style of table tests.
 func TestAND_Parse(t *testing.T) {
-	type fields struct {
-		Mode    AddressingMode
-		DR      string
-		SR1     string
-		SR2     string
-		LITERAL string
-	}
 	type args struct {
 		oper  string
 		opers []string

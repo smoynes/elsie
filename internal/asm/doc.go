@@ -28,10 +28,10 @@ var (
 program        = { line } ;
 
 line           = ';' comment
-               | label ':' [ comment ]
-               | label [ ':' ] instruction [ comment ]
+               | label ':' [ ';' comment ]
+               | label [ ':' ] instruction [ ';' comment ]
                | '.' directive [ ';' comment ]
-               | instruction [ comment ] ;
+               | instruction   [ ';' comment ] ;
 
 comment        = { char } ;
 

@@ -80,8 +80,8 @@ func (p *Parser) AddInstruction(inst Instruction) {
 }
 
 // SyntaxError adds an error to the parser errors.
-func (p *Parser) SyntaxError(loc uint16, pos uint16, line string) {
-	p.errs = append(p.errs, &SyntaxError{Loc: loc, Pos: pos, Line: line})
+func (p *Parser) SyntaxError(loc uint16, pos uint16, line string, err error) {
+	p.errs = append(p.errs, &SyntaxError{Loc: loc, Pos: pos, Line: line, Err: err})
 }
 
 // Err returns errors that occur during parsing. If a fatal error occurs that prevents parsing from
@@ -142,7 +142,7 @@ var (
 	instructionPattern = regexp.MustCompile("^" + space + ident + space + literal + "*")
 )
 
-// Parse line uses regular expressions to parse a line of source code.
+// Parse line uses regular expressions to parse text.
 func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) {
 	var (
 		label  string        // Label, if any.
@@ -152,7 +152,7 @@ func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) 
 	)
 
 	if matched := commentPattern.FindStringIndex(remain); len(matched) > 1 {
-		remain = remain[:matched[0]]
+		remain = remain[:matched[0]] // Remove and discard comments.
 	}
 
 	if matched := labelPattern.FindStringSubmatchIndex(remain); len(matched) > 1 {
@@ -171,7 +171,8 @@ func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) 
 
 		next, err = p.parseDirective(ident, arg, loc)
 		if err != nil {
-			p.SyntaxError(loc, pos, line)
+			err := fmt.Errorf("parser error: %w", err)
+			p.SyntaxError(loc, pos, line, err)
 		}
 	}
 
@@ -187,7 +188,7 @@ func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) 
 
 		inst, err = p.parseInstruction(operator, operands)
 		if err != nil {
-			p.SyntaxError(loc, pos, line)
+			p.SyntaxError(loc, pos, line, err)
 		} else {
 			p.AddInstruction(inst)
 			next += 1
@@ -201,7 +202,7 @@ func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) 
 func (p *Parser) parseInstruction(operator string, operands []string) (Instruction, error) {
 	proto, ok := p.instrTable[operator]
 	if !ok {
-		return nil, errors.New("operator error")
+		return nil, fmt.Errorf("operator: %s", operator)
 	}
 
 	inst, err := proto.Parse(operator, operands)
@@ -212,10 +213,19 @@ func (p *Parser) parseInstruction(operator string, operands []string) (Instructi
 	return inst, nil
 }
 
-// parseDirective
+// parseDirective is just doing its best.
 func (p *Parser) parseDirective(ident string, arg string, loc uint16) (uint16, error) {
 	switch ident {
 	case "ORIG":
+
+		if len(arg) < 1 {
+			return loc, errors.New("argument error")
+		}
+
+		if arg[0] == 'x' {
+			arg = "0" + arg
+		}
+
 		if val, err := strconv.ParseInt(arg, 0, 16); err != nil {
 			return loc, err
 		} else if loc < 0 || loc > math.MaxUint16 {
@@ -239,8 +249,9 @@ type SymbolTable map[string]uint16
 type SyntaxError struct {
 	Loc, Pos uint16
 	Line     string
+	Err      error
 }
 
 func (pe *SyntaxError) Error() string {
-	return fmt.Sprintf("syntax error: %d: %q", pe.Pos, pe.Line)
+	return fmt.Sprintf("syntax error: %s: line: %d %q", pe.Err, pe.Pos, pe.Line)
 }

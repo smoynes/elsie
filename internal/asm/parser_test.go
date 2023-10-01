@@ -39,7 +39,7 @@ func (h *parserHarness) logger() *log.Logger {
 func (h *parserHarness) ParseStream(in io.ReadCloser) *Parser {
 	h.T.Helper()
 
-	AddOperatorForTesting("TEST", &fakeOper{})
+	AddOperatorForTesting("TEST", &fakeInstruction{})
 
 	if parser := NewParser(h.logger()); parser == nil {
 		h.T.Fatal("parser: nil")
@@ -67,14 +67,12 @@ func (parserHarness) inputError() io.ReadCloser {
 	return io.NopCloser(iotest.ErrReader(os.ErrInvalid))
 }
 
-type fakeOper struct{}
+type fakeInstruction struct{}
 
-var _ Instruction = (*fakeOper)(nil)
+func (fakeInstruction) String() string { return "TEST" }
 
-func (fakeOper) String() string { return "TEST" }
-
-func (fake *fakeOper) Parse(oper string, opers []string) (Instruction, error) {
-	return &(*fake), nil // Too clever copy.
+func (fake *fakeInstruction) Parse(oper string, opers []string) (Instruction, error) {
+	return fake, nil
 }
 
 const ValidSyntax = (`
@@ -169,5 +167,26 @@ func assertSymbol(t parserHarness, symbols SymbolTable, label string, want uint1
 		t.Errorf("symbol: %s, missing", label)
 	} else if got != want {
 		t.Errorf("symbol: %s, want: %0#4x, got: %0#4x", label, want, got)
+	}
+}
+
+func TestParser_Fixtures(tt *testing.T) {
+	t := parserHarness{tt}
+
+	// These fixtures should parse without syntax errors.
+	good := []string{
+		"parser1.asm",
+		"parser2.asm",
+		"parser3.asm",
+	}
+
+	for i := range good {
+		f := good[i]
+		p := NewParser(t.logger())
+		p.Parse(t.inputFixture(f))
+
+		if p.Err() != nil {
+			t.Error(p.Err())
+		}
 	}
 }

@@ -20,8 +20,8 @@ const (
 	IndirectMode                        // IND
 )
 
-// An Instruction represents a machine-code instruction. It is parsed from source code during the
-// first pass and encoded to a single word in object code.
+// An Instruction represents a machine-code instruction or an assembler directive. It is parsed from
+// source code during the assembler's first pass and encoded to object code in the second pass.
 type Instruction interface {
 	// Parse creates a new instruction by parsing an operator and its operands as represented in
 	// source code. An error is returned if parsing the operands fails. The returned instruction may
@@ -35,7 +35,7 @@ type Generator interface {
 	fmt.Stringer
 }
 
-// instructionTable maps assembly-language opcodes to instructions that generate machine code.
+// instructionTable maps assembly-language opcodes to code generators.
 var instructionTable = map[string]Instruction{
 	"AND": _AND,
 	"BR":  _BR,
