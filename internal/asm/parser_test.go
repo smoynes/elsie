@@ -2,7 +2,6 @@ package asm_test
 
 import (
 	"bufio"
-	"bytes"
 	"io"
 	"log/slog"
 	"os"
@@ -50,16 +49,12 @@ func (h *parserHarness) ParseStream(in io.ReadCloser) *Parser {
 	}
 }
 
-func (parserHarness) inputString(in string) io.ReadCloser {
-	reader := bytes.NewReader([]byte(in))
-	return io.NopCloser(reader)
-}
-
 func (h parserHarness) inputFixture(in string) io.ReadCloser {
 	reader, err := os.Open(path.Join("testdata", in))
 	if err != nil {
 		h.Errorf("fixture: %s", err)
 	}
+
 	return reader
 }
 
@@ -71,8 +66,12 @@ type fakeInstruction struct{}
 
 func (fakeInstruction) String() string { return "TEST" }
 
-func (fake *fakeInstruction) Parse(oper string, opers []string) (Instruction, error) {
+func (fake *fakeInstruction) Parse(oper string, opers []string) (Operation, error) {
 	return fake, nil
+}
+
+func (fake *fakeInstruction) Generate(sym SymbolTable, loc uint16) (uint16, error) {
+	return 0, nil
 }
 
 const ValidSyntax = (`
@@ -115,6 +114,24 @@ binary:
 under_score:
 hyphen-ate:
 d1g1t1:
+
+
+.ORIG x3200
+AND R1,R1,#0
+AND R1,R2,#x0
+AND R1,R2,LOOP
+
+BRNP  LOOP
+BRz   #x0
+
+  LD  DR,#x0
+  LD  DR,#o777
+  LD  R1, LOOP
+  LD  R1,[LOOP] ; ???
+  LD  DR,#-1
+  LD  DR,#012
+  LD  R9,#x0123
+
 eof:
 .END
 `)
@@ -152,7 +169,7 @@ func TestParser(tt *testing.T) {
 	assertSymbol(t, symbols, "UNDER_SCORE", 0x3104)
 	assertSymbol(t, symbols, "HYPHEN-ATE", 0x3104)
 	assertSymbol(t, symbols, "D1G1T1", 0x3104)
-	assertSymbol(t, symbols, "EOF", 0x3104)
+	assertSymbol(t, symbols, "EOF", 0x320b)
 
 	if len(symbols) != 15 {
 		t.Errorf("unexpected symbols: want: %d, got: %d", 11, len(symbols))
@@ -163,9 +180,14 @@ func TestParser(tt *testing.T) {
 		}
 	}
 
+	err := parser.Err()
+	if err != nil {
+		t.Error(err)
+	}
+
 	instructions := parser.Instructions()
 	if len(instructions) == 0 {
-		t.Fatal("no instructions")
+		t.Error("no instructions")
 	}
 }
 
