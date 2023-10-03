@@ -181,7 +181,6 @@ func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) 
 		arg = strings.TrimSpace(arg)
 
 		if next, err := p.parseDirective(ident, arg, loc); err != nil {
-			err := fmt.Errorf("parser error: %w", err)
 			p.SyntaxError(loc, pos, line, err)
 		} else {
 			loc = next
@@ -254,20 +253,22 @@ func (p *Parser) parseDirective(ident string, arg string, loc uint16) (uint16, e
 		if val, err := strconv.ParseInt(arg, 0, 16); err != nil {
 			return loc, err
 		} else if val < 0 || val > math.MaxUint16 {
-			return loc, errors.New("directive error")
+			return loc, errors.New("argument error")
 		} else {
 			loc = uint16(val)
 
 			return loc, nil
 		}
+	case ".FILL":
+		// We could parse the literal, as above, but what do we do with it?
+		return loc + 1, nil
 	case ".DW":
-		// TODO:??
+		// TODO: ??
 		return loc + 1, nil
 	case ".END":
 		return loc, nil // TODO: stop parsing
 	default:
-		//return loc, errors.New("directive error")
-		return loc, nil
+		return loc, errors.New("directive error")
 	}
 }
 

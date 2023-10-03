@@ -34,6 +34,7 @@ type Operation interface {
 // instructionTable maps assembly-language opcodes to code generators. TODO: this could be a static
 // switch statement.
 var instructionTable = map[string]Operation{
+	"ADD": _ADD,
 	"AND": _AND,
 	"BR":  _BR, "BRZNP": _BR,
 	"BRN": _BR, "BRZ": _BR, "BRP": _BR,
@@ -43,7 +44,8 @@ var instructionTable = map[string]Operation{
 }
 
 var (
-	_BR Operation = &BR{}
+	_BR  Operation = &BR{}
+	_ADD Operation = &ADD{}
 	_AND Operation = &AND{}
 	_LD  Operation = &LD{}
 	_LDR Operation = &LDR{}
@@ -147,9 +149,9 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 //	AND DR,SR1,#LITERAL               ; (immediate mode)
 //	AND DR,SR1,LABEL                  ;
 //
-//	| 0101 | DR | SR1 | 1 |   IMM5   |
-//	|------+----+-----+---+----------|
-//	|15  12|11 9|8   6| 5 |4        0|
+//	| 0101 | DR | SR1 | 1 | IMM5 |
+//	|------+----+-----+---+------|
+//	|15  12|11 9|8   6| 5 |4    0|
 type AND struct {
 	Mode    AddressingMode
 	DR, SR1 string
@@ -168,8 +170,8 @@ func (and AND) Parse(oper string, opers []string) (Operation, error) {
 	}
 
 	operation := AND{
-		DR:  opers[0],
-		SR1: opers[1],
+		DR:  parseRegister(opers[0]),
+		SR1: parseRegister(opers[1]),
 	}
 
 	if sr2 := parseRegister(opers[2]); sr2 != "" {
@@ -222,7 +224,7 @@ func (and AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 		case and.SYMBOL != "":
 			loc, ok := symbols[and.SYMBOL]
 			if !ok {
-				return 0xffff, fmt.Errorf("and: symbol not found: %q", and.SYMBOL)
+				return 0xffff, fmt.Errorf("and: symbol error: %q", and.SYMBOL)
 			}
 
 			code |= pc - (loc & 0x1f)
@@ -289,7 +291,7 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	case ld.SYMBOL != "":
 		loc, ok := symbols[ld.SYMBOL]
 		if !ok {
-			return 0xffff, fmt.Errorf("ld: symbol not found: %q", ld.SYMBOL)
+			return 0xffff, fmt.Errorf("ld: symbol error: %q", ld.SYMBOL)
 		}
 
 		code |= pc - (loc & 0x1ff) // TODO ??
@@ -342,27 +344,100 @@ func (LDR) Parse(opcode string, operands []string) (Operation, error) {
 func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	dr := registerVal(ldr.DR)
 
-	if dr == 0xffff {
+	if dr == BadRegister {
 		return 0xffff, fmt.Errorf("ldr: register error")
 	}
 
-	var code uint16 = 0o2 << 12
-	code |= dr << 9
+	var code uint16 = 0b0010<<12 | dr<<9
 
 	switch {
 	case ldr.SYMBOL != "":
 		loc, ok := symbols[ldr.SYMBOL]
 		if !ok {
-			return 0xffff, fmt.Errorf("ldr: symbol not found: %q", ldr.SYMBOL)
+			return 0xffff, fmt.Errorf("ldr: symbol error: %q", ldr.SYMBOL)
 		}
 
-		code |= pc - (loc & 0x1ff) // TODO ??
+		code |= (pc - loc) & 0x001f
 
 		return code, nil
 	default:
-		code |= ldr.OFFSET & 0x001ff
+		code |= ldr.OFFSET & 0x001f
 		return code, nil
 	}
+}
+
+// ADD: Arithmetic addition operator.
+//
+//	ADD DR,SR1,SR2
+//	ADD DR,SR1,#LITERAL
+//
+//	| 0001 | DR | SR1 | 0 | 00 | SR2 | (register mode)
+//	|------+----+-----+---+----+-----|
+//	|15  12|11 9|8   6| 5 |4  3|2   0|
+//
+//	| 0001 | DR | SR1 | 1 |   IMM5   | (immediate mode)
+//	|------+----+-----+---+----------|
+//	|15  12|11 9|8  6 | 5 |4        0|
+//
+// .
+type ADD struct {
+	DR      string
+	SR1     string
+	SR2     string // Not empty when register mode.
+	SYMBOL  string // Not empty with symbol, immediate mode.
+	LITERAL uint16 // Literal value otherwise, immediate mode.
+}
+
+func (ADD) Parse(opcode string, operands []string) (Operation, error) {
+	if opcode != "ADD" {
+		return nil, errors.New("add: opcode error")
+	} else if len(operands) != 3 {
+		return nil, errors.New("add: operand error")
+	}
+
+	operation := ADD{
+		DR:  parseRegister(operands[0]),
+		SR1: parseRegister(operands[1]),
+	}
+
+	if sr2 := parseRegister(operands[2]); sr2 != "" {
+		operation.SR2 = sr2
+	} else {
+		off, sym, err := parseImmediate(operands[2], 5)
+		if err != nil {
+			return nil, fmt.Errorf("add: operand error: %s", err)
+		}
+
+		operation.LITERAL = off & 0x1f
+		operation.SYMBOL = sym
+	}
+
+	return &operation, nil
+}
+
+func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
+	var (
+		code uint16 = 0b0001 << 12
+	)
+
+	sr1 := registerVal(add.SR1)
+	if sr1 == BadRegister {
+		return 0, errors.New("add: register error")
+	}
+
+	code |= sr1 << 6
+
+	if add.SR2 != "" {
+		sr2 := registerVal(add.SR2)
+		code |= sr2
+
+		return code, nil
+	}
+
+	code |= 1 << 5
+	code |= add.LITERAL & 0x001f
+
+	return code, nil
 }
 
 // registerVal returns the registerVal encoded as an integer or 0xffff if the register does not exist.
@@ -385,9 +460,11 @@ func registerVal(reg string) uint16 {
 	case "R7":
 		return 7
 	default:
-		return 0xffff
+		return BadRegister
 	}
 }
+
+const BadRegister uint16 = 0xffff
 
 func symbolVal(oper string, sym SymbolTable, pc uint16) (uint16, error) {
 	// TODO

@@ -34,7 +34,8 @@ func (h *parserHarness) logger() *log.Logger {
 }
 
 // Parser is a factory method for a parser under test. It creates a new parser and does an initial
-// read on the input stream and returns the parser. The caller should assert against Parser.Err, etc.
+// read on the input stream and returns the parser. The caller should assert against Parser.Err,
+// etc.
 func (h *parserHarness) ParseStream(in io.ReadCloser) *Parser {
 	h.T.Helper()
 
@@ -190,6 +191,40 @@ func TestParser(tt *testing.T) {
 	instructions := parser.Instructions()
 	if len(instructions) == 0 {
 		t.Error("no instructions")
+	}
+}
+
+// Test the parser using source code from testdata/.
+func TestParser_Fixtures(tt *testing.T) {
+	tests := []string{
+		"parser3.asm",
+		"parser4.asm",
+	}
+
+	for _, fn := range tests {
+		fn := fn
+
+		tt.Run(fn, func(tt *testing.T) {
+			var (
+				t       = parserHarness{tt}
+				fp      = path.Join("testdata", fn)
+				fs, err = os.Open(fp)
+			)
+
+			t.Log(fp)
+
+			if err != nil {
+				t.Error(err)
+			}
+
+			parser := t.ParseStream(fs)
+
+			if parser.Err() != nil {
+				t.Error(parser.Err())
+			}
+
+			t.Logf("%#v", parser.Symbols())
+		})
 	}
 }
 

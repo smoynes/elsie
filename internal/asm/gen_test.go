@@ -360,12 +360,12 @@ func TestLDR_Parse(t *testing.T) {
 			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
 				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
 
-				t.Errorf("LD.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("LDR.Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("LD.Parse() = %#v, want %#v", got, tt.want)
+				t.Errorf("LDR.Parse() = %#v, want %#v", got, tt.want)
 			}
 		})
 	}
@@ -405,7 +405,7 @@ func TestLDR_Generate(t *testing.T) {
 			t.Error("invalid machine code")
 		}
 
-		if mc != 0x2f00 {
+		if mc != 0x2e00 {
 			t.Errorf("bad machine code: %04x", mc)
 		}
 	}
@@ -447,6 +447,88 @@ func TestLD_Generate(t *testing.T) {
 
 		if mc != 0x2f00 {
 			t.Errorf("bad machine code: %04x", mc)
+		}
+	}
+}
+
+func TestADD_Parse(t *testing.T) {
+	add := ADD{}
+
+	tests := []testParseOperationCase{
+		{
+			name:      "bad oper",
+			operation: testParseOperation{"OP", []string{"IDENT"}},
+			want:      nil,
+			wantErr:   &SyntaxError{},
+		}, {
+			name:      "ADD register",
+			operation: testParseOperation{"ADD", []string{"R0", "R0", "R1"}},
+			want:      &ADD{DR: "R0", SR1: "R0", SR2: "R1"},
+			wantErr:   nil,
+		},
+		{
+			name:      "ADD label",
+			operation: testParseOperation{"ADD", []string{"R7", "R0", "LABEL"}},
+			want:      &ADD{DR: "R7", SR1: "R0", LITERAL: 0, SYMBOL: "LABEL"},
+			wantErr:   nil,
+		},
+		{
+			name:      "ADD literal",
+			operation: testParseOperation{"ADD", []string{"R0", "R1", "#-1"}},
+			want:      &ADD{DR: "R0", SR1: "R1", LITERAL: 0x001f},
+			wantErr:   nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := add.Parse(tt.operation.opcode, tt.operation.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+
+				t.Errorf("ADD.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("ADD.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestADD_Generate(t *testing.T) {
+	var tcs = []struct {
+		operation Operation
+		mc        uint16
+	}{
+		{&ADD{DR: "R0", SR1: "R0", SR2: "R1"}, 0x1001},
+		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x0000}, 0x1060},
+		{&ADD{DR: "R0", SR1: "R7", LITERAL: 0b0000_0000_0000_1010}, 0b0001_0001_1110_1010},
+		{&ADD{DR: "R1", SR1: "R1", SYMBOL: "LABEL"}, 0x1060},
+	}
+
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL": 0x3100,
+	}
+
+	for tc := range tcs {
+		op, exp := tcs[tc].operation, tcs[tc].mc
+
+		mc, err := op.Generate(symbols, pc)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if mc == 0xffff {
+			t.Error("invalid machine code")
+		}
+
+		if mc != exp {
+			t.Errorf("tc: %#v", tcs[tc].operation)
+			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
 		}
 	}
 }

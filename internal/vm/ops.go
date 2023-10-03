@@ -178,9 +178,9 @@ func (op *andImm) Execute() {
 //
 // ADD: Arithmetic addition operator (immediate mode)
 //
-// | 0001 | DR  | SR | 1 | 11111 |
-// |------+-----+----+---+-------|
-// |15  12|11  9|8  6| 5 |4     0|
+// | 0001 | DR  | SR | 1 | IMM5 |
+// |------+-----+----+---+------|
+// |15  12|11  9|8  6| 5 |4    0|
 // .
 type add struct {
 	mo
