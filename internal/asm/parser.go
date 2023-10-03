@@ -301,6 +301,7 @@ func parseRegister(oper string) string {
 // value is taken as n bits long. Literals can take the forms:
 //
 //	#123
+//	#-1
 //	#x123
 //	#o123
 //	#b0101
@@ -344,7 +345,7 @@ func literalVal(oper string, n uint8) (uint16, error) {
 		lit = oper
 	}
 
-	i, err := strconv.ParseUint(lit, base, 16)
+	i, err := strconv.ParseInt(lit, base, 16)
 
 	if err != nil {
 		return 0xffff, fmt.Errorf("literal error: %s", lit)

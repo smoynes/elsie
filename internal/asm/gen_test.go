@@ -1,5 +1,3 @@
-// inst.go implements parsing and code generation for each instruction opcode.
-
 package asm
 
 import (
@@ -119,6 +117,47 @@ func TestAND_Parse(t *testing.T) {
 	}
 }
 
+func TestAND_Generate(t *testing.T) {
+	var instrs = []Operation{
+		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", OFFSET: 0x10},
+		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", SYMBOL: "LABEL"},
+		&BR{NZP: 0x3, SYMBOL: "LABEL"},
+	}
+
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL": 0x3100,
+	}
+
+	if mc, err := instrs[0].Generate(symbols, pc); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("Code: %#v == generated ==> %0#4x", instrs[0], mc)
+
+		if mc == 0xffff {
+			t.Error("invalid machine code")
+		}
+
+		if mc != 0x61f0 {
+			t.Errorf("bad maching code: %04X", mc)
+		}
+	}
+
+	if mc, err := instrs[1].Generate(symbols, pc); err != nil {
+		t.Fatalf("Code: %#v == error    ==> %s", instrs[1], err)
+	} else {
+		t.Logf("Code: %#v == generated ==> %0#4x", instrs[1], mc)
+
+		if mc == 0xffff {
+			t.Error("invalid machine code")
+		}
+
+		if mc != 0x71e0 {
+			t.Errorf("bad maching code: %04x", mc)
+		}
+	}
+}
+
 func TestBR_Parse(t *testing.T) {
 	br := BR{}
 
@@ -209,11 +248,13 @@ func TestBR_Parse(t *testing.T) {
 	}
 }
 
-func TestAND_Generate(t *testing.T) {
-	var instrs = []Operation{
-		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", OFFSET: 0x10},
-		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", SYMBOL: "LABEL"},
-		&BR{NZP: 0x3, SYMBOL: "LABEL"},
+func TestBR_Generate(t *testing.T) {
+	var tcs = []struct {
+		i  Operation
+		mc uint16
+	}{
+		{&BR{NZP: 0x7, OFFSET: 0x01}, 0x3e01},
+		{&BR{NZP: 0x2, OFFSET: 0xfff0}, 0x35f0},
 	}
 
 	pc := uint16(0x3000)
@@ -221,31 +262,21 @@ func TestAND_Generate(t *testing.T) {
 		"LABEL": 0x3100,
 	}
 
-	if mc, err := instrs[0].Generate(symbols, pc); err != nil {
-		t.Fatal(err)
-	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", instrs[0], mc)
+	for i := range tcs {
+		op, exp := tcs[i].i, tcs[i].mc
 
-		if mc == 0xffff {
-			t.Error("invalid machine code")
-		}
+		if mc, err := op.Generate(symbols, pc); err != nil {
+			t.Fatal(err)
+		} else {
+			t.Logf("Code: %#v == generated ==> %0#4x", op, mc)
 
-		if mc != 0x61f0 {
-			t.Errorf("bad maching code: %04X", mc)
-		}
-	}
+			if mc == 0xffff {
+				t.Error("invalid machine code")
+			}
 
-	if mc, err := instrs[1].Generate(symbols, pc); err != nil {
-		t.Fatalf("Code: %#v == error    ==> %s", instrs[1], err)
-	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", instrs[1], mc)
-
-		if mc == 0xffff {
-			t.Error("invalid machine code")
-		}
-
-		if mc != 0x71e0 {
-			t.Errorf("bad maching code: %04x", mc)
+			if mc != exp {
+				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", mc, exp)
+			}
 		}
 	}
 }

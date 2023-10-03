@@ -136,6 +136,8 @@ eof:
 .END
 `)
 
+// A rough integration test for the parser. It is quite brittle and, yet, has proven valuable during
+// design and development.
 func TestParser(tt *testing.T) {
 	t := parserHarness{tt}
 
@@ -169,7 +171,7 @@ func TestParser(tt *testing.T) {
 	assertSymbol(t, symbols, "UNDER_SCORE", 0x3104)
 	assertSymbol(t, symbols, "HYPHEN-ATE", 0x3104)
 	assertSymbol(t, symbols, "D1G1T1", 0x3104)
-	assertSymbol(t, symbols, "EOF", 0x320b)
+	assertSymbol(t, symbols, "EOF", 0x320c)
 
 	if len(symbols) != 15 {
 		t.Errorf("unexpected symbols: want: %d, got: %d", 11, len(symbols))

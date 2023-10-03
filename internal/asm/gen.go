@@ -1,6 +1,6 @@
 package asm
 
-// gen.go implements code generation for each opcode.
+// gen.go implements parsing and code generation for all opcodes and instructions.
 
 import (
 	"errors"
