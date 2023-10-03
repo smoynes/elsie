@@ -80,8 +80,8 @@ const ValidSyntax = (`
 START:;instructions
      ;; immediate mode
      TEST R1,#1      ; decimal ; 0x1000
-     TEST R2,#o2    ; octal   ; 0x1001
-     TEST R3,#xdada ; hex     ; 0x1002
+     TEST R2,#o2     ; octal   ; 0x1001
+     TEST R3,#xdada  ; hex     ; 0x1002
      TEST                      ; 0x1003
      TEST R1,R2                ; 0x1004
      TEST R1,R2,R3             ; 0x1005
@@ -104,13 +104,13 @@ LOOP2 TEST R1,R2               ; 0x100f
 
 LABEL:
 decimal:
-    .DW 123
+    .DW 123                    ; 0x3100
 hex:
-    .DW x0001
+    .DW x0001                  ; 0x3101
 octal:
-    .DW o002
+    .DW o002                   ; 0x3102
 binary:
-    .DW b0000_0000_0000_0111
+    .DW b0000_0000_0000_0111   ; 0x3103
 under_score:
 hyphen-ate:
 d1g1t1:

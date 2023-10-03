@@ -253,7 +253,7 @@ func (p *Parser) parseDirective(ident string, arg string, loc uint16) (uint16, e
 
 		if val, err := strconv.ParseInt(arg, 0, 16); err != nil {
 			return loc, err
-		} else if 0 < val || val > math.MaxUint16 {
+		} else if val < 0 || val > math.MaxUint16 {
 			return loc, errors.New("directive error")
 		} else {
 			loc = uint16(val)
