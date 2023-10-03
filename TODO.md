@@ -1,14 +1,14 @@
 # TODO #
 
+- [ ] ASM: simple parser; two pass: symbol table, code generation
 - [ ] CLI: sub commands for vm, tools, terminal, shell
-- [ ] logger: program output to STDOUT, logging output to STDERR (unless in
+- [ ] LOG: program output to STDOUT, logging output to STDERR (unless in
       demo)
-- [ ] assembler: simple parser; two pass: symbol table, code generation
 - [ ] DUMP: object dumper; hex encoder
-- [ ] object loader
+- [ ] LOAD: object loader
 - [ ] BIOS: trap, exception, and interrupt routines
 - [ ] REPL: step debugger shell
-- [ ] simple timer device
+- [ ] TIMER: simple timer device
 - [ ] NEWLANG: interpreted language; threaded compiler
 
 ... more to come.
