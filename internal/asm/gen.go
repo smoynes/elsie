@@ -38,13 +38,15 @@ var instructionTable = map[string]Operation{
 	"BR":  _BR, "BRZNP": _BR,
 	"BRN": _BR, "BRZ": _BR, "BRP": _BR,
 	"BRNZ": _BR, "BRNP": _BR, "BRZP": _BR,
-	"LD": _LD,
+	"LD":  _LD,
+	"LDR": _LDR,
 }
 
 var (
-	_BR  Operation = &BR{}
+	_BR Operation = &BR{}
 	_AND Operation = &AND{}
 	_LD  Operation = &LD{}
+	_LDR Operation = &LDR{}
 )
 
 // BR: Conditional branch.
@@ -236,7 +238,7 @@ func (and AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	}
 }
 
-// LD: Load (immediate) from memory.
+// LD: Load from memory, PC-relative..
 //
 //	LD DR,LABEL
 //	LD DR,#LITERAL
@@ -295,6 +297,70 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 		return code, nil
 	default:
 		code |= ld.OFFSET & 0x001ff
+		return code, nil
+	}
+}
+
+// LDR: Load from memory, register-relative.
+//
+//	LDR DR,SR,#LITERAL
+//	LDR DR,SR,LABEL
+//
+//	| 0110 | DR | SR | OFFSET6 |
+//	|------+----+----+---------|
+//	|15  12|11 9|8  6|5       0|
+type LDR struct {
+	DR     string
+	SR     string
+	OFFSET uint16
+	SYMBOL string
+}
+
+func (ldr LDR) String() string { return fmt.Sprintf("LDR(%#v)", ldr) }
+
+func (LDR) Parse(opcode string, operands []string) (Operation, error) {
+	if opcode != "LDR" {
+		return nil, errors.New("ldr: opcode error")
+	}
+
+	operation := LDR{
+		DR: operands[0],
+		SR: operands[1],
+	}
+
+	off, sym, err := parseImmediate(operands[2], 6)
+	if err != nil {
+		return nil, fmt.Errorf("ldr: operand error: %s", err)
+	}
+
+	operation.OFFSET = off
+	operation.SYMBOL = sym
+
+	return &operation, nil
+}
+
+func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
+	dr := registerVal(ldr.DR)
+
+	if dr == 0xffff {
+		return 0xffff, fmt.Errorf("ldr: register error")
+	}
+
+	var code uint16 = 0o2 << 12
+	code |= dr << 9
+
+	switch {
+	case ldr.SYMBOL != "":
+		loc, ok := symbols[ldr.SYMBOL]
+		if !ok {
+			return 0xffff, fmt.Errorf("ldr: symbol not found: %q", ldr.SYMBOL)
+		}
+
+		code |= pc - (loc & 0x1ff) // TODO ??
+
+		return code, nil
+	default:
+		code |= ldr.OFFSET & 0x001ff
 		return code, nil
 	}
 }

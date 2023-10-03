@@ -5,6 +5,19 @@ import (
 	"testing"
 )
 
+type testParseOperation struct {
+	opcode   string
+	operands []string
+}
+
+type testParseOperationCase struct {
+	name      string
+	operation testParseOperation
+
+	want    Operation
+	wantErr error
+}
+
 func TestAND_Parse(t *testing.T) {
 	// I still not sure I like this style of table tests.
 	ins := AND{}
@@ -121,7 +134,6 @@ func TestAND_Generate(t *testing.T) {
 	var instrs = []Operation{
 		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", OFFSET: 0x10},
 		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", SYMBOL: "LABEL"},
-		&BR{NZP: 0x3, SYMBOL: "LABEL"},
 	}
 
 	pc := uint16(0x3000)
@@ -284,43 +296,118 @@ func TestBR_Generate(t *testing.T) {
 func TestLD_Parse(t *testing.T) {
 	ld := LD{}
 
-	type args struct {
-		oper  string
-		opers []string
-	}
-
-	tests := []struct {
-		name    string
-		args    args
-		want    Operation
-		wantErr bool
-	}{
+	tests := []testParseOperationCase{
 		{
-			name:    "bad oper",
-			args:    args{"OP", []string{"IDENT"}},
-			want:    nil,
-			wantErr: true,
+			name:      "bad oper",
+			operation: testParseOperation{"OP", []string{"IDENT"}},
+			want:      nil,
+			wantErr:   &SyntaxError{},
 		},
 		{
-			name:    "LD label",
-			args:    args{"LD", []string{"DR", "LABEL"}},
-			want:    &LD{DR: "DR", OFFSET: 0, SYMBOL: "LABEL"},
-			wantErr: false,
+			name:      "LD label",
+			operation: testParseOperation{"LD", []string{"DR", "LABEL"}},
+			want:      &LD{DR: "DR", OFFSET: 0, SYMBOL: "LABEL"},
+			wantErr:   nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ld.Parse(tt.args.oper, tt.args.opers)
+			got, err := ld.Parse(tt.operation.opcode, tt.operation.operands)
 
-			if (err != nil) != tt.wantErr {
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+
 				t.Errorf("LD.Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
+
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("LD.Parse() = %#v, want %#v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestLDR_Parse(t *testing.T) {
+	ld := LDR{}
+
+	tests := []testParseOperationCase{
+		{
+			name:      "bad oper",
+			operation: testParseOperation{"OP", []string{"IDENT"}},
+			want:      nil,
+			wantErr:   &SyntaxError{},
+		},
+		{
+			name:      "LDR label",
+			operation: testParseOperation{"LDR", []string{"DR", "SR", "LABEL"}},
+			want:      &LDR{DR: "DR", SR: "SR", OFFSET: 0, SYMBOL: "LABEL"},
+			wantErr:   nil,
+		},
+		{
+			name:      "LDR literal",
+			operation: testParseOperation{"LDR", []string{"DR", "SR", "#-1"}},
+			want:      &LDR{DR: "DR", SR: "SR", OFFSET: 0xffff},
+			wantErr:   nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ld.Parse(tt.operation.opcode, tt.operation.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+
+				t.Errorf("LD.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("LD.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLDR_Generate(t *testing.T) {
+	var instrs = []Operation{
+		&LDR{DR: "R0", SR: "SR", OFFSET: 0x10},
+		&LDR{DR: "R7", SR: "SR", SYMBOL: "LABEL"},
+	}
+
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL": 0x3100,
+	}
+
+	if mc, err := instrs[0].Generate(symbols, pc); err != nil {
+		t.Fatal(err)
+	} else {
+		t.Logf("Code: %#v == generated ==> %0#4x", instrs[0], mc)
+
+		if mc == 0xffff {
+			t.Error("invalid machine code")
+		}
+
+		if mc != 0x2010 {
+			t.Errorf("bad machine code: %04x", mc)
+		}
+	}
+
+	if mc, err := instrs[1].Generate(symbols, pc); err != nil {
+		t.Fatalf("Code: %#v == error    ==> %s", instrs[1], err)
+	} else {
+		t.Logf("Code: %#v == generated ==> %0#4x", instrs[1], mc)
+
+		if mc == 0xffff {
+			t.Error("invalid machine code")
+		}
+
+		if mc != 0x2f00 {
+			t.Errorf("bad machine code: %04x", mc)
+		}
 	}
 }
 
