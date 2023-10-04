@@ -38,7 +38,7 @@ var instructionTable = map[string]Operation{
 	"AND": _AND,
 	"BR":  _BR, "BRZNP": _BR,
 	"BRN": _BR, "BRZ": _BR, "BRP": _BR,
-	"BRNZ": _BR, "BRNP": _BR, "BRZP": _BR,
+	"BRZN": _BR, "BRNP": _BR, "BRZP": _BR,
 	"LD":  _LD,
 	"LDR": _LDR,
 }

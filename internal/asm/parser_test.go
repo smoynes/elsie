@@ -197,8 +197,10 @@ func TestParser(tt *testing.T) {
 // Test the parser using source code from testdata/.
 func TestParser_Fixtures(tt *testing.T) {
 	tests := []string{
+		//"parser2.asm", TODO: .STRINGZ
 		"parser3.asm",
 		"parser4.asm",
+		// "parser5.asm", TODO: .BLKW5
 	}
 
 	for _, fn := range tests {
