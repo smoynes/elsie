@@ -1,6 +1,22 @@
 # TODO #
 
-- [ ] ASM: simple parser; two pass: symbol table, code generation
+- [ ] DOCS:
+  - [ ] tutorial
+  - [ ] design
+- [ ] ASM:
+  - [x] simple parser: regexp
+  - [x] symbol table
+  - [.] code generation: 3/16
+  - [ ] directives
+    - .BLKW: block words
+    - .DW: define word
+    - .FILL: fill word
+    - .STRINGZ: strangz
+    - .END
+  - [ ] memory layout
+  - [ ] cli command
+  - [ ] cleaner error handling
+  - [ ] grammar
 - [ ] CLI: sub commands for vm, tools, terminal, shell
 - [ ] LOG: program output to STDOUT, logging output to STDERR (unless in
       demo)

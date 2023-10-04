@@ -39,15 +39,16 @@ func (h *parserHarness) logger() *log.Logger {
 func (h *parserHarness) ParseStream(in io.ReadCloser) *Parser {
 	h.T.Helper()
 
-	AddOperatorForTesting("TEST", &fakeInstruction{})
-
-	if parser := NewParser(h.logger()); parser == nil {
+	parser := NewParser(h.logger())
+	if parser == nil {
 		h.T.Fatal("parser: nil")
 		return parser
-	} else {
-		parser.Parse(in)
-		return parser
 	}
+
+	parser.Probe("TEST", &fakeInstruction{})
+	parser.Parse(in)
+
+	return parser
 }
 
 func (h parserHarness) inputFixture(in string) io.ReadCloser {

@@ -31,18 +31,6 @@ type Operation interface {
 	Generate(symbols SymbolTable, pc uint16) (uint16, error)
 }
 
-// instructionTable maps assembly-language opcodes to code generators. TODO: this could be a static
-// switch statement.
-var instructionTable = map[string]Operation{
-	"ADD": _ADD,
-	"AND": _AND,
-	"BR":  _BR, "BRZNP": _BR,
-	"BRN": _BR, "BRZ": _BR, "BRP": _BR,
-	"BRZN": _BR, "BRNP": _BR, "BRZP": _BR,
-	"LD":  _LD,
-	"LDR": _LDR,
-}
-
 var (
 	_BR  Operation = &BR{}
 	_ADD Operation = &ADD{}

@@ -29,26 +29,25 @@ import (
 //		println(err.Error()) // SyntaxError
 //	}
 type Parser struct {
-	instrTable map[string]Operation // Generators for each opcode.
-	symbols    SymbolTable          // Symbolic references.
-	instr      []Operation          // Parsed instructions.
+	loc     uint16      // Location counter.
+	pos     uint16      // Line number in source file.
+	symbols SymbolTable // Symbolic references.
+	instr   []Operation // Parsed instructions.
 
-	fatal error   // Error causing parsing to halt.
+	fatal error   // Error causing parsing to halt, i.e., I/O errors.
 	errs  []error // Syntax errors.
+
+	// Stub opcode and instruction for testing.
+	probeOpcode string
+	probeInstr  Operation
 
 	log *log.Logger
 }
 
-// AddOperatorForTesting updates the operator table for the sake of testing the parser.
-func AddOperatorForTesting(op string, ins Operation) {
-	instructionTable[op] = ins
-}
-
 func NewParser(log *log.Logger) *Parser {
 	return &Parser{
-		symbols:    make(SymbolTable),
-		instrTable: instructionTable,
-		log:        log,
+		symbols: make(SymbolTable),
+		log:     log,
 	}
 }
 
@@ -93,6 +92,12 @@ func (p *Parser) Err() error {
 	return errors.Join(p.errs...)
 }
 
+// Probe adds a stub instruction to the parser for the sake of testing.
+func (p *Parser) Probe(opcode string, ins Operation) {
+	p.probeOpcode = strings.ToUpper(opcode)
+	p.probeInstr = ins
+}
+
 // Parse parses an input stream. The parser takes ownership of the stream and will close it.
 func (p *Parser) Parse(in io.ReadCloser) {
 	defer func() {
@@ -101,27 +106,19 @@ func (p *Parser) Parse(in io.ReadCloser) {
 
 	lines := bufio.NewScanner(in)
 
-	// Keep track of our location in memory, our line number in the source and any parsing errors.
-	var (
-		loc uint16 // Location counter.
-		pos uint16 // Line number.
-	)
-
 	for {
 		scanned := lines.Scan()
 		line := lines.Text()
-		pos++
+		p.pos++
 
 		if !scanned {
 			break
 		}
 
-		if next, err := p.parseLine(loc, pos, line); err != nil {
-			// Assume all errors returned are fatal.
-			p.fatal = err
+		if err := p.parseLine(line); err != nil {
+			// Assume descendant accumulated syntax errors and that any errors returned are
+			// therefore fatal.
 			return
-		} else {
-			loc = next
 		}
 	}
 }
@@ -148,8 +145,9 @@ var (
 	instructionPattern = regexp.MustCompile(`^` + space + ident + space + text + `$`)
 )
 
-// Parse line uses regular expressions to parse text.
-func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) {
+// Parse line uses regular expressions to parse text. Based on the which patterns match, the text is
+// parsed and the parser state is updated.
+func (p *Parser) parseLine(line string) error {
 	remain := strings.TrimSpace(line) // Remaining, unparsed line.
 
 	if matched := commentPattern.FindStringIndex(remain); len(matched) > 1 {
@@ -168,7 +166,7 @@ func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) 
 
 		if !p.isReservedKeyword(label) {
 			remain = remain[matchEnd:]
-			p.symbols[label] = loc
+			p.symbols[label] = p.loc
 		}
 	}
 
@@ -180,10 +178,10 @@ func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) 
 		arg := matched[2]
 		arg = strings.TrimSpace(arg)
 
-		if next, err := p.parseDirective(ident, arg, loc); err != nil {
-			p.SyntaxError(loc, pos, line, err)
+		if next, err := p.parseDirective(ident, arg, p.loc); err != nil {
+			p.SyntaxError(p.loc, p.pos, line, err)
 		} else {
-			loc = next
+			p.loc = next
 		}
 	}
 
@@ -196,33 +194,50 @@ func (p *Parser) parseLine(loc uint16, pos uint16, line string) (uint16, error) 
 		}
 
 		if inst, err := p.parseInstruction(operator, operands); err != nil {
-			p.SyntaxError(loc, pos, line, err)
+			p.SyntaxError(p.loc, p.pos, line, err)
 		} else {
 			p.AddInstruction(inst)
-			loc += 1
+			p.loc += 1
 		}
 	}
 
-	return loc, nil
+	return nil
 }
 
-// parseInstruction dispatches parsing to an instruction parser based on the operator.
-func (p *Parser) parseInstruction(operator string, operands []string) (Operation, error) {
-	operator = strings.ToUpper(operator)
-	proto, ok := p.instrTable[operator]
-
-	if !ok {
-		return nil, fmt.Errorf("operator: %s", operator)
+// parseInstruction dispatches parsing to an instruction parser based on the opcode. Parsing the
+// operands is delegated to the dispatched parser.
+func (p *Parser) parseInstruction(opcode string, operands []string) (Operation, error) {
+	oper := p.parseOperator(opcode)
+	if oper == nil {
+		return nil, errors.New("parse: operator error")
 	}
 
-	inst, err := proto.Parse(operator, operands)
-	if err != nil {
-		return nil, err
-	}
-
-	return inst, nil
+	return oper.Parse(opcode, operands)
 }
 
+// parseOperator returns the operation for the given opcode or an error if there is no such
+// operation.
+func (p *Parser) parseOperator(opcode string) Operation {
+	switch strings.ToUpper(opcode) {
+	case "ADD":
+		return _ADD
+	case "AND":
+		return _AND
+	case "BR", "BRZNP", "BRN", "BRZ", "BRP", "BRZN", "BRNP", "BRZP":
+		return _BR
+	case "LD":
+		return _LD
+	case "LDR":
+		return _LDR
+	case p.probeOpcode:
+		return p.probeInstr
+	default:
+		return nil
+	}
+}
+
+// Returns true if word is a reserved keyword: an opcode, a directive or an otherwise invalid symbol
+// name.
 func (p *Parser) isReservedKeyword(word string) bool {
 	for i := range directives {
 		if directives[i] == word {
@@ -230,11 +245,7 @@ func (p *Parser) isReservedKeyword(word string) bool {
 		}
 	}
 
-	if _, instr := p.instrTable[word]; instr {
-		return true
-	}
-
-	return false
+	return p.parseOperator(word) != nil
 }
 
 // parseDirective parses a directive or pseudo-instructions from its identifier and argument. The
