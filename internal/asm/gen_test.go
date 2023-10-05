@@ -131,7 +131,7 @@ func TestAND_Parse(t *testing.T) {
 }
 
 func TestAND_Generate(t *testing.T) {
-	var instrs = []Operation{
+	instrs := []Operation{
 		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", OFFSET: 0x10},
 		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", SYMBOL: "LABEL"},
 	}
@@ -261,7 +261,7 @@ func TestBR_Parse(t *testing.T) {
 }
 
 func TestBR_Generate(t *testing.T) {
-	var tcs = []struct {
+	tcs := []struct {
 		i  Operation
 		mc uint16
 	}{
@@ -372,7 +372,7 @@ func TestLDR_Parse(t *testing.T) {
 }
 
 func TestLDR_Generate(t *testing.T) {
-	var instrs = []Operation{
+	instrs := []Operation{
 		&LDR{DR: "R0", SR: "SR", OFFSET: 0x10},
 		&LDR{DR: "R7", SR: "SR", SYMBOL: "LABEL"},
 	}
@@ -412,7 +412,7 @@ func TestLDR_Generate(t *testing.T) {
 }
 
 func TestLD_Generate(t *testing.T) {
-	var instrs = []Operation{
+	instrs := []Operation{
 		&LD{DR: "R0", OFFSET: 0x10},
 		&LD{DR: "R7", SYMBOL: "LABEL"},
 	}
@@ -460,7 +460,8 @@ func TestADD_Parse(t *testing.T) {
 			operation: testParseOperation{"OP", []string{"IDENT"}},
 			want:      nil,
 			wantErr:   &SyntaxError{},
-		}, {
+		},
+		{
 			name:      "ADD register",
 			operation: testParseOperation{"ADD", []string{"R0", "R0", "R1"}},
 			want:      &ADD{DR: "R0", SR1: "R0", SR2: "R1"},
@@ -499,7 +500,7 @@ func TestADD_Parse(t *testing.T) {
 }
 
 func TestADD_Generate(t *testing.T) {
-	var tcs = []struct {
+	tcs := []struct {
 		operation Operation
 		mc        uint16
 	}{

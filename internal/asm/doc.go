@@ -22,9 +22,8 @@
 // There are ambiguities in the grammar and the code could be a whole lot simpler.
 package asm
 
-var (
-	// Grammar declares the syntax of LCASM in EBNF (with some liberties).
-	Grammar = (`
+// Grammar declares the syntax of LCASM in EBNF (with some liberties).
+var Grammar = (`
 program        = { line } ;
 
 line           = ';' comment
@@ -83,4 +82,3 @@ identchar      = \p{Letter}
 			   | \p{Dash Punctuation}
 			   | \p{Symbols} ;
 `)
-)

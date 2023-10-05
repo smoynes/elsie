@@ -45,7 +45,7 @@ type Handler struct {
 	attrs []Attr
 }
 
-// The log options for Handlers.
+// Options for log handlers.
 var Options = &slog.HandlerOptions{
 	AddSource:   true,
 	Level:       LogLevel,

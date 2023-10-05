@@ -89,6 +89,10 @@ func (p *Parser) SyntaxError(loc uint16, pos uint16, line string, err error) {
 // errors during parsing and returns an error that wraps and joins them all. Callers can inspect the
 // cause with the errors package.
 func (p *Parser) Err() error {
+	if p.fatal != nil {
+		return p.fatal
+	}
+
 	return errors.Join(p.errs...)
 }
 
@@ -105,9 +109,19 @@ func (p *Parser) Parse(in io.ReadCloser) {
 	}()
 
 	lines := bufio.NewScanner(in)
+	if err := lines.Err(); err != nil {
+		p.fatal = err
+		return
+	}
 
 	for {
 		scanned := lines.Scan()
+
+		if err := lines.Err(); err != nil {
+			p.fatal = err
+			break
+		}
+
 		line := lines.Text()
 		p.pos++
 
@@ -118,6 +132,7 @@ func (p *Parser) Parse(in io.ReadCloser) {
 		if err := p.parseLine(line); err != nil {
 			// Assume descendant accumulated syntax errors and that any errors returned are
 			// therefore fatal.
+			p.fatal = err
 			return
 		}
 	}
@@ -358,7 +373,6 @@ func literalVal(oper string, n uint8) (uint16, error) {
 	}
 
 	i, err := strconv.ParseInt(lit, base, 16)
-
 	if err != nil {
 		return 0xffff, fmt.Errorf("literal error: %s", lit)
 	}

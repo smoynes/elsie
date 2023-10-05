@@ -88,7 +88,7 @@ func (BR) Parse(oper string, opers []string) (Operation, error) {
 
 	off, sym, err := parseImmediate(opers[0], 9)
 	if err != nil {
-		return nil, fmt.Errorf("br: operand error: %s", err)
+		return nil, fmt.Errorf("br: operand error: %w", err)
 	}
 
 	br := &BR{
@@ -118,7 +118,7 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	}
 
 	if err != nil {
-		return 0xffff, fmt.Errorf("gen: br: operand: %s", err)
+		return 0xffff, fmt.Errorf("gen: br: operand: %w", err)
 	}
 
 	code |= loc
@@ -173,7 +173,7 @@ func (and AND) Parse(oper string, opers []string) (Operation, error) {
 
 	off, sym, err := parseImmediate(opers[2], 5)
 	if err != nil {
-		return nil, fmt.Errorf("and: operand error: %s", err)
+		return nil, fmt.Errorf("and: operand error: %w", err)
 	}
 
 	operation.OFFSET = off
@@ -244,7 +244,7 @@ type LD struct {
 
 func (ld LD) String() string { return fmt.Sprintf("LD(%#v)", ld) }
 
-func (_ LD) Parse(opcode string, operands []string) (Operation, error) {
+func (LD) Parse(opcode string, operands []string) (Operation, error) {
 	var err error
 
 	if strings.ToUpper(opcode) != "LD" {
@@ -259,7 +259,7 @@ func (_ LD) Parse(opcode string, operands []string) (Operation, error) {
 
 	operation.OFFSET, operation.SYMBOL, err = parseImmediate(operands[1], 9)
 	if err != nil {
-		return nil, fmt.Errorf("ld: operand error: %s", err)
+		return nil, fmt.Errorf("ld: operand error: %w", err)
 	}
 
 	return &operation, nil
@@ -320,7 +320,7 @@ func (LDR) Parse(opcode string, operands []string) (Operation, error) {
 
 	off, sym, err := parseImmediate(operands[2], 6)
 	if err != nil {
-		return nil, fmt.Errorf("ldr: operand error: %s", err)
+		return nil, fmt.Errorf("ldr: operand error: %w", err)
 	}
 
 	operation.OFFSET = off
@@ -336,7 +336,7 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 		return 0xffff, fmt.Errorf("ldr: register error")
 	}
 
-	var code uint16 = 0b0010<<12 | dr<<9
+	code := 0b0010<<12 | dr<<9
 
 	switch {
 	case ldr.SYMBOL != "":
@@ -393,7 +393,7 @@ func (ADD) Parse(opcode string, operands []string) (Operation, error) {
 	} else {
 		off, sym, err := parseImmediate(operands[2], 5)
 		if err != nil {
-			return nil, fmt.Errorf("add: operand error: %s", err)
+			return nil, fmt.Errorf("add: operand error: %w", err)
 		}
 
 		operation.LITERAL = off & 0x1f
@@ -404,9 +404,7 @@ func (ADD) Parse(opcode string, operands []string) (Operation, error) {
 }
 
 func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var (
-		code uint16 = 0b0001 << 12
-	)
+	var code uint16 = 0b0001 << 12
 
 	sr1 := registerVal(add.SR1)
 	if sr1 == BadRegister {
@@ -454,7 +452,7 @@ func registerVal(reg string) uint16 {
 
 const BadRegister uint16 = 0xffff
 
-func symbolVal(oper string, sym SymbolTable, pc uint16) (uint16, error) {
+func symbolVal(oper string, sym SymbolTable, _ uint16) (uint16, error) {
 	// TODO
 	if val, ok := sym[oper]; ok {
 		return val, nil

@@ -54,7 +54,6 @@ func (a *assembler) Run(ctx context.Context, args []string, out io.Writer, logge
 	for i := range args {
 		fn := args[i]
 		f, err := os.Open(fn)
-
 		if err != nil {
 			logger.Error("Parse error: %s: %s", fn, err)
 		}

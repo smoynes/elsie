@@ -40,6 +40,7 @@ func (h *parserHarness) ParseStream(in io.ReadCloser) *Parser {
 	h.T.Helper()
 
 	parser := NewParser(h.logger())
+
 	if parser == nil {
 		h.T.Fatal("parser: nil")
 		return parser
@@ -228,6 +229,18 @@ func TestParser_Fixtures(tt *testing.T) {
 
 			t.Logf("%#v", parser.Symbols())
 		})
+	}
+}
+
+func TestParser_Errors(tt *testing.T) {
+	t := parserHarness{tt}
+
+	parser := t.ParseStream(t.inputError())
+
+	err := parser.Err()
+
+	if err == nil {
+		t.Error("expected error")
 	}
 }
 
