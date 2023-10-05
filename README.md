@@ -1,4 +1,4 @@
-# `ELSIE`: An pedagogical LC-3 emulator #
+# `ELSIE`: A pedagogical LC-3 emulator #
 
 This is `ELSIE`, a virtual machine for the LC-3: a little computer that is
 simple, comprehensive, and imaginary.
