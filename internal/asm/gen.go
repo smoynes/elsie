@@ -421,7 +421,7 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	return code, nil
 }
 
-// .FILL: Data allocation directive.
+// .FILL: Allocate and initialize one word of data.
 //
 //	.FILL x1234
 //	.FILL 0

@@ -8,7 +8,7 @@
   - [x] symbol table
   - [.] code generation: 3/16
   - [.] directives
-    - [ ] .BLKW: block words
+    - [x] .BLKW: block words
     - [x] .DW: define word
     - [x] .FILL: fill word
     - [x] .ORIG: origin
