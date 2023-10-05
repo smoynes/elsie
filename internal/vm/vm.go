@@ -1,5 +1,6 @@
-// Package vm provides an emulated CPU.
 package vm
+
+// vm.go defines the virtual machine and assembles it from smaller parts.
 
 import (
 	"fmt"
@@ -12,13 +13,14 @@ type LC3 struct {
 	PC  ProgramCounter  // Instruction Pointer.
 	IR  Instruction     // Instruction Register
 	PSR ProcessorStatus // Processor Status Register.
-	REG RegisterFile    // General-purpose Register File
+	MCR ControlRegister // Master Control Register.
 	USP Register        // User Stack Pointer.
 	SSP Register        // System Stack Pointer.
-	MCR ControlRegister // Master Control Register.
+	REG RegisterFile    // General-purpose Register File
 	INT Interrupt       // Interrupt Line.
 	Mem Memory          // All the memory you'll ever need!
-	log *log.Logger     // A record of where we've been.
+
+	log *log.Logger // A record of where we've been.
 }
 
 // New initializes a virtual machine state.
