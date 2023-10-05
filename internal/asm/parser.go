@@ -13,7 +13,7 @@ import (
 	"github.com/smoynes/elsie/internal/log"
 )
 
-// Parser reads source code and produces a symbol table, a parse table and a collection of errors,
+// Parser reads source code and produces a symbol table, a syntax table and a collection of errors,
 // if any. The user calls |Parse| one or more times and then asks the Parser for the accumulated
 // results. Some simple syntax checking is done during parsing, but it is not complete. The second
 // pass does most of semantic analysis in addition to code generation.
@@ -210,11 +210,8 @@ func (p *Parser) parseLine(line string) error {
 			operands[i] = strings.TrimSpace(operands[i])
 		}
 
-		if inst, err := p.parseInstruction(operator, operands); err != nil {
+		if err := p.parseInstruction(operator, operands); err != nil {
 			p.SyntaxError(p.loc, p.pos, line, err)
-		} else {
-			p.AddInstruction(inst)
-			p.loc++
 		}
 	}
 
@@ -223,13 +220,21 @@ func (p *Parser) parseLine(line string) error {
 
 // parseInstruction dispatches parsing to an instruction parser based on the opcode. Parsing the
 // operands is delegated to the dispatched parser.
-func (p *Parser) parseInstruction(opcode string, operands []string) (Operation, error) {
+func (p *Parser) parseInstruction(opcode string, operands []string) error {
 	oper := p.parseOperator(opcode)
 	if oper == nil {
-		return nil, errors.New("parse: operator error")
+		return errors.New("parse: operator error")
 	}
 
-	return oper.Parse(opcode, operands)
+	err := oper.Parse(opcode, operands)
+	if err != nil {
+		return fmt.Errorf("opcode: %s: %w", opcode, err)
+	}
+
+	p.AddInstruction(oper)
+	p.loc++
+
+	return nil
 }
 
 // parseOperator returns the operation for the given opcode or an error if there is no such
@@ -293,7 +298,7 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 	case ".FILL", ".DW":
 		oper := &FILL{}
 
-		_, err := oper.Parse(ident, []string{arg})
+		err := oper.Parse(ident, []string{arg})
 		if err != nil {
 			return fmt.Errorf("directive: %w", err)
 		}

@@ -21,15 +21,17 @@ const (
 	IndirectMode                        // IND
 )
 
-// An Operation represents a machine-code instruction or an assembler directive. It is parsed from
-// source code during the assembler's first pass and encoded to object code in the second pass.
+// Operation is an assembly instruction or directive. It is parsed from source code during the
+// assembler's first pass and encoded to object code in the second pass.
 type Operation interface {
-	// Parse creates a new instruction by parsing an operator and its operands as represented in
-	// source code. An error is returned if parsing the operands fails. The returned instruction may
-	// not be semantically or even syntactically correct.
-	Parse(operator string, operands []string) (Operation, error)
 
-	// Generate encodes an instruction to machine code. // TODO: should allow 0..n words
+	// Parse initializes an assembly operation by parsing an opcode and its operands. An error is
+	// returned if parsing the operands fails.
+	Parse(operator string, operands []string) error
+
+	// Generate encodes an operation as machine code. Using the values from Parse, the operation is
+	// converted to one (or more) words.
+	//// TODO: should allow (or more) words.
 	Generate(symbols SymbolTable, pc uint16) (uint16, error)
 }
 
@@ -62,11 +64,11 @@ type BR struct {
 
 func (br BR) String() string { return fmt.Sprintf("BR(%#v)", br) }
 
-func (BR) Parse(oper string, opers []string) (Operation, error) {
+func (br *BR) Parse(oper string, opers []string) error {
 	var nzp uint8
 
 	if len(opers) != 1 {
-		return nil, errors.New("br: invalid operands")
+		return errors.New("br: invalid operands")
 	}
 
 	switch strings.ToUpper(oper) {
@@ -85,21 +87,21 @@ func (BR) Parse(oper string, opers []string) (Operation, error) {
 	case "BRZN":
 		nzp = 0o6
 	default:
-		return &BR{}, fmt.Errorf("unknown opcode: %s", oper)
+		return fmt.Errorf("unknown opcode: %s", oper)
 	}
 
 	off, sym, err := parseImmediate(opers[0], 9)
 	if err != nil {
-		return nil, fmt.Errorf("br: operand error: %w", err)
+		return fmt.Errorf("br: operand error: %w", err)
 	}
 
-	br := &BR{
+	*br = BR{
 		NZP:    nzp,
 		SYMBOL: sym,
 		OFFSET: off,
 	}
 
-	return br, nil
+	return nil
 }
 
 func (br *BR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
@@ -154,34 +156,34 @@ type AND struct {
 func (and AND) String() string { return fmt.Sprintf("AND(%#v)", and) }
 
 // Parse parses an AND instruction from its opcode and operands.
-func (and AND) Parse(oper string, opers []string) (Operation, error) {
+func (and *AND) Parse(oper string, opers []string) error {
 	if len(opers) != 3 {
-		return nil, errors.New("and: operands")
+		return errors.New("and: operands")
 	}
 
-	operation := AND{
+	*and = AND{
 		DR:  parseRegister(opers[0]),
 		SR1: parseRegister(opers[1]),
 	}
 
 	if sr2 := parseRegister(opers[2]); sr2 != "" {
-		operation.Mode = RegisterMode
-		operation.SR2 = sr2
+		and.Mode = RegisterMode
+		and.SR2 = sr2
 
-		return &operation, nil
+		return nil
 	}
 
-	operation.Mode = ImmediateMode
+	and.Mode = ImmediateMode
 
 	off, sym, err := parseImmediate(opers[2], 5)
 	if err != nil {
-		return nil, fmt.Errorf("and: operand error: %w", err)
+		return fmt.Errorf("and: operand error: %w", err)
 	}
 
-	operation.OFFSET = off
-	operation.SYMBOL = sym
+	and.OFFSET = off
+	and.SYMBOL = sym
 
-	return &operation, nil
+	return nil
 }
 
 // Generate returns the machine code for an AND instruction.
@@ -246,25 +248,25 @@ type LD struct {
 
 func (ld LD) String() string { return fmt.Sprintf("LD(%#v)", ld) }
 
-func (LD) Parse(opcode string, operands []string) (Operation, error) {
+func (ld *LD) Parse(opcode string, operands []string) error {
 	var err error
 
 	if strings.ToUpper(opcode) != "LD" {
-		return nil, errors.New("ld: opcode error")
+		return errors.New("ld: opcode error")
 	} else if len(operands) != 2 {
-		return nil, errors.New("ld: operand error")
+		return errors.New("ld: operand error")
 	}
 
-	operation := LD{
+	*ld = LD{
 		DR: operands[0],
 	}
 
-	operation.OFFSET, operation.SYMBOL, err = parseImmediate(operands[1], 9)
+	ld.OFFSET, ld.SYMBOL, err = parseImmediate(operands[1], 9)
 	if err != nil {
-		return nil, fmt.Errorf("ld: operand error: %w", err)
+		return fmt.Errorf("ld: operand error: %w", err)
 	}
 
-	return &operation, nil
+	return nil
 }
 
 func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
@@ -310,25 +312,25 @@ type LDR struct {
 
 func (ldr LDR) String() string { return fmt.Sprintf("LDR(%#v)", ldr) }
 
-func (LDR) Parse(opcode string, operands []string) (Operation, error) {
+func (ldr *LDR) Parse(opcode string, operands []string) error {
 	if opcode != "LDR" {
-		return nil, errors.New("ldr: opcode error")
+		return errors.New("ldr: opcode error")
 	}
 
-	operation := LDR{
+	*ldr = LDR{
 		DR: operands[0],
 		SR: operands[1],
 	}
 
 	off, sym, err := parseImmediate(operands[2], 6)
 	if err != nil {
-		return nil, fmt.Errorf("ldr: operand error: %w", err)
+		return fmt.Errorf("ldr: operand error: %w", err)
 	}
 
-	operation.OFFSET = off
-	operation.SYMBOL = sym
+	ldr.OFFSET = off
+	ldr.SYMBOL = sym
 
-	return &operation, nil
+	return nil
 }
 
 func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
@@ -378,31 +380,31 @@ type ADD struct {
 	LITERAL uint16 // Literal value otherwise, immediate mode.
 }
 
-func (ADD) Parse(opcode string, operands []string) (Operation, error) {
+func (add *ADD) Parse(opcode string, operands []string) error {
 	if opcode != "ADD" {
-		return nil, errors.New("add: opcode error")
+		return errors.New("add: opcode error")
 	} else if len(operands) != 3 {
-		return nil, errors.New("add: operand error")
+		return errors.New("add: operand error")
 	}
 
-	operation := ADD{
+	*add = ADD{
 		DR:  parseRegister(operands[0]),
 		SR1: parseRegister(operands[1]),
 	}
 
 	if sr2 := parseRegister(operands[2]); sr2 != "" {
-		operation.SR2 = sr2
+		add.SR2 = sr2
 	} else {
 		off, sym, err := parseImmediate(operands[2], 5)
 		if err != nil {
-			return nil, fmt.Errorf("add: operand error: %w", err)
+			return fmt.Errorf("add: operand error: %w", err)
 		}
 
-		operation.LITERAL = off & 0x1f
-		operation.SYMBOL = sym
+		add.LITERAL = off & 0x1f
+		add.SYMBOL = sym
 	}
 
-	return &operation, nil
+	return nil
 }
 
 func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
@@ -436,9 +438,9 @@ type FILL struct {
 	LITERAL uint16 // Literal constant.
 }
 
-func (fill *FILL) Parse(opcode string, operands []string) (Operation, error) {
+func (fill *FILL) Parse(opcode string, operands []string) error {
 	if len(operands) != 1 {
-		return nil, errors.New("argument error")
+		return errors.New("argument error")
 	}
 
 	arg := operands[0]
@@ -452,14 +454,14 @@ func (fill *FILL) Parse(opcode string, operands []string) (Operation, error) {
 	numError := &strconv.NumError{}
 
 	if errors.As(err, &numError) {
-		return nil, fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err)
+		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err)
 	} else if val > math.MaxUint16 {
-		return nil, errors.New("argument error")
+		return errors.New("argument error")
 	}
 
 	fill.LITERAL = uint16(val)
 
-	return nil, nil
+	return nil
 }
 
 func (fill *FILL) Generate(_ SymbolTable, pc uint16) (uint16, error) {

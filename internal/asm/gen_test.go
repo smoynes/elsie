@@ -20,8 +20,6 @@ type testParseOperationCase struct {
 
 func TestAND_Parse(t *testing.T) {
 	// I still not sure I like this style of table tests.
-	ins := AND{}
-
 	type args struct {
 		oper  string
 		opers []string
@@ -117,13 +115,16 @@ func TestAND_Parse(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ins.Parse(tt.args.oper, tt.args.opers)
+			got := &AND{}
+
+			err := got.Parse(tt.args.oper, tt.args.opers)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AND.Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("AND.Parse() = %#v, want %#v", got, tt.want)
 			}
 		})
@@ -171,8 +172,6 @@ func TestAND_Generate(t *testing.T) {
 }
 
 func TestBR_Parse(t *testing.T) {
-	br := BR{}
-
 	type args struct {
 		oper  string
 		opers []string
@@ -248,12 +247,14 @@ func TestBR_Parse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := br.Parse(tt.args.oper, tt.args.opers)
+			got := &BR{}
+
+			err := got.Parse(tt.args.oper, tt.args.opers)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("BR.Parse() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("BR.Parse() = %#v, want %#v", got, tt.want)
 			}
 		})
@@ -294,8 +295,6 @@ func TestBR_Generate(t *testing.T) {
 }
 
 func TestLD_Parse(t *testing.T) {
-	ld := LD{}
-
 	tests := []testParseOperationCase{
 		{
 			name:      "bad oper",
@@ -313,7 +312,8 @@ func TestLD_Parse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ld.Parse(tt.operation.opcode, tt.operation.operands)
+			got := &LD{}
+			err := got.Parse(tt.operation.opcode, tt.operation.operands)
 
 			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
 				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
@@ -322,7 +322,7 @@ func TestLD_Parse(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("LD.Parse() = %#v, want %#v", got, tt.want)
 			}
 		})
@@ -330,8 +330,6 @@ func TestLD_Parse(t *testing.T) {
 }
 
 func TestLDR_Parse(t *testing.T) {
-	ld := LDR{}
-
 	tests := []testParseOperationCase{
 		{
 			name:      "bad oper",
@@ -355,7 +353,8 @@ func TestLDR_Parse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ld.Parse(tt.operation.opcode, tt.operation.operands)
+			got := &LDR{}
+			err := got.Parse(tt.operation.opcode, tt.operation.operands)
 
 			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
 				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
@@ -364,7 +363,7 @@ func TestLDR_Parse(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("LDR.Parse() = %#v, want %#v", got, tt.want)
 			}
 		})
@@ -452,8 +451,6 @@ func TestLD_Generate(t *testing.T) {
 }
 
 func TestADD_Parse(t *testing.T) {
-	add := ADD{}
-
 	tests := []testParseOperationCase{
 		{
 			name:      "bad oper",
@@ -483,7 +480,8 @@ func TestADD_Parse(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := add.Parse(tt.operation.opcode, tt.operation.operands)
+			got := &ADD{}
+			err := got.Parse(tt.operation.opcode, tt.operation.operands)
 
 			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
 				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
@@ -492,7 +490,7 @@ func TestADD_Parse(t *testing.T) {
 				return
 			}
 
-			if !reflect.DeepEqual(got, tt.want) {
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("ADD.Parse() = %#v, want %#v", got, tt.want)
 			}
 		})

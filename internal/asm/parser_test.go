@@ -73,8 +73,8 @@ type fakeInstruction struct{}
 
 func (fakeInstruction) String() string { return "TEST" }
 
-func (fake *fakeInstruction) Parse(oper string, opers []string) (Operation, error) {
-	return fake, nil
+func (fake *fakeInstruction) Parse(oper string, opers []string) error {
+	return nil
 }
 
 func (fake *fakeInstruction) Generate(sym SymbolTable, loc uint16) (uint16, error) {
