@@ -92,7 +92,7 @@ Since ASCII art is worth a thousand words:
 		|  User  |  ...   |   User data     ||   |                 |   |          |       |
 		|  space | 0x3000 |                 |<---|R6(SP)         R2|   |          |       |
 		+========+========+=================+|   |      CPU ⚙️      |   |          |       |
-		|        | 0x2fff |                 ||   |R5             R1|   +------------------+
+		|        | 0x2fff |                 ||   |R5             R1|   +----------+-------+
 		|        |        |                 ||   |                 |
 		|        |   ...  |  System stack   ||   |R4             R0|
 		|        |        |                 ||   |                 |

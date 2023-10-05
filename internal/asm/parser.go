@@ -62,11 +62,13 @@ func (p *Parser) AddSymbol(sym string, loc uint16) {
 		panic("empty symbol")
 	}
 
+	sym = strings.ToUpper(sym)
 	p.symbols[sym] = loc
 }
 
-// Instructions returns the abstract syntax "tree".
-func (p *Parser) Instructions() []Operation {
+// Syntax returns the abstract syntax "tree". Syntax holds the parsed code and data and is used by
+// the second pass to create generate code and memory layout.
+func (p *Parser) Syntax() []Operation {
 	return p.instr
 }
 
@@ -285,17 +287,28 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 			return nil
 		}
 	case ".FILL":
-		// We could parse the literal, as above, but what do we do with it?
+		if arg[0] == 'x' {
+			arg = "0" + arg
+		}
 
-		p.loc++
-		return nil
+		if val, err := strconv.ParseInt(arg, 0, 16); err != nil {
+			return err
+		} else if val < 0 || val > math.MaxUint16 {
+			return errors.New("argument error")
+		} else {
+			// store in syntax
+
+			p.loc++
+
+			return nil
+		}
 	case ".DW":
 		p.loc++
 		return nil
 	case ".END":
 		return nil // TODO: stop parsing
 	default:
-		return errors.New("directive error")
+		return fmt.Errorf("directive error: %s", ident)
 	}
 }
 
@@ -325,7 +338,7 @@ func parseRegister(oper string) string {
 	}
 }
 
-// Parse immediate returns a constant literal value or a symbolic reference from an operand. The
+// parseImmediate returns a constant literal value or a symbolic reference from an operand. The
 // value is taken as n bits long. Literals can take the forms:
 //
 //	#123
@@ -351,12 +364,12 @@ func parseImmediate(oper string, n uint8) (uint16, string, error) {
 
 // literalVal converts a operand as literal text to an integer value. If the literal cannot be
 // parsed, an error is returned.
-func literalVal(oper string, n uint8) (uint16, error) {
-	if len(oper) < 2 {
-		return 0xffff, fmt.Errorf("literal error: %s", oper)
+func literalVal(operand string, n uint8) (uint16, error) {
+	if len(operand) < 2 {
+		return 0xffff, fmt.Errorf("literal error: %s", operand)
 	}
 
-	pref, lit := oper[:2], oper[2:]
+	pref, lit := operand[:2], operand[2:]
 	base := 0
 
 	switch {
@@ -366,11 +379,11 @@ func literalVal(oper string, n uint8) (uint16, error) {
 		base = 8
 	case pref == "#b":
 		base = 2
-	case oper[0] == '#':
+	case operand[0] == '#':
 		base = 10
-		lit = oper[1:]
+		lit = operand[1:]
 	default:
-		lit = oper
+		lit = operand
 	}
 
 	i, err := strconv.ParseInt(lit, base, 16)

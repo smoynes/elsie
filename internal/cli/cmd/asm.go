@@ -62,7 +62,7 @@ func (a *assembler) Run(ctx context.Context, args []string, out io.Writer, logge
 		parser.Parse(f)
 	}
 
-	logger.Error("Parsed source", "symbols", parser.Symbols(), "err", parser.Err())
+	logger.Info("Parsed source", "symbols", parser.Symbols(), "instructions", parser.Syntax(), "err", parser.Err())
 
 	if parser.Err() != nil {
 		return 1

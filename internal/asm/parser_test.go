@@ -52,6 +52,10 @@ func (h *parserHarness) ParseStream(in io.ReadCloser) *Parser {
 	return parser
 }
 
+func (h parserHarness) inputString(in string) io.ReadCloser {
+	return io.NopCloser(strings.NewReader(in))
+}
+
 func (h parserHarness) inputFixture(in string) io.ReadCloser {
 	reader, err := os.Open(path.Join("testdata", in))
 	if err != nil {
@@ -144,9 +148,8 @@ eof:
 func TestParser(tt *testing.T) {
 	t := parserHarness{tt}
 
-	parser := t.ParseStream(
-		io.NopCloser(strings.NewReader(ValidSyntax)),
-	)
+	in := t.inputString(ValidSyntax)
+	parser := t.ParseStream(in)
 
 	if err := parser.Err(); err != nil {
 		t.Fatal(err)
@@ -190,7 +193,7 @@ func TestParser(tt *testing.T) {
 		t.Error(err)
 	}
 
-	instructions := parser.Instructions()
+	instructions := parser.Syntax()
 	if len(instructions) == 0 {
 		t.Error("no instructions")
 	}
@@ -242,6 +245,27 @@ func TestParser_Errors(tt *testing.T) {
 	if err == nil {
 		t.Error("expected error")
 	}
+}
+
+func TestParser_FILL(tt *testing.T) {
+	t := parserHarness{tt}
+	in := t.inputString(`
+.ORIG x1234
+.FILL xdada
+`)
+	parser := t.ParseStream(in)
+
+	if err := parser.Err(); err != nil {
+		t.Error(err)
+	}
+
+	syntax := parser.Syntax()
+
+	if len(syntax) != 0 {
+		t.Errorf("no data")
+	}
+
+	t.Errorf("instructions: %#v", syntax)
 }
 
 func assertSymbol(t parserHarness, symbols SymbolTable, label string, want uint16) {
