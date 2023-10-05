@@ -261,11 +261,15 @@ func TestParser_FILL(tt *testing.T) {
 
 	syntax := parser.Syntax()
 
-	if len(syntax) != 0 {
+	if len(syntax) == 0 {
 		t.Errorf("no data")
 	}
 
-	t.Errorf("instructions: %#v", syntax)
+	code := syntax[0x1234]
+
+	if fill, ok := code.(*FILL); !ok || fill.LITERAL != 0xdada {
+		t.Errorf("data: 0x1234 %#v != %#v", syntax[0x1234], 0xdada)
+	}
 }
 
 func assertSymbol(t parserHarness, symbols SymbolTable, label string, want uint16) {

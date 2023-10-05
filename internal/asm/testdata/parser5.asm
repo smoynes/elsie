@@ -10,7 +10,7 @@ AGAIN:  ADD R3,R3,R2
 
     HALT
 
-NUMBER  .BLKW   1
+NUMBER  .FILL   1
 SIX     .FILL   x0006
 
     .END

@@ -62,10 +62,27 @@ func (a *assembler) Run(ctx context.Context, args []string, out io.Writer, logge
 		parser.Parse(f)
 	}
 
-	logger.Info("Parsed source", "symbols", parser.Symbols(), "instructions", parser.Syntax(), "err", parser.Err())
+	logger.Info("Parsed source", "symbols", parser.Symbols(), "err", parser.Err())
 
 	if parser.Err() != nil {
 		return 1
+	}
+
+	syntax := parser.Syntax()
+
+	for pc, code := range syntax {
+		if code == nil {
+			continue
+		}
+
+		mc, err := code.Generate(parser.Symbols(), uint16(pc))
+		logger.Info("Parsed",
+			"pc", fmt.Sprintf("%0#4x", uint16(pc)),
+			"code", fmt.Sprintf("%#v", code),
+			"code", code,
+			"gen", fmt.Sprintf("%0#4x", mc),
+			"err", err)
+
 	}
 
 	// TODO: second pass

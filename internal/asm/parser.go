@@ -32,7 +32,7 @@ type Parser struct {
 	loc     uint16      // Location counter.
 	pos     uint16      // Line number in source file.
 	symbols SymbolTable // Symbolic references.
-	instr   []Operation // Parsed instructions.
+	syntax  []Operation // Parsed code and data indexed by its address in memory.
 
 	fatal error   // Error causing parsing to halt, i.e., I/O errors.
 	errs  []error // Syntax errors.
@@ -47,6 +47,7 @@ type Parser struct {
 func NewParser(log *log.Logger) *Parser {
 	return &Parser{
 		symbols: make(SymbolTable),
+		syntax:  make([]Operation, 0xffff),
 		log:     log,
 	}
 }
@@ -69,7 +70,7 @@ func (p *Parser) AddSymbol(sym string, loc uint16) {
 // Syntax returns the abstract syntax "tree". Syntax holds the parsed code and data and is used by
 // the second pass to create generate code and memory layout.
 func (p *Parser) Syntax() []Operation {
-	return p.instr
+	return p.syntax
 }
 
 // Add instruction appends an instruction to the list of instructions.
@@ -78,7 +79,7 @@ func (p *Parser) AddInstruction(inst Operation) {
 		panic("nil instruction")
 	}
 
-	p.instr = append(p.instr, inst)
+	p.syntax = append(p.syntax, inst)
 }
 
 // SyntaxError adds an error to the parser errors.
@@ -239,7 +240,7 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		return _ADD
 	case "AND":
 		return _AND
-	case "BR", "BRZNP", "BRN", "BRZ", "BRP", "BRZN", "BRNP", "BRZP":
+	case "BR", "BRNZP", "BRN", "BRZ", "BRP", "BRZN", "BRNP", "BRZP":
 		return _BR
 	case "LD":
 		return _LD
@@ -277,8 +278,11 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 			arg = "0" + arg
 		}
 
-		if val, err := strconv.ParseInt(arg, 0, 16); err != nil {
-			return err
+		val, err := strconv.ParseInt(arg, 0, 16)
+		numError := &strconv.NumError{}
+
+		if errors.As(err, &numError) {
+			return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err)
 		} else if val < 0 || val > math.MaxUint16 {
 			return errors.New("argument error")
 		} else {
@@ -286,24 +290,17 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 
 			return nil
 		}
-	case ".FILL":
-		if arg[0] == 'x' {
-			arg = "0" + arg
+	case ".FILL", ".DW":
+		oper := &FILL{}
+
+		_, err := oper.Parse(ident, []string{arg})
+		if err != nil {
+			return fmt.Errorf("directive: %w", err)
 		}
 
-		if val, err := strconv.ParseInt(arg, 0, 16); err != nil {
-			return err
-		} else if val < 0 || val > math.MaxUint16 {
-			return errors.New("argument error")
-		} else {
-			// store in syntax
-
-			p.loc++
-
-			return nil
-		}
-	case ".DW":
+		p.syntax[p.loc] = oper
 		p.loc++
+
 		return nil
 	case ".END":
 		return nil // TODO: stop parsing

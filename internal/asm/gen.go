@@ -5,6 +5,8 @@ package asm
 import (
 	"errors"
 	"fmt"
+	"math"
+	"strconv"
 	"strings"
 )
 
@@ -426,7 +428,46 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	return code, nil
 }
 
-// registerVal returns the registerVal encoded as an integer or 0xffff if the register does not exist.
+// .FILL: Data allocation directive.
+//
+//	.FILL x1234
+//	.FILL 0
+type FILL struct {
+	LITERAL uint16 // Literal constant.
+}
+
+func (fill *FILL) Parse(opcode string, operands []string) (Operation, error) {
+	if len(operands) != 1 {
+		return nil, errors.New("argument error")
+	}
+
+	arg := operands[0]
+
+	switch arg[0] {
+	case 'x', 'b', 'o':
+		arg = "0" + arg
+	}
+
+	val, err := strconv.ParseUint(arg, 0, 16)
+	numError := &strconv.NumError{}
+
+	if errors.As(err, &numError) {
+		return nil, fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err)
+	} else if val > math.MaxUint16 {
+		return nil, errors.New("argument error")
+	}
+
+	fill.LITERAL = uint16(val)
+
+	return nil, nil
+}
+
+func (fill *FILL) Generate(_ SymbolTable, pc uint16) (uint16, error) {
+	return fill.LITERAL, nil
+}
+
+// registerVal returns the registerVal encoded as an integer or BadRegister if the register does not
+// exist.
 func registerVal(reg string) uint16 {
 	switch reg {
 	case "R0":
@@ -450,6 +491,7 @@ func registerVal(reg string) uint16 {
 	}
 }
 
+// BadRegister is returned when a named register is invalid.
 const BadRegister uint16 = 0xffff
 
 func symbolVal(oper string, sym SymbolTable, _ uint16) (uint16, error) {
