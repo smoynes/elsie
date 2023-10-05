@@ -79,7 +79,7 @@ func (p *Parser) AddInstruction(inst Operation) {
 		panic("nil instruction")
 	}
 
-	p.syntax = append(p.syntax, inst)
+	p.syntax[p.loc] = inst
 }
 
 // SyntaxError adds an error to the parser errors.
@@ -214,7 +214,7 @@ func (p *Parser) parseLine(line string) error {
 			p.SyntaxError(p.loc, p.pos, line, err)
 		} else {
 			p.AddInstruction(inst)
-			p.loc += 1
+			p.loc++
 		}
 	}
 

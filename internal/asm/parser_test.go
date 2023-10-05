@@ -205,7 +205,7 @@ func TestParser_Fixtures(tt *testing.T) {
 		//"parser2.asm", TODO: .STRINGZ
 		"parser3.asm",
 		"parser4.asm",
-		// "parser5.asm", TODO: .BLKW5
+		// "parser5.asm", TODO: .BLKW
 	}
 
 	for _, fn := range tests {
