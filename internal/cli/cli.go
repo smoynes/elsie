@@ -99,5 +99,7 @@ func (cli *Commander) WithLogger(out *os.File) *Commander {
 }
 
 // Type aliases from std lib.
-type Flag = flag.Flag
-type FlagSet = flag.FlagSet
+type (
+	Flag    = flag.Flag
+	FlagSet = flag.FlagSet
+)

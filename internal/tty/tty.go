@@ -35,11 +35,9 @@ type Console struct {
 	termCh chan rune
 }
 
-var (
-	// ErrNoTTY is returned if standard input is not a terminal. In this case, asynchronous I/O is
-	// not supported by the console.
-	ErrNoTTY error = errors.New("console: not a TTY")
-)
+// ErrNoTTY is returned if standard input is not a terminal. In this case, asynchronous I/O is
+// not supported by the console.
+var ErrNoTTY error = errors.New("console: not a TTY")
 
 // WithConsole creates a Console context with the standard streams. Calling cancel will restore the
 // terminal state and release resources.
@@ -47,8 +45,8 @@ func WithConsole(parent context.Context, keyboard *vm.Keyboard, display *vm.Disp
 	context.Context, *Console, context.CancelFunc,
 ) {
 	ctx, cause := context.WithCancelCause(parent)
-	console, err := NewConsole(os.Stdin, os.Stdout, os.Stderr)
 
+	console, err := NewConsole(os.Stdin, os.Stdout, os.Stderr)
 	if err != nil {
 		cause(err)
 
@@ -74,7 +72,7 @@ func NewConsole(sin, sout, serr *os.File) (*Console, error) {
 
 	saved, err := term.MakeRaw(fd)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %s", ErrNoTTY, err)
+		return nil, fmt.Errorf("%w: %w", ErrNoTTY, err)
 	}
 
 	cons := Console{
@@ -147,7 +145,6 @@ func (c Console) readTerminal(ctx context.Context, cancel context.CancelCauseFun
 		}
 
 		b, err := buf.ReadByte()
-
 		if err != nil {
 			cancel(err) // TODO: Is it right to cancel the context on errors?
 			return

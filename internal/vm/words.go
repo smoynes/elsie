@@ -78,15 +78,19 @@ func (p ProgramCounter) String() string {
 type ProcessorStatus Register
 
 // Init configures the device at startup.
-func (p *ProcessorStatus) Init(_ *LC3, _ []Word) {
-	*p = ProcessorStatus(0x8080)
+func (ps *ProcessorStatus) Init(_ *LC3, _ []Word) {
+	*ps = ProcessorStatus(0x8080)
 }
 
 // Get reads the register for I/O.
-func (p ProcessorStatus) Get() Register { return Register(p) }
+func (ps ProcessorStatus) Get() Register {
+	return Register(ps)
+}
 
 // Put sets the register value for I/O.
-func (p *ProcessorStatus) Put(val Register) { *p = ProcessorStatus(val) }
+func (ps *ProcessorStatus) Put(val Register) {
+	*ps = ProcessorStatus(val)
+}
 
 // Status flags in PSR vector.
 const (
@@ -105,63 +109,70 @@ const (
 	StatusSystem    ProcessorStatus = 0x0000
 )
 
-func (p ProcessorStatus) String() string {
+func (ps ProcessorStatus) String() string {
 	return fmt.Sprintf(
 		"%s (N:%t Z:%t P:%t PR:%d PL:%d)",
-		Word(p), p.Negative(), p.Zero(), p.Positive(), p.Privilege(),
-		p.Priority(),
+		Word(ps), ps.Negative(), ps.Zero(), ps.Positive(), ps.Privilege(),
+		ps.Priority(),
 	)
 }
 
 // Cond returns the condition codes from the status register.
-func (p ProcessorStatus) Cond() Condition {
-	return Condition(p & StatusCondition)
+func (ps ProcessorStatus) Cond() Condition {
+	return Condition(ps & StatusCondition)
 }
 
 // Any returns true if any of the flags in the condition are set in the status
 // register.
-func (c ProcessorStatus) Any(cond Condition) bool {
-	return c.Cond()&cond != 0
+func (ps ProcessorStatus) Any(cond Condition) bool {
+	return ps.Cond()&cond != 0
 }
 
 // Set sets the condition flags based on the zero, negative, and
 // positive attributes of the register value.
-func (c *ProcessorStatus) Set(reg Register) {
+func (ps *ProcessorStatus) Set(reg Register) {
 	// Clear condition flags.
-	*c &= ^StatusCondition
+	*ps &= ^StatusCondition
 
 	// Set condition flag from register sign.
 	switch {
 	case reg == 0:
-		*c |= StatusZero
+		*ps |= StatusZero
 	case int16(reg) > 0:
-		*c |= StatusPositive
+		*ps |= StatusPositive
 	default:
-		*c |= StatusNegative
+		*ps |= StatusNegative
 	}
 }
 
 // Positive returns true if the P flag is set.
-func (c ProcessorStatus) Positive() bool {
-	return c&StatusPositive != 0
+func (ps ProcessorStatus) Positive() bool {
+	return ps&StatusPositive != 0
 }
 
 // Negative returns true if the N flag is set.
-func (c ProcessorStatus) Negative() bool {
-	return c&StatusNegative != 0
+func (ps ProcessorStatus) Negative() bool {
+	return ps&StatusNegative != 0
 }
 
 // Zero returns true if the Z flag is set.
-func (c ProcessorStatus) Zero() bool {
-	return c&StatusZero != 0
+func (ps ProcessorStatus) Zero() bool {
+	return ps&StatusZero != 0
 }
 
 // Priority returns the priority level of the current task.
-func (c ProcessorStatus) Priority() Priority {
-	return Priority(c & StatusPriority >> 8)
+func (ps ProcessorStatus) Priority() Priority {
+	return Priority(ps & StatusPriority >> 8)
 }
 
-func (c *ProcessorStatus) device() string { return Register(*c).String() }
+// Privilege returns the privilege of the current task.
+func (ps ProcessorStatus) Privilege() Privilege {
+	return Privilege(ps & StatusPrivilege >> 15)
+}
+
+func (ps *ProcessorStatus) device() string {
+	return Register(*ps).String()
+}
 
 // Priority represents the priority level of a task.
 type Priority uint8
@@ -182,11 +193,6 @@ const (
 	PriorityNormal Priority = 0x03 // NORM
 	PriorityHigh   Priority = 0x07 // HIGH
 )
-
-// Privilege returns the privilege of the current task.
-func (c ProcessorStatus) Privilege() Privilege {
-	return Privilege(c & StatusPrivilege >> 15)
-}
 
 // Privilege represents the privilege level of a task.
 type Privilege uint8
@@ -254,34 +260,34 @@ const (
 	ControlRunning ControlRegister = 1 << 15
 )
 
-func (c ControlRegister) Running() bool {
-	return c&ControlRunning != 0
+func (cr ControlRegister) Running() bool {
+	return cr&ControlRunning != 0
 }
 
-func (c *ControlRegister) String() string {
+func (cr *ControlRegister) String() string {
 	run := "RUN"
-	if !c.Running() {
+	if !cr.Running() {
 		run = "STOP"
 	}
 
-	return fmt.Sprintf("%s (%s)", Register(*c).String(), run)
+	return fmt.Sprintf("%s (%s)", Register(*cr).String(), run)
 }
 
 // Init configures the device at startup.
-func (p *ControlRegister) Init(_ *LC3, _ []Word) {
-	*p = 0x8080
+func (cr *ControlRegister) Init(_ *LC3, _ []Word) {
+	*cr = 0x8080
 }
 
 // Get returns the register value for I/O.
-func (c *ControlRegister) Get() Register {
-	return Register(*c)
+func (cr *ControlRegister) Get() Register {
+	return Register(*cr)
 }
 
 // Put sets the register value for I/O.
-func (c *ControlRegister) Put(val Register) {
-	*c = ControlRegister(val)
+func (cr *ControlRegister) Put(val Register) {
+	*cr = ControlRegister(val)
 }
 
-func (c *ControlRegister) device() string {
+func (cr *ControlRegister) device() string {
 	return "MCR(ELSIE LC-3 SIMULATOR)"
 }

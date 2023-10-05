@@ -4,6 +4,7 @@ package vm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/smoynes/elsie/internal/log"
@@ -92,25 +93,28 @@ func (vm *LC3) Step() error {
 	vm.Execute(op)
 	vm.StoreResult(op)
 
-	if op.Err() == nil {
-		// Success! ☺️
+	err := op.Err()
+
+	if err == nil {
 		vm.log.Debug("executed instruction", "OP", op)
-	} else if int, ok := op.Err().(interruptable); ok {
-		// Instruction raised an exception or trap.
-		vm.log.Debug("instruction raised exception", "OP", op, "INT", int)
 
-		if err := int.Handle(vm); err != nil {
-			// TODO: What should happen if switching to the service
-			// routine fails?
-			return fmt.Errorf("ins: interrupt: %w", err)
+		return nil
+	} else if errors.Is(err, &interrupt{}) {
+		handler := err.(interruptableError) //nolint:errorlint
+
+		vm.log.Error("instruction raised interrupt", "OP", op, "INT", err, "HANDLE", handler)
+
+		if err := handler.Handle(vm); err != nil {
+			vm.log.Error("interrupt service routine error", "ERR", err)
+			return fmt.Errorf("step: %w", err)
 		}
-	} else if op.Err() != nil {
-		// Unhandled error.
-		vm.log.Error(op.Err().Error())
-		panic(op.Err()) // TODO: Don't panic.
-	}
 
-	return nil
+		return nil
+	} else { // err != nil
+		vm.log.Error("instruction error", "OP", op, "ERR", err)
+
+		return fmt.Errorf("ins: %w", err)
+	}
 }
 
 // Fetch loads the value addressed by PC into IR and increments PC.
@@ -200,7 +204,17 @@ func (vm *LC3) EvalAddress(op operation) {
 func (vm *LC3) FetchOperands(op operation) {
 	if op, ok := op.(fetchable); ok && op.Err() == nil {
 		if err := vm.Mem.Fetch(); err != nil {
-			op.Fail(fmt.Errorf("operand: %w", err))
+			err = &acv{
+				&interrupt{
+					table: 0x01,
+					vec:   0x02,
+					pc:    vm.PC,
+					psr:   vm.PSR,
+				},
+			}
+
+			op.Fail(err)
+
 			return
 		}
 
@@ -223,10 +237,21 @@ func (vm *LC3) StoreResult(op operation) {
 		op.StoreResult() // Can't fail.
 
 		if err := vm.Mem.Store(); err != nil {
+			err = &acv{
+				&interrupt{
+					table: 0x01,
+					vec:   0x02,
+					pc:    vm.PC,
+					psr:   vm.PSR,
+				},
+			}
+
 			op.Fail(err)
-		} else {
-			vm.log.Debug("store", "OP", op.String())
+
+			return
 		}
+
+		vm.log.Debug("stored", "OP", op.String())
 	}
 }
 

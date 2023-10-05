@@ -1,54 +1,15 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
-
 	"testing"
 )
 
 func TestRESV(tt *testing.T) {
-	var (
-		t   = NewTestHarness(tt)
-		cpu = t.Make()
-	)
+	tt.Parallel()
 
-	cpu.PSR = (StatusSystem & StatusPrivilege) | StatusNormal | StatusNegative
-	cpu.REG[SP] = 0x2ff0
-	cpu.SSP = 0x1200
-	_ = cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
-	_ = cpu.Mem.store(Word(0x0101), 0x1100)
-	_ = cpu.Mem.store(Word(0x1100), 0x1110)
-
-	err := cpu.Step()
-	if err != nil {
-		t.Error(err)
-	}
-
-	if cpu.IR.Opcode() != RESV {
-		t.Errorf("instr: %s, want: %s, got: %s",
-			cpu.IR, RESV, cpu.IR.Opcode())
-	}
-
-	if cpu.PC != 0x1100 {
-		t.Errorf("PC want: %0#x, got: %s", 0x1000, cpu.PC)
-	}
-
-	if cpu.REG[SP] != Register(0x2ff0-2) {
-		t.Errorf("SP want: %s, got: %s", Word(0x2fee)-2, cpu.REG[SP])
-	}
-
-	if cpu.USP != 0xfe00 {
-		t.Errorf("USP want: %s, got: %s", Word(0xfe00), cpu.USP)
-	}
-
-	if cpu.PSR != StatusSystem|StatusNormal|StatusNegative {
-		t.Errorf("PSR want: %s, got: %s",
-			StatusSystem|StatusNormal|StatusNegative, cpu.PSR)
-	}
-}
-
-func TestInstructions(tt *testing.T) {
-	tt.Run("RESV as USER", func(tt *testing.T) {
+	tt.Run("user-mode", func(tt *testing.T) {
 		var (
 			t   = NewTestHarness(tt)
 			cpu = t.Make()
@@ -56,16 +17,25 @@ func TestInstructions(tt *testing.T) {
 
 		cpu.PC = 0x3000
 		cpu.PSR = StatusUser | StatusNormal | StatusNegative
+
 		t.Log(cpu.PSR.String())
 		cpu.REG[SP] = 0x2ff0
 		cpu.SSP = 0x1200
+
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
 		_ = cpu.Mem.store(Word(0x0101), 0x1100)
 		_ = cpu.Mem.store(Word(0x1100), 0x1110)
 
 		err := cpu.Step()
+
+		t.Logf("err %T %#v", err, err)
+
+		if errors.Is(err, ErrAccessControl) {
+			t.Errorf("acv: %#v", err)
+		}
+
 		if err != nil {
-			t.Error(err)
+			t.Errorf("err: %#v", err)
 		}
 
 		if cpu.IR.Opcode() != RESV {
@@ -90,6 +60,55 @@ func TestInstructions(tt *testing.T) {
 			t.Errorf("USP want: %s, got: %s", Word(0x2ff0), cpu.USP)
 		}
 	})
+
+	tt.Run("system-mode", func(tt *testing.T) {
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
+
+		cpu.PSR = (StatusSystem & StatusPrivilege) | StatusNormal | StatusNegative
+		cpu.REG[SP] = 0x2ff0
+		cpu.SSP = 0x1200
+
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1101_0000_0000_0000)
+		_ = cpu.Mem.store(Word(0x0101), 0x1100)
+		_ = cpu.Mem.store(Word(0x1100), 0x1110)
+
+		err := cpu.Step()
+
+		t.Logf("err %T %#v", err, err)
+
+		if err != nil {
+			t.Errorf("err: %#v", err)
+		}
+
+		if cpu.IR.Opcode() != RESV {
+			t.Errorf("instr: %s, want: %s, got: %s",
+				cpu.IR, RESV, cpu.IR.Opcode())
+		}
+
+		if cpu.PC != 0x1100 {
+			t.Errorf("PC want: %0#x, got: %s", 0x1000, cpu.PC)
+		}
+
+		if cpu.REG[SP] != Register(0x2ff0-2) {
+			t.Errorf("SP want: %s, got: %s", Word(0x2fee)-2, cpu.REG[SP])
+		}
+
+		if cpu.USP != 0xfe00 {
+			t.Errorf("USP want: %s, got: %s", Word(0xfe00), cpu.USP)
+		}
+
+		if cpu.PSR != StatusSystem|StatusNormal|StatusNegative {
+			t.Errorf("PSR want: %s, got: %s",
+				StatusSystem|StatusNormal|StatusNegative, cpu.PSR)
+		}
+	})
+}
+
+func TestInstructions(tt *testing.T) {
+	tt.Parallel()
 
 	tt.Run("BR", func(tt *testing.T) {
 		var (
@@ -393,9 +412,9 @@ func TestInstructions(tt *testing.T) {
 		cpu.PC = 0x0400
 		_ = cpu.Mem.store(Word(cpu.PC), 0xa001)
 		addr := Word(0x0402)
-		_ = cpu.Mem.store(Word(addr), 0xdad0)
+		_ = cpu.Mem.store(addr, 0xdad0)
 		cpu.REG[R0] = 0xffff
-		_ = cpu.Mem.store(Word(0xdad0), 0xcafe)
+		_ = cpu.Mem.store(0xdad0, 0xcafe)
 
 		err := cpu.Step()
 		if err != nil {
@@ -441,7 +460,7 @@ func TestInstructions(tt *testing.T) {
 		cpu.REG[R4] = 0x8000
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0110_000_100_00_0010)
 		addr := Word(0x8000 + 0x0002)
-		_ = cpu.Mem.store(Word(addr), 0xdad0)
+		_ = cpu.Mem.store(addr, 0xdad0)
 
 		err := cpu.Step()
 		if err != nil {
@@ -813,7 +832,6 @@ func TestInstructions(tt *testing.T) {
 		if bottom != 0x0ff0 {
 			t.Errorf("SP bottom want: %s, got: %s",
 				Word(0x0ff0), bottom)
-
 		}
 	})
 
@@ -899,7 +917,6 @@ func TestInstructions(tt *testing.T) {
 		if bottom != 0x2222 {
 			t.Errorf("SP bottom want: %s, got: %s",
 				Word(0x2222), bottom)
-
 		}
 	})
 
@@ -923,7 +940,7 @@ func TestInstructions(tt *testing.T) {
 
 		err := cpu.Step()
 		if err != nil {
-			t.Error(err)
+			t.Errorf("unhandled instruction error: %v", err)
 		}
 
 		if op := cpu.IR.Opcode(); op != RTI {
@@ -978,12 +995,13 @@ func TestInstructions(tt *testing.T) {
 		if Word(bottom) != Word((StatusPrivilege&StatusUser)|StatusNormal|StatusNegative) {
 			t.Errorf("SP bottom want: %s, got: %s",
 				(StatusPrivilege&StatusUser)|StatusLow|StatusNegative, bottom)
-
 		}
 	})
 }
 
 func TestSext(tt *testing.T) {
+	tt.Parallel()
+
 	tcs := []struct {
 		have uint16
 		bits uint8

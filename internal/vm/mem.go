@@ -3,6 +3,7 @@ package vm
 // mem.go contains the machine's memory controller.
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/smoynes/elsie/internal/log"
@@ -69,45 +70,45 @@ import (
 //
 // Since ASCII art is worth a thousand words:
 //
-// +========+========+=================+    +-----------------+   +-----------------+
-// |        | 0xffff |  Memory-mapped  |    |                 |   |                 |
-// |        |   ...  |     I/O page    |--->|                 |-->|DSR              |
-// |        |   ...  |                 |--->|       MMIO      |-->|DDR    Device    |
-// |        |   ...  |                 |--->|    registers    |-->|KBSR  registers  |
-// |        | 0xfe00 |                 |--->|                 |-->|KBDR             |
-// +========+========+=================+    |                 |   |                 |
-// |        | 0xfdff |                 |    +-----------------+   +-----------------+
-// |        |        |                 |             |   |
-// |        |  ...   |   User stack    |             V   V
-// |        |        |                 |    +-----------------+
-// |        | 0x4568 |                 |<---|USP    MCR PSR   |
-// |        +--------------------------+    |                 |
-// |        | 0x4567 |                 |<---|R7 (RET)       R3|
-// |  User  |  ...   |   User data     |    |                 |
-// |  space | 0x3000 |                 |<---|R6 (SP)        R2|
-// +========+========+=================+    |      CPU ⚙️     |
-// |        | 0x2fff |                 |    |R5             R1|
-// |        |        |  	       |    |                 |
-// |        |   ...  |  System stack   |    |R4             R0|
-// |        |        |                 |    |                 |
-// |        | 0x2dad |                 |<---|SSP              |
-// |        +--------+-----------------+    +-----------------+
-// | System | 0x1234 |                 |
-// | space  |  ...   |  System data    |
-// |        | 0x0200 |                 |
-// |        +--------------------------+
-// |        | 0x01ff |    Interrupt    |
-// |        |  ...   |  vector table   |
-// |        | 0x0100 |                 |
-// +        +--------+-----------------+
-// |        | 0x00ff |      Trap       |
-// |        |   ...  |   vector table  |
-// |        | 0x0010 |                 |
-// +        +--------+-----------------+
-// |        | 0x000f |    Exception    |
-// |        |   ...  |      table      |
-// |        | 0x0000 |                 |
-// +========+========+=================+
+//	+========+========+=================+    +-----------------+   +-----------------+
+//	|        | 0xffff |  Memory-mapped  |    |                 |   |                 |
+//	|        |   ...  |     I/O page    |--->|                 |-->|DSR              |
+//	|        |   ...  |                 |--->|       MMIO      |-->|DDR    Device    |
+//	|        |   ...  |                 |--->|    registers    |-->|KBSR  registers  |
+//	|        | 0xfe00 |                 |--->|                 |-->|KBDR             |
+//	+========+========+=================+    |                 |   |                 |
+//	|        | 0xfdff |                 |    +-----------------+   +-----------------+
+//	|        |        |                 |             |   |
+//	|        |  ...   |   User stack    |             V   V
+//	|        |        |                 |    +-----------------+
+//	|        | 0x4568 |                 |<---|USP    MCR PSR   |
+//	|        +--------------------------+    |                 |
+//	|        | 0x4567 |                 |<---|R7 (RET)       R3|
+//	|  User  |  ...   |   User data     |    |                 |
+//	|  space | 0x3000 |                 |<---|R6 (SP)        R2|
+//	+========+========+=================+    |      CPU ⚙️     |
+//	|        | 0x2fff |                 |    |R5             R1|
+//	|        |        |  	       |    |                 |
+//	|        |   ...  |  System stack   |    |R4             R0|
+//	|        |        |                 |    |                 |
+//	|        | 0x2dad |                 |<---|SSP              |
+//	|        +--------+-----------------+    +-----------------+
+//	| System | 0x1234 |                 |
+//	| space  |  ...   |  System data    |
+//	|        | 0x0200 |                 |
+//	|        +--------------------------+
+//	|        | 0x01ff |    Interrupt    |
+//	|        |  ...   |  vector table   |
+//	|        | 0x0100 |                 |
+//	+        +--------+-----------------+
+//	|        | 0x00ff |      Trap       |
+//	|        |   ...  |   vector table  |
+//	|        | 0x0010 |                 |
+//	+        +--------+-----------------+
+//	|        | 0x000f |    Exception    |
+//	|        |   ...  |      table      |
+//	|        | 0x0000 |                 |
+//	+========+========+=================+
 
 // Memory represents a memory controller that translates logical addresses to registers in the
 // machine.
@@ -118,7 +119,7 @@ type Memory struct {
 	// Physical memory in a virtual machine for an imaginary CPU.
 	cell PhysicalMemory
 
-	// Memory-mapped Devices registers.
+	// Memory-mapped device registers.
 	Devices MMIO
 
 	log *log.Logger
@@ -160,12 +161,12 @@ func (mem *Memory) Fetch() error {
 	psr := mem.Devices.PSR()
 	if psr&StatusPrivilege == StatusUser && mem.privileged() {
 		mem.MDR = Register(psr)
-		return &acv{interrupt{}}
+		return fmt.Errorf("%w: fetch: %w", ErrMemory, ErrAccessControl)
 	}
 
 	err := mem.load(Word(mem.MAR), &mem.MDR)
 	if err != nil {
-		return fmt.Errorf("mem: fetch: %w", err)
+		return fmt.Errorf("%w: fetch: %w", ErrMemory, err)
 	}
 
 	return nil
@@ -178,15 +179,12 @@ func (mem *Memory) Store() error {
 
 	if psr.Privilege() == PrivilegeUser && mem.privileged() {
 		mem.MDR = Register(psr)
-
-		return &acv{
-			interrupt{},
-		}
+		return fmt.Errorf("%w: store: %w", ErrMemory, ErrAccessControl)
 	}
 
 	err := mem.store(Word(mem.MAR), Word(mem.MDR))
 	if err != nil {
-		return fmt.Errorf("mem: store: %w", err)
+		return fmt.Errorf("%w: store: %w", ErrMemory, err)
 	}
 
 	return nil
@@ -225,11 +223,7 @@ func (mem *Memory) privileged() bool {
 		Word(mem.MDR) == PSRAddr)
 }
 
-// acv is an memory access control violation exception.
-type acv struct {
-	interrupt
-}
-
-func (acv *acv) Error() string {
-	return fmt.Sprintf("EXC: ACV (%s:%s)", acv.table, acv.vec)
-}
+var (
+	ErrMemory        = errors.New("memory error")
+	ErrAccessControl = errors.New("access control")
+)

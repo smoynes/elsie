@@ -9,21 +9,18 @@ import (
 	"github.com/smoynes/elsie/internal/cli/cmd"
 )
 
-var (
-	commands = []cli.Command{
-		cmd.Demo(),
-		cmd.Assembler(),
-	}
-)
+var commands = []cli.Command{
+	cmd.Demo(),
+	cmd.Assembler(),
+}
 
 // Entry point.
 func main() {
-	result :=
-		cli.New(context.Background()).
-			WithLogger(os.Stderr).
-			WithCommands(commands).
-			WithHelp(cmd.Help(commands)).
-			Execute(os.Args[1:])
+	result := cli.New(context.Background()).
+		WithLogger(os.Stderr).
+		WithCommands(commands).
+		WithHelp(cmd.Help(commands)).
+		Execute(os.Args[1:])
 
 	os.Exit(result)
 }
