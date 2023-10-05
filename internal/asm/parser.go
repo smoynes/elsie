@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -242,15 +241,15 @@ func (p *Parser) parseInstruction(opcode string, operands []string) error {
 func (p *Parser) parseOperator(opcode string) Operation {
 	switch strings.ToUpper(opcode) {
 	case "ADD":
-		return _ADD
+		return &ADD{}
 	case "AND":
-		return _AND
+		return &AND{}
 	case "BR", "BRNZP", "BRN", "BRZ", "BRP", "BRZN", "BRNP", "BRZP":
-		return _BR
+		return &BR{}
 	case "LD":
-		return _LD
+		return &LD{}
 	case "LDR":
-		return _LDR
+		return &LDR{}
 	case p.probeOpcode:
 		return p.probeInstr
 	default:
@@ -275,29 +274,26 @@ func (p *Parser) isReservedKeyword(word string) bool {
 func (p *Parser) parseDirective(ident string, arg string) error {
 	switch ident {
 	case ".ORIG":
-		if len(arg) < 1 {
-			return errors.New("argument error")
+		oper := &ORIG{}
+		err := oper.Parse(ident, []string{arg})
+		if err != nil {
+			return fmt.Errorf("directive: %w", err)
+		}
+		p.loc = oper.LITERAL
+		return nil
+
+	case ".BLKW":
+		oper := &BLKW{}
+		err := oper.Parse(ident, []string{arg})
+		if err != nil {
+			return fmt.Errorf("directive: %w", err)
 		}
 
-		if arg[0] == 'x' {
-			arg = "0" + arg
-		}
+		p.loc += oper.ALLOC
 
-		val, err := strconv.ParseInt(arg, 0, 16)
-		numError := &strconv.NumError{}
-
-		if errors.As(err, &numError) {
-			return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err)
-		} else if val < 0 || val > math.MaxUint16 {
-			return errors.New("argument error")
-		} else {
-			p.loc = uint16(val)
-
-			return nil
-		}
+		return nil
 	case ".FILL", ".DW":
 		oper := &FILL{}
-
 		err := oper.Parse(ident, []string{arg})
 		if err != nil {
 			return fmt.Errorf("directive: %w", err)

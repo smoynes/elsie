@@ -213,16 +213,9 @@ func TestParser_Fixtures(tt *testing.T) {
 
 		tt.Run(fn, func(tt *testing.T) {
 			var (
-				t       = parserHarness{tt}
-				fp      = path.Join("testdata", fn)
-				fs, err = os.Open(fp)
+				t  = parserHarness{tt}
+				fs = t.inputFixture(fn)
 			)
-
-			t.Log(fp)
-
-			if err != nil {
-				t.Error(err)
-			}
 
 			parser := t.ParseStream(fs)
 

@@ -34,14 +34,6 @@ type Operation interface {
 	Generate(symbols SymbolTable, pc uint16) (uint16, error)
 }
 
-var (
-	_BR  Operation = &BR{}
-	_ADD Operation = &ADD{}
-	_AND Operation = &AND{}
-	_LD  Operation = &LD{}
-	_LDR Operation = &LDR{}
-)
-
 // BR: Conditional branch.
 //
 //	BR    [ IDENT | LITERAL ]
@@ -453,7 +445,7 @@ func (fill *FILL) Parse(opcode string, operands []string) error {
 	numError := &strconv.NumError{}
 
 	if errors.As(err, &numError) {
-		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err)
+		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
 	} else if val > math.MaxUint16 {
 		return errors.New("argument error")
 	}
@@ -464,6 +456,81 @@ func (fill *FILL) Parse(opcode string, operands []string) error {
 }
 
 func (fill *FILL) Generate(_ SymbolTable, pc uint16) (uint16, error) {
+	return fill.LITERAL, nil
+}
+
+// .BLKW: Data allocation directive.
+//
+//	.BLKW 1
+type BLKW struct {
+	ALLOC uint16 // Number of words allocated.
+}
+
+func (blkw *BLKW) Parse(opcode string, operands []string) error {
+	if len(operands) != 1 {
+		return errors.New("argument error")
+	}
+
+	arg := operands[0]
+
+	switch arg[0] {
+	case 'x', 'b', 'o':
+		arg = "0" + arg
+	}
+
+	val, err := strconv.ParseUint(arg, 0, 16)
+	numError := &strconv.NumError{}
+
+	if errors.As(err, &numError) {
+		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
+	} else if val > math.MaxUint16 {
+		return errors.New("argument error")
+	}
+
+	blkw.ALLOC = uint16(val)
+
+	return nil
+}
+
+func (blkw *BLKW) Generate(_ SymbolTable, pc uint16) (uint16, error) {
+	return 0x2361, nil // TODO: need to pc?
+}
+
+// .ORIG: Data allocation directive.
+//
+//	.ORIG x1234
+//	.ORIG 0
+type ORIG struct {
+	LITERAL uint16 // Literal constant.
+}
+
+func (orig *ORIG) Parse(opcode string, operands []string) error {
+	if len(operands) != 1 {
+		return errors.New("argument error")
+	}
+
+	arg := operands[0]
+
+	switch arg[0] {
+	case 'x', 'b', 'o':
+		arg = "0" + arg
+	}
+
+	val, err := strconv.ParseUint(arg, 0, 16)
+	numError := &strconv.NumError{}
+
+	if errors.As(err, &numError) {
+		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
+	} else if val > math.MaxUint16 {
+		return errors.New("argument error")
+	}
+
+	orig.LITERAL = uint16(val)
+
+	return nil
+}
+
+func (fill *ORIG) Generate(_ SymbolTable, pc uint16) (uint16, error) {
 	return fill.LITERAL, nil
 }
 
