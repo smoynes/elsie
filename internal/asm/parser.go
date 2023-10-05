@@ -193,10 +193,9 @@ func (p *Parser) parseLine(line string) error {
 		arg := matched[2]
 		arg = strings.TrimSpace(arg)
 
-		if next, err := p.parseDirective(ident, arg, p.loc); err != nil {
-			p.SyntaxError(p.loc, p.pos, line, err)
-		} else {
-			p.loc = next
+		if err := p.parseDirective(ident, arg); err != nil {
+			p.fatal = err
+			return err
 		}
 	}
 
@@ -263,13 +262,13 @@ func (p *Parser) isReservedKeyword(word string) bool {
 	return p.parseOperator(word) != nil
 }
 
-// parseDirective parses a directive or pseudo-instructions from its identifier and argument. The
-// directive may modify parser state by taking the location counter and returning new value.
-func (p *Parser) parseDirective(ident string, arg string, loc uint16) (uint16, error) {
+// parseDirective parses a directive or pseudo-instructions from its identifier and argument.The
+// directive updates the parser state and returns fatal errors.
+func (p *Parser) parseDirective(ident string, arg string) error {
 	switch ident {
 	case ".ORIG":
 		if len(arg) < 1 {
-			return loc, errors.New("argument error")
+			return errors.New("argument error")
 		}
 
 		if arg[0] == 'x' {
@@ -277,24 +276,26 @@ func (p *Parser) parseDirective(ident string, arg string, loc uint16) (uint16, e
 		}
 
 		if val, err := strconv.ParseInt(arg, 0, 16); err != nil {
-			return loc, err
+			return err
 		} else if val < 0 || val > math.MaxUint16 {
-			return loc, errors.New("argument error")
+			return errors.New("argument error")
 		} else {
-			loc = uint16(val)
+			p.loc = uint16(val)
 
-			return loc, nil
+			return nil
 		}
 	case ".FILL":
 		// We could parse the literal, as above, but what do we do with it?
-		return loc + 1, nil
+
+		p.loc++
+		return nil
 	case ".DW":
-		// TODO: ??
-		return loc + 1, nil
+		p.loc++
+		return nil
 	case ".END":
-		return loc, nil // TODO: stop parsing
+		return nil // TODO: stop parsing
 	default:
-		return loc, errors.New("directive error")
+		return errors.New("directive error")
 	}
 }
 
