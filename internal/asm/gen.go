@@ -430,29 +430,9 @@ type FILL struct {
 }
 
 func (fill *FILL) Parse(opcode string, operands []string) error {
-	if len(operands) != 1 {
-		return errors.New("argument error")
-	}
-
-	arg := operands[0]
-
-	switch arg[0] {
-	case 'x', 'b', 'o':
-		arg = "0" + arg
-	}
-
-	val, err := strconv.ParseUint(arg, 0, 16)
-	numError := &strconv.NumError{}
-
-	if errors.As(err, &numError) {
-		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
-	} else if val > math.MaxUint16 {
-		return errors.New("argument error")
-	}
-
-	fill.LITERAL = uint16(val)
-
-	return nil
+	val, err := parseLiteralConstant(operands[0])
+	fill.LITERAL = val
+	return err
 }
 
 func (fill *FILL) Generate(_ SymbolTable, pc uint16) (uint16, error) {
@@ -467,36 +447,16 @@ type BLKW struct {
 }
 
 func (blkw *BLKW) Parse(opcode string, operands []string) error {
-	if len(operands) != 1 {
-		return errors.New("argument error")
-	}
-
-	arg := operands[0]
-
-	switch arg[0] {
-	case 'x', 'b', 'o':
-		arg = "0" + arg
-	}
-
-	val, err := strconv.ParseUint(arg, 0, 16)
-	numError := &strconv.NumError{}
-
-	if errors.As(err, &numError) {
-		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
-	} else if val > math.MaxUint16 {
-		return errors.New("argument error")
-	}
-
-	blkw.ALLOC = uint16(val)
-
-	return nil
+	val, err := parseLiteralConstant(operands[0])
+	blkw.ALLOC = val
+	return err
 }
 
 func (blkw *BLKW) Generate(_ SymbolTable, pc uint16) (uint16, error) {
-	return 0x2361, nil // TODO: need to pc?
+	return 0x2361, nil // TODO: un-init memory
 }
 
-// .ORIG: Data allocation directive.
+// .ORIG: Origin directive. Sets the location counter to the value.
 //
 //	.ORIG x1234
 //	.ORIG 0
@@ -530,8 +490,8 @@ func (orig *ORIG) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (fill *ORIG) Generate(_ SymbolTable, pc uint16) (uint16, error) {
-	return fill.LITERAL, nil
+func (orig *ORIG) Generate(_ SymbolTable, pc uint16) (uint16, error) {
+	return 0x0000, nil
 }
 
 // registerVal returns the registerVal encoded as an integer or BadRegister if the register does not

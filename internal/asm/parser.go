@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -104,6 +105,20 @@ func (p *Parser) Probe(opcode string, ins Operation) {
 	p.probeInstr = ins
 }
 
+// SymbolTable maps a symbol reference to its location in object code.
+type SymbolTable map[string]uint16
+
+// SyntaxError is a wrapped error returned when the parser encounters a syntax error.
+type SyntaxError struct {
+	Loc, Pos uint16
+	Line     string
+	Err      error
+}
+
+func (pe *SyntaxError) Error() string {
+	return fmt.Sprintf("syntax error: %s: line: %d %q", pe.Err, pe.Pos, pe.Line)
+}
+
 // Parse parses an input stream. The parser takes ownership of the stream and will close it.
 func (p *Parser) Parse(in io.ReadCloser) {
 	defer func() {
@@ -139,28 +154,6 @@ func (p *Parser) Parse(in io.ReadCloser) {
 		}
 	}
 }
-
-var (
-	// Grammar terminals.
-	text       = `(.*)`
-	space      = `[\pZ\p{Cc}]*`
-	ident      = `(\pL[\pL\p{Nd}\pM\p{Pc}\p{Pd}\pS]*)`
-	directives = []string{
-		`\.ORIG`,
-		`\.DW`,
-		`\.FILL`,
-		`\.BLKW`,
-		`\.STRINGZ`,
-		`\.END`,
-	}
-
-	// Grammar patterns.
-	commentPattern   = regexp.MustCompile(space + `;` + text + `$`)
-	labelPattern     = regexp.MustCompile(`^` + ident + space + `:?` + space)
-	directivePattern = regexp.MustCompile(
-		`^(` + strings.Join(directives, `|`) + `)` + space + text + `$`)
-	instructionPattern = regexp.MustCompile(`^` + space + ident + space + text + `$`)
-)
 
 // Parse line uses regular expressions to parse text. Based on the which patterns match, the text is
 // parsed and the parser state is updated.
@@ -217,6 +210,29 @@ func (p *Parser) parseLine(line string) error {
 	return nil
 }
 
+// Parser regular expressions.
+var (
+	// Grammar terminals.
+	text       = `(.*)`
+	space      = `[\pZ\p{Cc}]*`
+	ident      = `(\pL[\pL\p{Nd}\pM\p{Pc}\p{Pd}\pS]*)`
+	directives = []string{
+		`\.ORIG`,
+		`\.DW`,
+		`\.FILL`,
+		`\.BLKW`,
+		`\.STRINGZ`,
+		`\.END`,
+	}
+
+	// Grammar patterns.
+	commentPattern   = regexp.MustCompile(space + `;` + text + `$`)
+	labelPattern     = regexp.MustCompile(`^` + ident + space + `:?` + space)
+	directivePattern = regexp.MustCompile(
+		`^(` + strings.Join(directives, `|`) + `)` + space + text + `$`)
+	instructionPattern = regexp.MustCompile(`^` + space + ident + space + text + `$`)
+)
+
 // parseInstruction dispatches parsing to an instruction parser based on the opcode. Parsing the
 // operands is delegated to the dispatched parser.
 func (p *Parser) parseInstruction(opcode string, operands []string) error {
@@ -269,58 +285,70 @@ func (p *Parser) isReservedKeyword(word string) bool {
 	return p.parseOperator(word) != nil
 }
 
-// parseDirective parses a directive or pseudo-instructions from its identifier and argument.The
-// directive updates the parser state and returns fatal errors.
+// parseDirective parses a directive, or pseudo-instruction, by its identifier and argument.
 func (p *Parser) parseDirective(ident string, arg string) error {
+	var err error
+
 	switch ident {
 	case ".ORIG":
-		oper := &ORIG{}
-		err := oper.Parse(ident, []string{arg})
-		if err != nil {
-			return fmt.Errorf("directive: %w", err)
-		}
-		p.loc = oper.LITERAL
-		return nil
+		orig := ORIG{}
 
+		err = orig.Parse(ident, []string{arg})
+		if err != nil {
+			break
+		}
+
+		p.loc = orig.LITERAL
 	case ".BLKW":
-		oper := &BLKW{}
-		err := oper.Parse(ident, []string{arg})
+		blkw := BLKW{}
+
+		err = blkw.Parse(ident, []string{arg})
 		if err != nil {
-			return fmt.Errorf("directive: %w", err)
+			break
 		}
 
-		p.loc += oper.ALLOC
+		p.syntax[p.loc] = &blkw
+		p.loc += blkw.ALLOC
 
-		return nil
 	case ".FILL", ".DW":
-		oper := &FILL{}
-		err := oper.Parse(ident, []string{arg})
+		fill := FILL{}
+
+		err = fill.Parse(ident, []string{arg})
 		if err != nil {
-			return fmt.Errorf("directive: %w", err)
+			break
 		}
 
-		p.syntax[p.loc] = oper
+		p.syntax[p.loc] = &fill
 		p.loc++
-
-		return nil
 	case ".END":
-		return nil // TODO: stop parsing
+		// TODO: signal end
 	default:
 		return fmt.Errorf("directive error: %s", ident)
 	}
+
+	if err != nil {
+		return fmt.Errorf("%s: %w", ident, err)
+	}
+
+	return nil
 }
 
-// SymbolTable maps a symbol reference to its location in object code.
-type SymbolTable map[string]uint16
+func parseLiteralConstant(arg string) (uint16, error) {
+	switch arg[0] {
+	case 'x', 'b', 'o':
+		arg = "0" + arg
+	}
 
-type SyntaxError struct {
-	Loc, Pos uint16
-	Line     string
-	Err      error
-}
+	val, err := strconv.ParseUint(arg, 0, 16)
+	numError := &strconv.NumError{}
 
-func (pe *SyntaxError) Error() string {
-	return fmt.Sprintf("syntax error: %s: line: %d %q", pe.Err, pe.Pos, pe.Line)
+	if errors.As(err, &numError) {
+		return 0, fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
+	} else if val > math.MaxUint16 {
+		return 0, errors.New("argument error")
+	}
+
+	return uint16(val), nil
 }
 
 // parseRegister returns the register name from an operand or an empty value if the register does
