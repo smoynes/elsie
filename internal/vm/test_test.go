@@ -1,15 +1,15 @@
 package vm
 
 import (
+	"log/slog"
 	"os"
 	"testing"
-
-	"log/slog"
 
 	"github.com/smoynes/elsie/internal/log"
 )
 
 func NewTestHarness(t *testing.T) *testHarness {
+	t.Helper()
 	t.Parallel()
 	th := &testHarness{
 		T:      t,
@@ -35,6 +35,7 @@ func (t *testHarness) Make() *LC3 {
 }
 
 func makeTestLogger(t *testing.T) *log.Logger {
+	t.Helper()
 	return slog.New(slog.NewTextHandler(os.Stdout, nil))
 }
 

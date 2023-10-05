@@ -30,7 +30,7 @@ func TestKeyboardDriver(tt *testing.T) {
 	vm := t.Make()
 
 	var (
-		kbd    *Keyboard   = NewKeyboard()
+		kbd                = NewKeyboard()
 		driver Driver      = kbd
 		reader ReadDriver  = kbd
 		writer WriteDriver = kbd
@@ -43,7 +43,7 @@ func TestKeyboardDriver(tt *testing.T) {
 
 	driver.Init(vm, nil)
 
-	addr := Word(KBSRAddr)
+	addr := KBSRAddr
 	if err := writer.Write(addr, Register(0xffff)); err != nil {
 		t.Error(err)
 	} else if got, err := reader.Read(addr); err != nil {
@@ -54,14 +54,14 @@ func TestKeyboardDriver(tt *testing.T) {
 		t.Errorf("status register unwritten: %s", addr)
 	}
 
-	addr = Word(KBDRAddr)
+	addr = KBDRAddr
 	if got, err := reader.Read(addr); err != nil {
 		t.Errorf("expected read error: %s", addr)
 	} else if got == Word(uninitialized) {
 		t.Errorf("uninitialized data register: %s:%s", addr, got)
 	}
 
-	addr = Word(KBSRAddr)
+	addr = KBSRAddr
 	if got, err := reader.Read(addr); err != nil {
 		t.Errorf("read error: %s: %s", addr, err)
 	} else if got != Word(KeyboardEnable|KeyboardReady) {

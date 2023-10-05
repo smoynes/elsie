@@ -50,19 +50,19 @@ const (
 	DisplayEnabled = Register(1 << 14) // IE
 )
 
-func (d Display) device() string { return "CRT(PHOSPHOR)" }
+func (disp Display) device() string { return "CRT(PHOSPHOR)" }
 
-func (d *Display) Init(_ *LC3, _ []Word) {
-	if d.mut == nil {
+func (disp *Display) Init(_ *LC3, _ []Word) {
+	if disp.mut == nil {
 		panic("lock uninitialized")
 	}
 
-	d.mut.Lock()
-	d.dsr = DisplayReady // Born ready.
-	d.ddr = 0x2368       // ⍨
-	d.mut.Unlock()
+	disp.mut.Lock()
+	disp.dsr = DisplayReady // Born ready.
+	disp.ddr = 0x2368       // ⍨
+	disp.mut.Unlock()
 
-	d.notify()
+	disp.notify()
 }
 
 // Write updates the display data register with the given data. It (briefly) clears the ready

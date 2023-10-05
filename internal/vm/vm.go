@@ -61,7 +61,7 @@ func New(opts ...OptionFn) *LC3 {
 	// Create devices.
 	var (
 		// The keyboard device is hardwired and does not have a separate driver.
-		kbd *Keyboard = NewKeyboard()
+		kbd = NewKeyboard()
 
 		// The display is more complicated: a driver configures the device with the addresses for
 		// the display registers.
@@ -87,7 +87,6 @@ func New(opts ...OptionFn) *LC3 {
 	}
 
 	err := vm.Mem.Devices.Map(devices)
-
 	if err != nil {
 		vm.log.Error(err.Error())
 		panic(err)

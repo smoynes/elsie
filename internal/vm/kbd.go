@@ -33,7 +33,7 @@ func NewKeyboard() *Keyboard {
 	k := &Keyboard{
 		mut:  sync.Mutex{},
 		KBSR: 0x0000,
-		KBDR: Register(a[rand.Intn(len(a))]),
+		KBDR: Register(a[rand.Intn(len(a))]), //nolint:gosec
 	}
 	k.intr = sync.NewCond(&k.mut)
 
@@ -48,7 +48,7 @@ func (k *Keyboard) Init(vm *LC3, _ []Word) {
 
 	k.mut.Lock()
 	k.KBSR = ^KeyboardReady | KeyboardEnable // Enable interrupts, clear ready flag.
-	k.KBDR = Register(a[rand.Intn(len(a))])
+	k.KBDR = Register(a[rand.Intn(len(a))])  //nolint:gosec
 	k.mut.Unlock()
 
 	k.intr.Broadcast()

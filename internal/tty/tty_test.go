@@ -54,7 +54,6 @@ func TestTerminal(tt *testing.T) {
 		defer close(pressed)
 
 		_, err := kbd.Read(vm.KBDRAddr)
-
 		if err != nil {
 			cancel()
 			return

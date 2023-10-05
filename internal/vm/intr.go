@@ -97,17 +97,15 @@ func (i Interrupt) Requested(curr Priority) (uint8, bool) {
 	return 0, false
 }
 
-// interruptable errors are returned from instruction cycle steps to signal the CPU to jump to a
-// service routine.
-type interruptable interface {
+// An interruptableError is returned from an instruction cycle to signal the CPU to jump to an
+// interrupt service routine.
+type interruptableError interface {
 	error
 
-	// For the sake of debugging.
-	fmt.Stringer
-
-	// Handle changes the execution context to the interrupt's service
-	// routine.
+	// Handle changes the execution context to the interrupt's service routine.
 	Handle(cpu *LC3) error
+
+	fmt.Stringer // For the sake of debugging.
 }
 
 // interrupts change the control flow of the CPU.
@@ -132,18 +130,18 @@ type interrupt struct {
 	psr   ProcessorStatus // Status register of the caller.
 }
 
-func (i *interrupt) Handle(cpu *LC3) error {
-	err := cpu.PushStack(Word(i.psr))
+func (intr *interrupt) Handle(cpu *LC3) error {
+	err := cpu.PushStack(Word(intr.psr))
 	if err != nil {
 		return err
 	}
 
-	err = cpu.PushStack(Word(i.pc))
+	err = cpu.PushStack(Word(intr.pc))
 	if err != nil {
 		return err
 	}
 
-	cpu.Mem.MAR = Register(i.table | i.vec)
+	cpu.Mem.MAR = Register(intr.table | intr.vec)
 	err = cpu.Mem.Fetch()
 
 	if err != nil {
@@ -155,32 +153,95 @@ func (i *interrupt) Handle(cpu *LC3) error {
 	return nil
 }
 
-func (i *interrupt) Error() string {
-	return "interrupted: " + i.String()
+func (intr *interrupt) Is(err any) bool {
+	if _, ok := err.(*interrupt); ok {
+		return true
+	}
+
+	return false
 }
 
-func (i *interrupt) String() string {
-	return fmt.Sprintf("INT: (%s:%0#2x)", i.table, uint16(i.vec))
+func (intr *interrupt) As(err any) bool {
+	if err, ok := err.(**interrupt); ok {
+		if err != nil {
+			*err = intr
+		}
+
+		return true
+	}
+
+	return false
+}
+
+func (*interrupt) Error() string {
+	return "interrupt"
+}
+
+func (intr *interrupt) String() string {
+	return fmt.Sprintf("INT: (%s:%0#2x)", intr.table, uint16(intr.vec))
+}
+
+// acv is a memory access control violation exception.
+type acv struct {
+	*interrupt
+}
+
+func (ae *acv) Is(target error) bool {
+	switch target.(type) {
+	case *acv, *interrupt:
+		return true
+	default:
+		return false
+	}
+}
+
+func (ae *acv) As(target any) bool {
+	switch err := target.(type) {
+	case **acv:
+		if *err != nil {
+			*err = ae
+		}
+
+		return true
+	case **interrupt:
+		if *err != nil {
+			*err = ae.interrupt
+		}
+
+		return true
+	default:
+		return false
+	}
+}
+
+func (*acv) Error() string {
+	return "acv error"
+}
+
+func (ae *acv) String() string {
+	return fmt.Sprintf("EXC: ACV (%s:%0#2x)", ae.table, ae.vec)
 }
 
 // Trap handler table and defined vectors in the table.
 const (
+	// 0x0000:0x00ff
 	TrapTable = Word(0x0000)
 	TrapHALT  = Word(0x0025)
 )
 
 // Interrupt vector table address.
 const (
+	// 0x0100:0x01ff
 	InterruptVectorTable = Word(0x0100) // IVT
 )
 
 // Exception vector table and defined vectors in the table.
 const (
+	// 0x0100:0x017f
 	ExceptionServiceRoutines = Word(0x0100) // EXC
 	ExceptionPMV             = Word(0x00)   // PMV
 	ExceptionXOP             = Word(0x01)   // XOP
 	ExceptionACV             = Word(0x02)   // ACV
-	// 0x0100:0x017f
 )
 
 // Interrupt service routines and defined vectors.

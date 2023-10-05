@@ -30,8 +30,8 @@ const (
 	TRAP
 
 	// Two synthetic opcodes used for printing special cases of the above.
-	JSRR = Opcode(JSR | 0x0f00)
-	RET  = Opcode(JMP | 0x0f00)
+	JSRR = JSR | 0x0f00
+	RET  = JMP | 0x0f00
 )
 
 type mo struct { // no, mo is NOT a monad. ( ._.)
@@ -61,9 +61,7 @@ func (op br) String() string {
 	return fmt.Sprintf("BR{cond:%s,offset:%s}", op.cond.String(), op.offset.String())
 }
 
-var (
-	_ executable = &br{}
-)
+var _ executable = &br{}
 
 func (op *br) Decode(vm *LC3) {
 	*op = br{
@@ -90,9 +88,7 @@ type not struct {
 	sr GPR
 }
 
-var (
-	_ executable = &not{}
-)
+var _ executable = &not{}
 
 func (op not) String() string {
 	return fmt.Sprintf("NOT{dr:%s,sr:%s}", op.dr.String(), op.sr.String())
@@ -131,8 +127,8 @@ func (op *and) String() string {
 	return fmt.Sprintf("AND{dr:%s,sr1:%s,sr2:%s}", op.dest.String(), op.sr1, op.sr2)
 }
 
-func (a *and) Decode(vm *LC3) {
-	*a = and{
+func (op *and) Decode(vm *LC3) {
+	*op = and{
 		mo:   mo{vm: vm},
 		dest: vm.IR.DR(),
 		sr1:  vm.IR.SR1(),
@@ -157,8 +153,8 @@ func (op *andImm) String() string {
 	return fmt.Sprintf("AND{dr:%s,sr:%s,lit:%0#2x}", op.dr.String(), op.sr, uint16(op.lit))
 }
 
-func (a *andImm) Decode(vm *LC3) {
-	*a = andImm{
+func (op *andImm) Decode(vm *LC3) {
+	*op = andImm{
 		mo:  mo{vm: vm},
 		dr:  vm.IR.DR(),
 		sr:  vm.IR.SR1(),
@@ -190,9 +186,7 @@ type add struct {
 	sr2 GPR
 }
 
-var (
-	_ executable = &add{}
-)
+var _ executable = &add{}
 
 func (op *add) Decode(vm *LC3) {
 	*op = add{
@@ -215,9 +209,7 @@ type addImm struct {
 	lit Word
 }
 
-var (
-	_ executable = &addImm{}
-)
+var _ executable = &addImm{}
 
 func (op *addImm) Decode(vm *LC3) {
 	*op = addImm{
@@ -365,9 +357,7 @@ type lea struct {
 	offset Word
 }
 
-var (
-	_ fetchable = &lea{}
-)
+var _ fetchable = &lea{}
 
 func (op *lea) Decode(vm *LC3) {
 	*op = lea{
@@ -514,9 +504,7 @@ type jmp struct {
 	sr GPR
 }
 
-var (
-	_ executable = &jmp{}
-)
+var _ executable = &jmp{}
 
 func (op *jmp) Decode(vm *LC3) {
 	*op = jmp{
@@ -547,9 +535,7 @@ type jsr struct {
 	offset Word
 }
 
-var (
-	_ executable = &jsr{}
-)
+var _ executable = &jsr{}
 
 func (op *jsr) Decode(vm *LC3) {
 	*op = jsr{
@@ -569,9 +555,7 @@ type jsrr struct {
 	sr GPR
 }
 
-var (
-	_ executable = &jsrr{}
-)
+var _ executable = &jsrr{}
 
 func (op *jsrr) Decode(vm *LC3) {
 	*op = jsrr{
@@ -599,9 +583,7 @@ func (op *trap) String() string {
 	return fmt.Sprintf("TRAP: %0#2x", uint16(op.vec))
 }
 
-var (
-	_ executable = &trap{}
-)
+var _ executable = &trap{}
 
 func (op *trap) Decode(vm *LC3) {
 	*op = trap{
@@ -610,13 +592,9 @@ func (op *trap) Decode(vm *LC3) {
 	}
 }
 
-type trapErr struct {
-	interrupt
-}
-
 func (op *trap) Execute() {
-	op.err = &trapErr{
-		interrupt{
+	op.err = &trapError{
+		&interrupt{
 			table: TrapTable,
 			vec:   op.vec,
 			pc:    op.vm.PC,
@@ -625,11 +603,24 @@ func (op *trap) Execute() {
 	}
 }
 
-func (err *trapErr) Error() string {
-	return fmt.Sprintf("INT: TRAP (%s:%s)", err.table, err.vec)
+type trapError struct {
+	*interrupt
 }
 
-func (err *trapErr) Handle(cpu *LC3) error {
+func (te *trapError) Is(target error) bool {
+	switch target.(type) {
+	case *trapError, *interrupt:
+		return true
+	default:
+		return false
+	}
+}
+
+func (te *trapError) Error() string {
+	return fmt.Sprintf("INT: TRAP (%s:%s)", te.table, te.vec)
+}
+
+func (te *trapError) Handle(cpu *LC3) error {
 	// Switch from the user to the system stack and system privilege level
 	// if it is a user trap.
 	if cpu.PSR.Privilege() == PrivilegeUser {
@@ -638,7 +629,7 @@ func (err *trapErr) Handle(cpu *LC3) error {
 		cpu.PSR &= ^StatusUser
 	}
 
-	return err.interrupt.Handle(cpu)
+	return te.interrupt.Handle(cpu)
 }
 
 // RTI: Return from trap or interrupt
@@ -648,9 +639,7 @@ func (err *trapErr) Handle(cpu *LC3) error {
 // |15  12|11             0|
 type rti struct{ mo }
 
-var (
-	_ executable = &rti{}
-)
+var _ executable = &rti{}
 
 func (op *rti) Decode(vm *LC3) {
 	op.vm = vm
@@ -696,18 +685,27 @@ type pmv struct {
 	interrupt
 }
 
-func (pmv *pmv) Error() string {
-	return fmt.Sprintf("INT: PMV (%s:%s)", pmv.table, pmv.vec)
+func (pe *pmv) Is(target error) bool {
+	switch target.(type) {
+	case *pmv, *interrupt:
+		return true
+	default:
+		return false
+	}
 }
 
-func (pmv *pmv) Handle(cpu *LC3) error {
+func (pe *pmv) Error() string {
+	return fmt.Sprintf("INT: PMV (%s:%s)", pe.table, pe.vec)
+}
+
+func (pe *pmv) Handle(cpu *LC3) error {
 	// PMV only occurs with user privileges so switch to system before
 	// handling the interrupt.
 	cpu.USP = cpu.REG[SP]
 	cpu.REG[SP] = cpu.SSP
 	cpu.PSR ^= StatusUser
 
-	return pmv.interrupt.Handle(cpu)
+	return pe.interrupt.Handle(cpu)
 }
 
 // RESV: Reserved operator
@@ -725,7 +723,7 @@ func (op *resv) Decode(vm *LC3) {
 
 func (op *resv) Execute() {
 	op.err = &xop{
-		interrupt{
+		&interrupt{
 			table: ExceptionServiceRoutines,
 			vec:   ExceptionXOP,
 			pc:    op.vm.PC,
@@ -735,21 +733,32 @@ func (op *resv) Execute() {
 }
 
 type xop struct {
-	interrupt
+	*interrupt
 }
 
-func (xop *xop) Error() string {
-	return fmt.Sprintf("INT: XOP (%s:%s)", xop.table, xop.vec)
+var _ interruptableError = (*xop)(nil)
+
+func (xe *xop) Is(target error) bool {
+	switch target.(type) {
+	case *xop, *interrupt:
+		return true
+	default:
+		return false
+	}
 }
 
-func (xop *xop) Handle(cpu *LC3) error {
+func (xe *xop) Error() string {
+	return fmt.Sprintf("INT: XOP (%s:%s)", xe.table, xe.vec)
+}
+
+func (xe *xop) Handle(cpu *LC3) error {
 	// Switch from the user to the system stack and system privilege level
-	// if it is a user trap.
+	// if it is a user calling for the trap.
 	if cpu.PSR.Privilege() == PrivilegeUser {
 		cpu.USP = cpu.REG[SP]
 		cpu.REG[SP] = cpu.SSP
 		cpu.PSR ^= StatusUser
 	}
 
-	return xop.interrupt.Handle(cpu)
+	return xe.interrupt.Handle(cpu)
 }

@@ -1,0 +1,30 @@
+
+linters:
+    disable-all: true
+    enable:
+        - wsl
+        - thelper
+        - tparallel
+        - stylecheck
+        - unconvert
+        - reassign
+        - predeclared
+        - prealloc
+        - nilerr
+        - gci
+        - errname
+
+    presets:
+        - bugs
+        - format
+        - module
+        - performance
+        - unused
+
+linters-settings:
+    depguard:
+        rules:
+            main:
+                allow:
+                    - $gostd
+                    - github.com/smoynes/elsie
