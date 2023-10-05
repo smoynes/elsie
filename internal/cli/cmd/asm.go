@@ -82,7 +82,6 @@ func (a *assembler) Run(ctx context.Context, args []string, out io.Writer, logge
 			"code", code,
 			"gen", fmt.Sprintf("%0#4x", mc),
 			"err", err)
-
 	}
 
 	// TODO: second pass

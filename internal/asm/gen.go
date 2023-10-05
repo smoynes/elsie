@@ -24,7 +24,6 @@ const (
 // Operation is an assembly instruction or directive. It is parsed from source code during the
 // assembler's first pass and encoded to object code in the second pass.
 type Operation interface {
-
 	// Parse initializes an assembly operation by parsing an opcode and its operands. An error is
 	// returned if parsing the operands fails.
 	Parse(operator string, operands []string) error
