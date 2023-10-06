@@ -570,9 +570,9 @@ func (op *jsrr) Execute() {
 
 // TRAP: System call or software interrupt.
 //
-// | 1111 | 0000 | VECTOR8 |
-// |------+------+---------|
-// |15  12|11   8|7       0|
+//	| 1111 | 0000 | VECTOR8 |
+//	|------+------+---------|
+//	|15  12|11   8|7       0|
 type trap struct {
 	mo
 	vec Word

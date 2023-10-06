@@ -34,45 +34,45 @@ func TestAND_Parse(t *testing.T) {
 	}{
 		{
 			name: "immediate decimal",
-			args: args{"AND", []string{"R0", "R1", "#123"}},
+			args: args{"AND", []string{"R0", "R1", "#12"}},
 			want: &AND{
 				Mode:   ImmediateMode,
 				DR:     "R0",
 				SR1:    "R1",
-				OFFSET: uint16(123) | 0xffc0,
+				OFFSET: uint16(12),
 			},
 			wantErr: false,
 		},
 		{
 			name: "immediate hex",
-			args: args{"AND", []string{"R0", "R2", "#x123"}},
+			args: args{"AND", []string{"R0", "R2", "#x1f"}},
 			want: &AND{
 				Mode:   ImmediateMode,
 				DR:     "R0",
 				SR1:    "R2",
-				OFFSET: 0x123 & 0x001f,
+				OFFSET: 0x1f,
 			},
 			wantErr: false,
 		},
 		{
 			name: "immediate octal",
-			args: args{"AND", []string{"R0", "R3", "#o123"}},
+			args: args{"AND", []string{"R0", "R3", "#o12"}},
 			want: &AND{
 				Mode:   ImmediateMode,
 				DR:     "R0",
 				SR1:    "R3",
-				OFFSET: 0o123 | 0xffe0,
+				OFFSET: 0o12,
 			},
 			wantErr: false,
 		},
 		{
 			name: "immediate binary",
-			args: args{"AND", []string{"R0", "R4", "#b111"}},
+			args: args{"AND", []string{"R0", "R4", "#b01111"}},
 			want: &AND{
 				Mode:   ImmediateMode,
 				DR:     "R0",
 				SR1:    "R4",
-				OFFSET: 0b111,
+				OFFSET: 0b1111,
 			},
 			wantErr: false,
 		},
@@ -347,8 +347,20 @@ func TestLDR_Parse(t *testing.T) {
 		{
 			name:      "LDR literal",
 			operation: testParseOperation{"LDR", []string{"DR", "SR", "#-1"}},
-			want:      &LDR{DR: "DR", SR: "SR", OFFSET: 0xffff},
+			want:      &LDR{DR: "DR", SR: "SR", OFFSET: 0x3f},
 			wantErr:   nil,
+		},
+		{
+			name:      "LDR literal too large",
+			operation: testParseOperation{"LDR", []string{"DR", "SR", "#x40"}},
+			want:      &LDR{DR: "DR", SR: "SR", OFFSET: 0x00},
+			wantErr:   &SyntaxError{},
+		},
+		{
+			name:      "LDR literal too negative",
+			operation: testParseOperation{"LDR", []string{"DR", "SR", "#-64"}},
+			want:      &LDR{DR: "DR", SR: "SR", OFFSET: 0x3f},
+			wantErr:   &SyntaxError{},
 		},
 	}
 
@@ -602,6 +614,105 @@ func TestNOT_Generate(t *testing.T) {
 		{
 			op:   &NOT{DR: "R1", SR: "R1"},
 			want: 0x925f,
+		},
+	}
+
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	for tc := range tcs {
+		op, exp, wantErr := tcs[tc].op, tcs[tc].want, tcs[tc].wantErr
+
+		mc, err := op.Generate(symbols, pc)
+		if err != nil {
+			t.Fatalf("unexpected error: %#v", err)
+		}
+
+		if mc == 0xffff {
+			t.Error("invalid machine code")
+		}
+
+		if wantErr == nil && mc != exp {
+			t.Errorf("tc: %#v", tcs[tc].op)
+			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
+		}
+
+		if wantErr != nil && errors.Is(err, wantErr) {
+			t.Errorf("tc: %#v", tcs[tc].op)
+			t.Errorf("expected error: want: %#v, got: %#v", wantErr, err)
+
+		}
+	}
+}
+
+func TestTRAP_Parse(t *testing.T) {
+	tests := []testParseOperationCase{
+		{
+			name:      "bad oper",
+			operation: testParseOperation{"OP", []string{"x21"}},
+			want:      nil,
+			wantErr:   &SyntaxError{},
+		},
+		{
+			name:      "too few operands",
+			operation: testParseOperation{"TRAP", []string{}},
+			want:      nil,
+			wantErr:   &SyntaxError{},
+		},
+		{
+			name:      "too many operands",
+			operation: testParseOperation{"TRAP", []string{"x25", "x21"}},
+			want:      nil,
+			wantErr:   &SyntaxError{},
+		},
+		{
+			name:      "TRAP",
+			operation: testParseOperation{"TRAP", []string{"x25"}},
+			want:      &TRAP{LITERAL: 0x0025},
+			wantErr:   nil,
+		},
+		{
+			name:      "TRAP literal too big",
+			operation: testParseOperation{"TRAP", []string{"x100"}},
+			want:      &TRAP{LITERAL: 0x00ff},
+			wantErr:   &SyntaxError{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &TRAP{}
+			err := got.Parse(tt.operation.opcode, tt.operation.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr != nil && errors.Is(err, tt.wantErr) {
+				t.Fatalf("expected err: %#v, got: %#v", tt.wantErr, err)
+			}
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NOT.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTRAP_Generate(t *testing.T) {
+	tcs := []struct {
+		op      Operation
+		want    uint16
+		wantErr error
+	}{
+		{
+			op:   &TRAP{LITERAL: 0x00ff},
+			want: 0xf0ff,
+		},
+		{
+			op:   &TRAP{LITERAL: 0x0025},
+			want: 0xf025,
 		},
 	}
 

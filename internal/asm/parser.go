@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"regexp"
 	"strconv"
 	"strings"
@@ -268,6 +267,8 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		return &LD{}
 	case "LDR":
 		return &LDR{}
+	case "TRAP":
+		return &TRAP{}
 	case p.probeOpcode:
 		return p.probeInstr
 	default:
@@ -335,24 +336,6 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 	return nil
 }
 
-func parseLiteralConstant(arg string) (uint16, error) {
-	switch arg[0] {
-	case 'x', 'b', 'o':
-		arg = "0" + arg
-	}
-
-	val, err := strconv.ParseUint(arg, 0, 16)
-	numError := &strconv.NumError{}
-
-	if errors.As(err, &numError) {
-		return 0, fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
-	} else if val > math.MaxUint16 {
-		return 0, errors.New("argument error")
-	}
-
-	return uint16(val), nil
-}
-
 // parseRegister returns the register name from an operand or an empty value if the register does
 // not exist.
 func parseRegister(oper string) string {
@@ -380,46 +363,68 @@ func parseRegister(oper string) string {
 //	LABEL
 //	[LABEL]
 func parseImmediate(oper string, n uint8) (uint16, string, error) {
-	if len(oper) > 1 && oper[0] == '#' {
-		val, err := literalVal(oper, n)
+	if len(oper) > 1 && oper[0] == '#' { // Immediate-mode prefix.
+		val, err := parseLiteral(oper[1:], n)
+
 		return val, "", err
-	} else if len(oper) > 2 && oper[0] == '[' && oper[len(oper)-1] == ']' {
+	} else if len(oper) > 2 && oper[0] == '[' && oper[len(oper)-1] == ']' { // [LABEL]
 		return 0, oper[1 : len(oper)-2], nil
-	} else {
-		return 0, oper, nil
+	} else if len(oper) > 1 {
+		val, err := parseLiteral(oper, n)
+
+		if err != nil {
+			return 0, oper, nil
+		}
+
+		return val, oper, nil
+
+	} else { // oh no
+		return 0xffff, "", errors.New("operand error")
 	}
 }
 
-// literalVal converts a operand as literal text to an integer value. If the literal cannot be
-// parsed, an error is returned.
-func literalVal(operand string, n uint8) (uint16, error) {
-	if len(operand) < 2 {
+// parseLiteral converts an operand as literal text to an n-bit integer value. If the literal cannot
+// be parsed, or if the value exceeds 2ⁿ bits, an error is returned. Accepts operands in the
+// forms:
+//
+// - x0000
+// - o000
+// - b01011010
+// - 0
+// - -1
+func parseLiteral(operand string, n uint8) (uint16, error) {
+	if len(operand) == 0 {
 		return 0xffff, fmt.Errorf("literal error: %s", operand)
 	}
 
-	pref, lit := operand[:2], operand[2:]
-	base := 0
+	prefix := operand[0]
+	literal := operand
 
 	switch {
-	case pref == "#x":
-		base = 16
-	case pref == "#o":
-		base = 8
-	case pref == "#b":
-		base = 2
-	case operand[0] == '#':
-		base = 10
-		lit = operand[1:]
-	default:
-		lit = operand
+	case prefix == 'x':
+		literal = "0" + operand
+	case prefix == 'o':
+		literal = "0" + operand
+	case prefix == 'b':
+		literal = "0" + operand
 	}
 
-	i, err := strconv.ParseInt(lit, base, 16)
+	// The parsed value must not exceed n bits, i.e. its range is [0, 2ⁿ). Using strconv.Uint16
+	// seems like the thing to do. However, it does not accept negative literals, e.g.
+	// ADD R1,R1,#-1. So, we use n+1 here, giving us the range [-2ⁿ, 2ⁿ], and checking for overflow
+	// and converting to unsigned.
+	val64, err := strconv.ParseInt(literal, 0, int(n)+1)
 	if err != nil {
-		return 0xffff, fmt.Errorf("literal error: %s", lit)
+		return 0xffff, fmt.Errorf("literal error: %s %d", operand, val64)
 	}
 
-	val := int16(i) << (16 - n) >> (16 - n)
+	var bitmask int64 = 1<<n - 1
 
-	return uint16(val), nil
+	if val64 < -bitmask || val64 > bitmask { // 0 <= val64 < 2ⁿ
+		return 0xffff, fmt.Errorf("literal error: max: %x %s %x", 1<<n, operand, val64)
+	}
+
+	val16 := uint16(val64) & uint16(bitmask)
+
+	return val16, nil
 }

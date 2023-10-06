@@ -423,6 +423,43 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	return code, nil
 }
 
+// TRAP: System call or software interrupt.
+//
+//	TRAP x25
+//
+//	| 1111 | 0000 | VECTOR8 |
+//	|------+------+---------|
+//	|15  12|11   8|7       0|
+//
+// .
+type TRAP struct {
+	LITERAL uint16
+}
+
+func (trap TRAP) String() string { return fmt.Sprintf("%#v", trap) }
+
+func (trap *TRAP) Parse(opcode string, operands []string) error {
+	if opcode != "TRAP" {
+		return errors.New("trap: operator error")
+	} else if len(operands) != 1 {
+		return errors.New("trap: operand error")
+	}
+
+	lit, err := parseLiteral(operands[0], 8)
+	if err != nil {
+		return fmt.Errorf("trap: operand error: %s", err)
+	}
+
+	*trap = TRAP{
+		LITERAL: uint16(lit),
+	}
+	return nil
+}
+func (trap TRAP) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
+	var code uint16 = 0xf<<12 | trap.LITERAL&0x00ff
+	return code, nil
+}
+
 // NOT: Bitwise complement.
 //
 //	NOT DR,SR ;; DR <- ^(SR)
@@ -477,7 +514,7 @@ type FILL struct {
 }
 
 func (fill *FILL) Parse(opcode string, operands []string) error {
-	val, err := parseLiteralConstant(operands[0])
+	val, err := parseLiteral(operands[0], 16)
 	fill.LITERAL = val
 	return err
 }
@@ -494,13 +531,13 @@ type BLKW struct {
 }
 
 func (blkw *BLKW) Parse(opcode string, operands []string) error {
-	val, err := parseLiteralConstant(operands[0])
+	val, err := parseLiteral(operands[0], 16)
 	blkw.ALLOC = val
 	return err
 }
 
-func (blkw *BLKW) Generate(_ SymbolTable, pc uint16) (uint16, error) {
-	return 0x2361, nil // TODO: un-init memory
+func (blkw *BLKW) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
+	return 0x2361, nil // TODO: un-init memory ?
 }
 
 // .ORIG: Origin directive. Sets the location counter to the value.
