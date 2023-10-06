@@ -47,9 +47,9 @@ func (op *mo) String() string { return fmt.Sprintf("ins: %s", op.vm.IR.Opcode())
 
 // BR: Conditional branch
 //
-// | 0000 | NZP | OFFSET9 |
-// |------+-----+---------|
-// |15  12|11  9|8       0|
+//	| 0000 | NZP | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
 type br struct {
 	mo
 	cond   Condition
@@ -108,13 +108,13 @@ func (op *not) Execute() {
 
 // AND: Bitwise AND binary operator
 //
-// | 0101 | DR | SR1 | 0 | 00 | SR2 | (register mode)
-// |------+----+-----+---+----+-----|
-// |15  12|11 9|8   6| 5 |4  3|2   0|
+//	| 0101 | DR | SR1 | 0 | 00 | SR2 | (register mode)
+//	|------+----+-----+---+----+-----|
+//	|15  12|11 9|8   6| 5 |4  3|2   0|
 //
-// | 0101 | DR | SR1 | 1 |   IMM5   | (immediate mode)
-// |------+----+-----+---+----------|
-// |15  12|11 9|8   6| 5 |4        0|
+//	| 0101 | DR | SR1 | 1 |   IMM5   | (immediate mode)
+//	|------+----+-----+---+----------|
+//	|15  12|11 9|8   6| 5 |4        0|
 type and struct {
 	mo
 	dest GPR
@@ -168,15 +168,16 @@ func (op *andImm) Execute() {
 
 // ADD: Arithmetic addition operator
 //
-// | 0001 | DR | SR1 | 000 | SR2 |  (register mode)
-// |------+----+-----+-----+-----|
-// |15  12|11 9|8   6| 5  3|2   0|
+//	| 0001 | DR | SR1 | 000 | SR2 |  (register mode)
+//	|------+----+-----+-----+-----|
+//	|15  12|11 9|8   6| 5  3|2   0|
 //
 // ADD: Arithmetic addition operator (immediate mode)
 //
-// | 0001 | DR  | SR | 1 | IMM5 |
-// |------+-----+----+---+------|
-// |15  12|11  9|8  6| 5 |4    0|
+//	| 0001 | DR  | SR | 1 | IMM5 |
+//	|------+-----+----+---+------|
+//	|15  12|11  9|8  6| 5 |4    0|
+//
 // .
 type add struct {
 	mo
@@ -226,9 +227,11 @@ func (op *addImm) Execute() {
 
 // LD: Load word from memory.
 //
-// | 0010 | DR  | OFFSET9 |
-// |------+-----+---------|
-// |15  12|11  9|8       0|
+//	| 0010 | DR  | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
+//
+// .
 type ld struct {
 	mo
 	dr     GPR
@@ -262,9 +265,11 @@ func (op *ld) Execute() {
 
 // LDI: Load indirect
 //
-// | 1010 | DR | OFFSET9 |
-// |------+--------------|
-// |15  12|11 9|8       0|
+//	| 1010 | DR | OFFSET9 |
+//	|------+--------------|
+//	|15  12|11 9|8       0|
+//
+// .
 type ldi struct {
 	mo
 	dr     GPR
@@ -309,9 +314,9 @@ func (op *ldi) String() string {
 
 // LDR: Load Relative
 //
-// | 0110 | DR | BASE | OFFSET6 |
-// |------+----+------+---------|
-// |15  12|11 9|8    6|5       0|
+//	| 0110 | DR | BASE | OFFSET6 |
+//	|------+----+------+---------|
+//	|15  12|11 9|8    6|5       0|
 type ldr struct {
 	mo
 	dr     GPR
@@ -347,9 +352,9 @@ func (op *ldr) Execute() {
 
 // LEA: Load effective address
 //
-// | 1110 | DR | OFFSET9 |
-// |------+--------------|
-// |15  12|11 9|8       0|
+//	| 1110 | DR | OFFSET9 |
+//	|------+--------------|
+//	|15  12|11 9|8       0|
 type lea struct {
 	mo
 	dr     GPR
@@ -376,9 +381,9 @@ func (op *lea) FetchOperands() {
 
 // ST: Store word in memory.
 //
-// | 0011 | SR  | OFFSET9 |
-// |------+-----+---------|
-// |15  12|11  9|8       0|
+//	| 0011 | SR  | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
 type st struct {
 	mo
 	sr     GPR
@@ -410,9 +415,9 @@ func (op *st) StoreResult() {} // ?
 
 // STI: Store Indirect.
 //
-// | 1011 | SR  | OFFSET9 |
-// |------+-----+---------|
-// |15  12|11  9|8       0|
+//	| 1011 | SR  | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
 type sti struct {
 	mo
 	sr     GPR
@@ -449,9 +454,11 @@ func (op *sti) StoreResult() {}
 
 // STR: Store Relative.
 //
-// | 0111 | SR | GPR | OFFSET6 |
-// |------+----+-----+---------|
-// |15  12|11 9|8   6|5       0|
+//	| 0111 | SR | GPR | OFFSET6 |
+//	|------+----+-----+---------|
+//	|15  12|11 9|8   6|5       0|
+//
+// .
 type str struct {
 	mo
 	sr     GPR
@@ -490,14 +497,17 @@ func (op *str) StoreResult() {}
 
 // JMP: Unconditional branch
 //
-// | 1100 | 000 | SR | 00 00000 |
-// |------+-----+----+----------|
-// |15  12|11  9|8  6|5        0|
+//	| 1100 | 000 | SR | 00 00000 |
+//	|------+-----+----+----------|
+//	|15  12|11  9|8  6|5        0|
 //
 // RET: Return from subroutine
-// | 1100 | 111 | SR | 00 00000 |
-// |------+-----+----+----------|
-// |15  12|11  9|8  6|5        0|
+//
+//	| 1100 | 111 | SR | 00 00000 |
+//	|------+-----+----+----------|
+//	|15  12|11  9|8  6|5        0|
+//
+// .
 type jmp struct {
 	mo
 	sr GPR
@@ -519,15 +529,16 @@ func (op *jmp) Execute() {
 
 // JSR: Jump to subroutine (relative mode)
 //
-// | 0100 |  1 | OFFSET11 |
-// |------+----+----------|
-// |15  12| 11 |10       0|
+//	| 0100 |  1 | OFFSET11 |
+//	|------+----+----------|
+//	|15  12| 11 |10       0|
 //
 // JSRR: Jump to subroutine (register mode)
 //
-// | 0100 |  0 | SR | 00 0000 |
-// |------+----+----+---------|
-// |15  12| 11 |8  6|5       0|
+//	| 0100 |  0 | SR | 00 0000 |
+//	|------+----+----+---------|
+//	|15  12| 11 |8  6|5       0|
+//
 // .
 type jsr struct {
 	mo
@@ -633,9 +644,11 @@ func (te *trapError) Handle(cpu *LC3) error {
 
 // RTI: Return from trap or interrupt
 //
-// | 1000 | 0000 0000 0000 |
-// |------+----------------|
-// |15  12|11             0|
+//	| 1000 | 0000 0000 0000 |
+//	|------+----------------|
+//	|15  12|11             0|
+//
+// .
 type rti struct{ mo }
 
 var _ executable = &rti{}
@@ -709,9 +722,11 @@ func (pe *pmv) Handle(cpu *LC3) error {
 
 // RESV: Reserved operator
 //
-// | 1101 | 0000 0000 0000 |
-// |------+----------------|
-// |15  12|11             0|
+//	| 1101 | 0000 0000 0000 |
+//	|------+----------------|
+//	|15  12|11             0|
+//
+// .
 type resv struct{ mo }
 
 var _ executable = &resv{}
