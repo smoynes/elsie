@@ -365,15 +365,13 @@ func parseRegister(oper string) string {
 func parseImmediate(oper string, n uint8) (uint16, string, error) {
 	if len(oper) > 1 && oper[0] == '#' { // Immediate-mode prefix.
 		val, err := parseLiteral(oper[1:], n)
-
 		return val, "", err
 	} else if len(oper) > 2 && oper[0] == '[' && oper[len(oper)-1] == ']' { // [LABEL]
 		return 0, oper[1 : len(oper)-2], nil
 	} else if len(oper) > 1 {
 		val, err := parseLiteral(oper, n)
-
 		if err != nil {
-			return 0, oper, nil
+			return 0, oper, nil //nolint:nilerr
 		}
 
 		return val, oper, nil

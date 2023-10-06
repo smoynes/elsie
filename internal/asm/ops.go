@@ -67,15 +67,15 @@ func (br *BR) Parse(oper string, opers []string) error {
 		nzp = 0o7
 	case "BRP":
 		nzp = 0o1
-	case "BRN":
-		nzp = 0o2
-	case "BRNP":
-		nzp = 0o3
 	case "BRZ":
-		nzp = 0o4
+		nzp = 0o2
 	case "BRZP":
+		nzp = 0o3
+	case "BRN":
+		nzp = 0o4
+	case "BRNP":
 		nzp = 0o5
-	case "BRZN":
+	case "BRNZ":
 		nzp = 0o6
 	default:
 		return fmt.Errorf("unknown opcode: %s", oper)
@@ -107,16 +107,15 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 
 	if br.SYMBOL != "" {
 		loc, err = symbolVal(br.SYMBOL, symbols, pc)
-		loc = loc - pc
+
+		if err != nil {
+			return 0xffff, fmt.Errorf("and: %q: %w", br.SYMBOL, err)
+		}
+
+		code |= (0x01ff &^ (pc - loc)) // TODO ??
 	} else {
-		loc = pc + br.OFFSET&0x01ff
+		code |= br.OFFSET & 0x01ff
 	}
-
-	if err != nil {
-		return 0xffff, fmt.Errorf("gen: br: operand: %w", err)
-	}
-
-	code |= loc
 
 	return code, nil
 }
@@ -178,13 +177,13 @@ func (and *AND) Parse(oper string, opers []string) error {
 }
 
 // Generate returns the machine code for an AND instruction.
-func (and AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
+func (and *AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	var code uint16
 
 	dr := registerVal(and.DR)
 	sr1 := registerVal(and.SR1)
 
-	code |= 0o6 << 12
+	code |= 0o5 << 12
 	code |= dr << 9
 	code |= sr1 << 6
 
@@ -205,9 +204,9 @@ func (and AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 
 		switch {
 		case and.SYMBOL != "":
-			loc, ok := symbols[and.SYMBOL]
-			if !ok {
-				return 0xffff, fmt.Errorf("and: symbol error: %q", and.SYMBOL)
+			loc, err := symbolVal(and.SYMBOL, symbols, pc)
+			if err != nil {
+				return 0xffff, fmt.Errorf("and: %q: %w", and.SYMBOL, err)
 			}
 
 			code |= pc - (loc & 0x1f)
@@ -261,13 +260,13 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 }
 
 func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	dr := registerVal(ld.DR)
+	var code uint16 = 0o2 << 12
 
+	dr := registerVal(ld.DR)
 	if dr == 0xffff {
 		return 0xffff, fmt.Errorf("ld: register error")
 	}
 
-	var code uint16 = 0o2 << 12
 	code |= dr << 9
 
 	switch {
@@ -277,11 +276,11 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 			return 0xffff, fmt.Errorf("ld: symbol error: %q", ld.SYMBOL)
 		}
 
-		code |= pc - (loc & 0x1ff) // TODO ??
+		code |= (0x00ff &^ (pc - loc)) // TODO ??
 
 		return code, nil
 	default:
-		code |= ld.OFFSET & 0x001ff
+		code |= ld.OFFSET & 0x0ff
 		return code, nil
 	}
 }
@@ -325,13 +324,16 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 }
 
 func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
+	code := uint16(0x6 << 12)
 	dr := registerVal(ldr.DR)
+	sr := registerVal(ldr.SR)
 
-	if dr == BadRegister {
+	if dr == BadRegister || sr == BadRegister {
 		return 0xffff, fmt.Errorf("ldr: register error")
 	}
 
-	code := 0b0010<<12 | dr<<9
+	code |= dr << 9
+	code |= sr << 6
 
 	switch {
 	case ldr.SYMBOL != "":
@@ -340,11 +342,11 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 			return 0xffff, fmt.Errorf("ldr: symbol error: %q", ldr.SYMBOL)
 		}
 
-		code |= (pc - loc) & 0x001f
+		code |= (pc - loc) & 0x003f
 
 		return code, nil
 	default:
-		code |= ldr.OFFSET & 0x001f
+		code |= ldr.OFFSET & 0x003f
 		return code, nil
 	}
 }
@@ -367,7 +369,6 @@ type ADD struct {
 	DR      string
 	SR1     string
 	SR2     string // Not empty when register mode.
-	SYMBOL  string // Not empty with symbol, immediate mode.
 	LITERAL uint16 // Literal value otherwise, immediate mode.
 }
 
@@ -388,13 +389,12 @@ func (add *ADD) Parse(opcode string, operands []string) error {
 	if sr2 := parseRegister(operands[2]); sr2 != "" {
 		add.SR2 = sr2
 	} else {
-		off, sym, err := parseImmediate(operands[2], 5)
+		off, _, err := parseImmediate(operands[2], 5)
 		if err != nil {
 			return fmt.Errorf("add: operand error: %w", err)
 		}
 
 		add.LITERAL = off & 0x1f
-		add.SYMBOL = sym
 	}
 
 	return nil
@@ -403,22 +403,23 @@ func (add *ADD) Parse(opcode string, operands []string) error {
 func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	var code uint16 = 0b0001 << 12
 
+	dr := registerVal(add.DR)
 	sr1 := registerVal(add.SR1)
-	if sr1 == BadRegister {
+
+	if dr == BadRegister || sr1 == BadRegister {
 		return 0, errors.New("add: register error")
 	}
 
+	code |= dr << 9
 	code |= sr1 << 6
 
 	if add.SR2 != "" {
 		sr2 := registerVal(add.SR2)
 		code |= sr2
-
-		return code, nil
+	} else {
+		code |= 1 << 6
+		code |= add.LITERAL & 0x001f
 	}
-
-	code |= 1 << 5
-	code |= add.LITERAL & 0x001f
 
 	return code, nil
 }
@@ -447,16 +448,18 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 
 	lit, err := parseLiteral(operands[0], 8)
 	if err != nil {
-		return fmt.Errorf("trap: operand error: %s", err)
+		return fmt.Errorf("trap: operand error: %w", err)
 	}
 
 	*trap = TRAP{
-		LITERAL: uint16(lit),
+		LITERAL: lit,
 	}
+
 	return nil
 }
+
 func (trap TRAP) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var code uint16 = 0xf<<12 | trap.LITERAL&0x00ff
+	code := 0xf<<12 | trap.LITERAL&0x00ff
 	return code, nil
 }
 
@@ -483,9 +486,12 @@ func (not *NOT) Parse(opcode string, operands []string) error {
 		return errors.New("not: operand error")
 	}
 
+	dr := parseRegister(operands[0])
+	sr := parseRegister(operands[1])
+
 	*not = NOT{
-		DR: parseRegister(operands[0]),
-		SR: parseRegister(operands[1]),
+		DR: dr,
+		SR: sr,
 	}
 
 	return nil
@@ -498,9 +504,16 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 		return 0xffff, fmt.Errorf("gen: not: bad operand")
 	}
 
+	dr := registerVal(not.DR)
+	sr := registerVal(not.SR)
+
+	if dr == BadRegister || sr == BadRegister {
+		return 0xffff, errors.New("not: operand error")
+	}
+
 	code |= registerVal(not.DR) << 9
 	code |= registerVal(not.SR) << 6
-	code |= 0x001f
+	code |= 0x003f
 
 	return code, nil
 }
@@ -516,6 +529,7 @@ type FILL struct {
 func (fill *FILL) Parse(opcode string, operands []string) error {
 	val, err := parseLiteral(operands[0], 16)
 	fill.LITERAL = val
+
 	return err
 }
 
@@ -533,6 +547,7 @@ type BLKW struct {
 func (blkw *BLKW) Parse(opcode string, operands []string) error {
 	val, err := parseLiteral(operands[0], 16)
 	blkw.ALLOC = val
+
 	return err
 }
 
@@ -611,6 +626,6 @@ func symbolVal(oper string, sym SymbolTable, _ uint16) (uint16, error) {
 	if val, ok := sym[oper]; ok {
 		return val, nil
 	} else {
-		return 0xffff, errors.New("codegen: symbolic ref: not implemented")
+		return 0xffff, errors.New("symbol: not found")
 	}
 }

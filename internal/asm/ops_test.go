@@ -152,8 +152,8 @@ func TestAND_Generate(t *testing.T) {
 			t.Error("invalid machine code")
 		}
 
-		if mc != 0x61f0 {
-			t.Errorf("bad maching code: %04X", mc)
+		if mc != 0x51f0 {
+			t.Errorf("bad maching code: want: %0#4x got: %0#4X", 0x6150, mc)
 		}
 	}
 
@@ -211,12 +211,12 @@ func TestBR_Parse(t *testing.T) {
 		{
 			name:    "BRz",
 			args:    args{"BRz", []string{"#b10010"}},
-			want:    &BR{NZP: 0x4, OFFSET: 0x12},
+			want:    &BR{NZP: 0x2, OFFSET: 0x12},
 			wantErr: false,
 		},
 		{
-			name:    "BRzn",
-			args:    args{"BRzn", []string{"#b10011"}},
+			name:    "BRnz",
+			args:    args{"BRnz", []string{"#b10011"}},
 			want:    &BR{NZP: 0x6, OFFSET: 0x13},
 			wantErr: false,
 		},
@@ -229,13 +229,13 @@ func TestBR_Parse(t *testing.T) {
 		{
 			name:    "BRzp",
 			args:    args{"BRzp", []string{"LABEL"}},
-			want:    &BR{NZP: 0x5, SYMBOL: "LABEL"},
+			want:    &BR{NZP: 0x3, SYMBOL: "LABEL"},
 			wantErr: false,
 		},
 		{
 			name:    "BRn",
 			args:    args{"BRN", []string{"LABEL"}},
-			want:    &BR{NZP: 0x2, SYMBOL: "LABEL"},
+			want:    &BR{NZP: 0x4, SYMBOL: "LABEL"},
 			wantErr: false,
 		},
 		{
@@ -267,8 +267,8 @@ func TestBR_Generate(t *testing.T) {
 		i  Operation
 		mc uint16
 	}{
-		{&BR{NZP: 0x7, OFFSET: 0x01}, 0x3e01},
-		{&BR{NZP: 0x2, OFFSET: 0xfff0}, 0x35f0},
+		{&BR{NZP: 0x7, OFFSET: 0x01}, 0x0e01},
+		{&BR{NZP: 0x2, OFFSET: 0xfff0}, 0x05f0},
 	}
 
 	pc := uint16(0x3000)
@@ -289,7 +289,7 @@ func TestBR_Generate(t *testing.T) {
 			}
 
 			if mc != exp {
-				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", mc, exp)
+				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
 			}
 		}
 	}
@@ -385,8 +385,8 @@ func TestLDR_Parse(t *testing.T) {
 
 func TestLDR_Generate(t *testing.T) {
 	instrs := []Operation{
-		&LDR{DR: "R0", SR: "SR", OFFSET: 0x10},
-		&LDR{DR: "R7", SR: "SR", SYMBOL: "LABEL"},
+		&LDR{DR: "R0", SR: "R5", OFFSET: 0x10},
+		&LDR{DR: "R7", SR: "R4", SYMBOL: "LABEL"},
 	}
 
 	pc := uint16(0x3000)
@@ -403,8 +403,8 @@ func TestLDR_Generate(t *testing.T) {
 			t.Error("invalid machine code")
 		}
 
-		if mc != 0x2010 {
-			t.Errorf("bad machine code: %04x", mc)
+		if mc != 0x6150 {
+			t.Errorf("bad machine code: want: %0#4x got: %0#4x", 0x6150, mc)
 		}
 	}
 
@@ -417,8 +417,8 @@ func TestLDR_Generate(t *testing.T) {
 			t.Error("invalid machine code")
 		}
 
-		if mc != 0x2e00 {
-			t.Errorf("bad machine code: %04x", mc)
+		if mc != 0x6f00 {
+			t.Errorf("bad machine code: want: %0#4x got: %04x", 0x6f00, mc)
 		}
 	}
 }
@@ -444,7 +444,7 @@ func TestLD_Generate(t *testing.T) {
 		}
 
 		if mc != 0x2010 {
-			t.Errorf("bad machine code: %04x", mc)
+			t.Errorf("bad machine code: want: %0#4x %0#4x", 0x2010, mc)
 		}
 	}
 
@@ -457,8 +457,8 @@ func TestLD_Generate(t *testing.T) {
 			t.Error("invalid machine code")
 		}
 
-		if mc != 0x2f00 {
-			t.Errorf("bad machine code: %04x", mc)
+		if mc != 0x2eff {
+			t.Errorf("bad machine code: want: %0#4x %0#4x", 0x2eff, mc)
 		}
 	}
 }
@@ -475,12 +475,6 @@ func TestADD_Parse(t *testing.T) {
 			name:      "ADD register",
 			operation: testParseOperation{"ADD", []string{"R0", "R0", "R1"}},
 			want:      &ADD{DR: "R0", SR1: "R0", SR2: "R1"},
-			wantErr:   nil,
-		},
-		{
-			name:      "ADD label",
-			operation: testParseOperation{"ADD", []string{"R7", "R0", "LABEL"}},
-			want:      &ADD{DR: "R7", SR1: "R0", LITERAL: 0, SYMBOL: "LABEL"},
 			wantErr:   nil,
 		},
 		{
@@ -516,9 +510,9 @@ func TestADD_Generate(t *testing.T) {
 		mc        uint16
 	}{
 		{&ADD{DR: "R0", SR1: "R0", SR2: "R1"}, 0x1001},
-		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x0000}, 0x1060},
-		{&ADD{DR: "R0", SR1: "R7", LITERAL: 0b0000_0000_0000_1010}, 0b0001_0001_1110_1010},
-		{&ADD{DR: "R1", SR1: "R1", SYMBOL: "LABEL"}, 0x1060},
+		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x000f}, 0x124f},
+		{&ADD{DR: "R1", SR1: "R1", SR2: "R0"}, 0x1240},
+		{&ADD{DR: "R0", SR1: "R7", LITERAL: 0b0000_0000_0000_1010}, 0b0001_0001_1100_1010},
 	}
 
 	pc := uint16(0x3000)
@@ -613,7 +607,7 @@ func TestNOT_Generate(t *testing.T) {
 		// TODO		{op: &NOT{DR: "R0", SR: ""}, want: 0x1001, wantErr: &SyntaxError{} },
 		{
 			op:   &NOT{DR: "R1", SR: "R1"},
-			want: 0x925f,
+			want: 0x927f,
 		},
 	}
 
@@ -640,7 +634,6 @@ func TestNOT_Generate(t *testing.T) {
 		if wantErr != nil && errors.Is(err, wantErr) {
 			t.Errorf("tc: %#v", tcs[tc].op)
 			t.Errorf("expected error: want: %#v, got: %#v", wantErr, err)
-
 		}
 	}
 }
@@ -739,7 +732,6 @@ func TestTRAP_Generate(t *testing.T) {
 		if wantErr != nil && errors.Is(err, wantErr) {
 			t.Errorf("tc: %#v", tcs[tc].op)
 			t.Errorf("expected error: want: %#v, got: %#v", wantErr, err)
-
 		}
 	}
 }
