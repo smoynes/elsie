@@ -104,20 +104,6 @@ func (p *Parser) Probe(opcode string, ins Operation) {
 	p.probeInstr = ins
 }
 
-// SymbolTable maps a symbol reference to its location in object code.
-type SymbolTable map[string]uint16
-
-// SyntaxError is a wrapped error returned when the parser encounters a syntax error.
-type SyntaxError struct {
-	Loc, Pos uint16
-	Line     string
-	Err      error
-}
-
-func (pe *SyntaxError) Error() string {
-	return fmt.Sprintf("syntax error: %s: line: %d %q", pe.Err, pe.Pos, pe.Line)
-}
-
 // Parse parses an input stream. The parser takes ownership of the stream and will close it.
 func (p *Parser) Parse(in io.ReadCloser) {
 	defer func() {

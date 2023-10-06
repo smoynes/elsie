@@ -22,6 +22,8 @@
 // There are ambiguities in the grammar and the code could be a whole lot simpler.
 package asm
 
+import "fmt"
+
 // Grammar declares the syntax of LCASM in EBNF (with some liberties).
 var Grammar = (`
 program        = { line } ;
@@ -82,3 +84,17 @@ identchar      = \p{Letter}
 			   | \p{Dash Punctuation}
 			   | \p{Symbols} ;
 `)
+
+// SymbolTable maps a symbol reference to its location in object code.
+type SymbolTable map[string]uint16
+
+// SyntaxError is a wrapped error returned when the parser encounters a syntax error.
+type SyntaxError struct {
+	Loc, Pos uint16
+	Line     string
+	Err      error
+}
+
+func (pe *SyntaxError) Error() string {
+	return fmt.Sprintf("syntax error: %s: line: %d %q", pe.Err, pe.Pos, pe.Line)
+}
