@@ -76,11 +76,11 @@ func (op *br) Execute() {
 	}
 }
 
-// NOT: Bitwise complement operation
+// NOT: Bitwise complement operation.
 //
-// | 1001 | DR | SR | 1 | 1 1111 |
-// |------+----+----+---+--------|
-// |15  12|11 9|8  6| 5 |4      0|
+//	| 1001 | DR | SR | 1 1111 |
+//	|------+----+----+--------|
+//	|15  12|11 9|8  6| 5     0|
 type not struct {
 	mo
 	dr GPR

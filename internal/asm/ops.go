@@ -371,6 +371,8 @@ type ADD struct {
 	LITERAL uint16 // Literal value otherwise, immediate mode.
 }
 
+func (add ADD) String() string { return fmt.Sprintf("%#v", add) }
+
 func (add *ADD) Parse(opcode string, operands []string) error {
 	if opcode != "ADD" {
 		return errors.New("add: opcode error")
@@ -417,6 +419,51 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 
 	code |= 1 << 5
 	code |= add.LITERAL & 0x001f
+
+	return code, nil
+}
+
+// NOT: Bitwise complement.
+//
+//	NOT DR,SR ;; DR <- ^(SR)
+//
+//	| 1001 | DR | SR | 1 1111 |
+//	|------+----+----+--------|
+//	|15  12|11 9|8  6| 5     0|
+//
+// .
+type NOT struct {
+	DR string
+	SR string
+}
+
+func (not NOT) String() string { return fmt.Sprintf("%#v", not) }
+
+func (not *NOT) Parse(opcode string, operands []string) error {
+	if opcode != "NOT" {
+		return errors.New("not: opcode error")
+	} else if len(operands) != 2 {
+		return errors.New("not: operand error")
+	}
+
+	*not = NOT{
+		DR: parseRegister(operands[0]),
+		SR: parseRegister(operands[1]),
+	}
+
+	return nil
+}
+
+func (not *NOT) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
+	var code uint16 = 0b1001 << 12
+
+	if not.DR == "" || not.SR == "" {
+		return 0xffff, fmt.Errorf("gen: not: bad operand")
+	}
+
+	code |= registerVal(not.DR) << 9
+	code |= registerVal(not.SR) << 6
+	code |= 0x001f
 
 	return code, nil
 }

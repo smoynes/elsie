@@ -1,6 +1,7 @@
 package asm
 
 import (
+	"errors"
 	"reflect"
 	"testing"
 )
@@ -528,6 +529,106 @@ func TestADD_Generate(t *testing.T) {
 		if mc != exp {
 			t.Errorf("tc: %#v", tcs[tc].operation)
 			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
+		}
+	}
+}
+
+func TestNOT_Parse(t *testing.T) {
+	tests := []testParseOperationCase{
+		{
+			name:      "bad oper",
+			operation: testParseOperation{"OP", []string{"IDENT"}},
+			want:      nil,
+			wantErr:   &SyntaxError{},
+		},
+		{
+			name:      "too few operands",
+			operation: testParseOperation{"NOT", []string{"DR"}},
+			want:      nil,
+			wantErr:   &SyntaxError{},
+		},
+		{
+			name:      "too many operands",
+			operation: testParseOperation{"NOT", []string{"OP", "DR", "SR1", "SR2"}},
+			want:      nil,
+			wantErr:   &SyntaxError{},
+		},
+		{
+			name:      "NOT register",
+			operation: testParseOperation{"NOT", []string{"R6", "R2"}},
+			want:      &NOT{DR: "R6", SR: "R2"},
+			wantErr:   nil,
+		},
+		{
+			name:      "NOT label",
+			operation: testParseOperation{"NOT", []string{"R7", "R0", "LABEL"}},
+			want:      &NOT{DR: "R7", SR: "R0"},
+			wantErr:   &SyntaxError{},
+		},
+		{
+			name:      "NOT literal",
+			operation: testParseOperation{"NOT", []string{"R0", "0x0"}},
+			want:      &NOT{DR: "R0", SR: ""},
+			wantErr:   nil, // This is a semantic, not syntactic error. 🤔
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &NOT{}
+			err := got.Parse(tt.operation.opcode, tt.operation.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+
+				t.Errorf("NOT.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NOT.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestNOT_Generate(t *testing.T) {
+	tcs := []struct {
+		op      Operation
+		want    uint16
+		wantErr error
+	}{
+		// TODO		{op: &NOT{DR: "R0", SR: ""}, want: 0x1001, wantErr: &SyntaxError{} },
+		{
+			op:   &NOT{DR: "R1", SR: "R1"},
+			want: 0x925f,
+		},
+	}
+
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	for tc := range tcs {
+		op, exp, wantErr := tcs[tc].op, tcs[tc].want, tcs[tc].wantErr
+
+		mc, err := op.Generate(symbols, pc)
+		if err != nil {
+			t.Fatalf("unexpected error: %#v", err)
+		}
+
+		if mc == 0xffff {
+			t.Error("invalid machine code")
+		}
+
+		if wantErr == nil && mc != exp {
+			t.Errorf("tc: %#v", tcs[tc].op)
+			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
+		}
+
+		if wantErr != nil && errors.Is(err, wantErr) {
+			t.Errorf("tc: %#v", tcs[tc].op)
+			t.Errorf("expected error: want: %#v, got: %#v", wantErr, err)
+
 		}
 	}
 }

@@ -262,6 +262,8 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		return &AND{}
 	case "BR", "BRNZP", "BRN", "BRZ", "BRP", "BRZN", "BRNP", "BRZP":
 		return &BR{}
+	case "NOT":
+		return &NOT{}
 	case "LD":
 		return &LD{}
 	case "LDR":
