@@ -43,15 +43,17 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 
 	// Write the object-code header: the origin offset. The .ORIG directive should be the first
 	// operation in the syntax table.
-	if !isOrigin(gen.syntax[0]) {
-		gen.log.Debug("first", "op", gen.syntax[0])
+	if orig := origin(gen.syntax[0]); orig == nil {
+		gen.log.Debug("first", "op", orig)
 		return 0, errors.New("gen: .ORIG directive must be the first operation")
+	} else {
+		gen.pc = orig.LITERAL
 	}
 
 	for i, code := range gen.syntax {
 		if code == nil {
 			continue
-		} else if i != 0 && isOrigin(code) {
+		} else if origin(code) != nil && i != 0 {
 			err = errors.New("gen: .ORIG directive may only be the first operation")
 			break
 		}
@@ -76,7 +78,10 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 	return count, nil
 }
 
-func isOrigin(op Operation) bool {
-	_, ok := op.(*ORIG)
-	return ok
+func origin(op Operation) *ORIG {
+	if op, ok := op.(*ORIG); ok {
+		return op
+	}
+
+	return nil
 }

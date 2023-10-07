@@ -23,8 +23,8 @@ func TestGenerator(tt *testing.T) {
 	syntax.Add(&NOT{DR: "R0", SR: "R7"})
 
 	gen := NewGenerator(symbols, syntax)
-	count, err := gen.WriteTo(&buf)
 
+	count, err := gen.WriteTo(&buf)
 	if err != nil {
 		t.Error(err)
 	}
