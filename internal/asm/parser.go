@@ -27,6 +27,8 @@ import (
 //	for _, err := range err.(interface { Unwrap() []error }).Unwrap() {
 //		println(err.Error()) // SyntaxError
 //	}
+//
+// .
 type Parser struct {
 	loc     uint16      // Location counter.
 	pos     uint16      // Line number in source file.
@@ -54,16 +56,6 @@ func NewParser(log *log.Logger) *Parser {
 // Symbols returns the symbol table constructed so far.
 func (p *Parser) Symbols() SymbolTable {
 	return p.symbols
-}
-
-// AddSymbol adds a new symbol to the symbol table.
-func (p *Parser) AddSymbol(sym string, loc uint16) {
-	if sym == "" {
-		panic("empty symbol")
-	}
-
-	sym = strings.ToUpper(sym)
-	p.symbols[sym] = loc
 }
 
 // Syntax returns the abstract syntax "tree". Syntax holds the parsed code and data and is used by
@@ -161,7 +153,7 @@ func (p *Parser) parseLine(line string) error {
 
 		if !p.isReservedKeyword(label) {
 			remain = remain[matchEnd:]
-			p.symbols[label] = p.loc
+			p.symbols.Add(label, p.loc)
 		}
 	}
 
@@ -228,7 +220,7 @@ func (p *Parser) parseInstruction(opcode string, operands []string) error {
 
 	err := oper.Parse(opcode, operands)
 	if err != nil {
-		return fmt.Errorf("opcode: %s: %w", opcode, err)
+		return fmt.Errorf("parse: %s: %w", opcode, err)
 	}
 
 	p.AddInstruction(oper)

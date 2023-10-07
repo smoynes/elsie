@@ -22,7 +22,10 @@
 // There are ambiguities in the grammar and the code could be a whole lot simpler.
 package asm
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Grammar declares the syntax of LCASM in EBNF (with some liberties).
 var Grammar = (`
@@ -87,6 +90,32 @@ identchar      = \p{Letter}
 
 // SymbolTable maps a symbol reference to its location in object code.
 type SymbolTable map[string]uint16
+
+// Add adds a symbol to the symbol table.
+func (s SymbolTable) Add(sym string, loc uint16) {
+	if sym == "" {
+		panic("empty symbol")
+	}
+
+	sym = strings.ToUpper(sym)
+	s[sym] = loc
+}
+
+// Offset computes a n-bit PC-relative offset.
+func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
+	loc, ok := s[sym]
+	if !ok {
+		return 0xffff, fmt.Errorf("%s: symbol not found", sym)
+	}
+	delta := loc - pc - 1
+	bottom := ^(-1 << n)
+
+	if delta >= (1 << n) {
+		return delta, fmt.Errorf("%s: offset error", sym)
+	}
+
+	return delta & uint16(bottom), nil
+}
 
 // SyntaxError is a wrapped error returned when the parser encounters a syntax error.
 type SyntaxError struct {

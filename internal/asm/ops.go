@@ -10,17 +10,6 @@ import (
 	"strings"
 )
 
-// AddressingMode represents how an instruction addresses its operands.
-type AddressingMode uint8
-
-//go:generate go run golang.org/x/tools/cmd/stringer -type AddressingMode -output strings_gen.go
-
-const (
-	ImmediateMode AddressingMode = iota // IMM
-	RegisterMode                        // REG
-	IndirectMode                        // IND
-)
-
 // Operation is an assembly instruction or directive. It is parsed from source code during the
 // assembler's first pass and encoded to object code in the second pass.
 type Operation interface {
@@ -96,23 +85,18 @@ func (br *BR) Parse(oper string, opers []string) error {
 }
 
 func (br *BR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var (
-		code uint16
-		loc  uint16
-		err  error
-	)
+	var code uint16
 
 	code |= 0o0 << 12
 	code |= uint16(br.NZP) << 9
 
 	if br.SYMBOL != "" {
-		loc, err = symbolVal(br.SYMBOL, symbols, pc)
-
+		offset, err := symbols.Offset(br.SYMBOL, pc, 5)
 		if err != nil {
-			return 0xffff, fmt.Errorf("and: %q: %w", br.SYMBOL, err)
+			return 0xffff, fmt.Errorf("and: %w", err)
 		}
 
-		code |= (0x01ff &^ (pc - loc)) // TODO ??
+		code |= offset
 	} else {
 		code |= br.OFFSET & 0x01ff
 	}
@@ -135,12 +119,11 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 //	|------+----+-----+---+------|
 //	|15  12|11 9|8   6| 5 |4    0|
 type AND struct {
-	Mode    AddressingMode
 	DR, SR1 string
 
-	SR2    string // Set when mode is register.
-	OFFSET uint16 // Set when mode is immediate and value is a literal value.
-	SYMBOL string // Set when mode is immediate and value is a reference.
+	SR2    string // Register mode.
+	SYMBOL string // Symbolic reference.
+	OFFSET uint16 // Otherwise.
 }
 
 func (and AND) String() string { return fmt.Sprintf("AND(%#v)", and) }
@@ -157,13 +140,10 @@ func (and *AND) Parse(oper string, opers []string) error {
 	}
 
 	if sr2 := parseRegister(opers[2]); sr2 != "" {
-		and.Mode = RegisterMode
 		and.SR2 = sr2
 
 		return nil
 	}
-
-	and.Mode = ImmediateMode
 
 	off, sym, err := parseImmediate(opers[2], 5)
 	if err != nil {
@@ -183,42 +163,39 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	dr := registerVal(and.DR)
 	sr1 := registerVal(and.SR1)
 
+	if dr == BadRegister || sr1 == BadRegister {
+		return 0xffff, errors.New("and: register error")
+	}
+
 	code |= 0o5 << 12
 	code |= dr << 9
 	code |= sr1 << 6
 
-	switch and.Mode {
-	case IndirectMode:
-		return 0xffff, errors.New("and: addressing error")
-	case RegisterMode:
+	switch {
+	case and.SR2 != "":
 		sr2 := registerVal(and.SR2)
 		code |= sr2
 
-		if code != 0xffff {
+		if code == 0xffff {
 			return 0xffff, errors.New("and: register error")
 		}
 
 		return code, nil
-	case ImmediateMode:
+	case and.SYMBOL != "":
 		code |= 1 << 5
 
-		switch {
-		case and.SYMBOL != "":
-			loc, err := symbolVal(and.SYMBOL, symbols, pc)
-			if err != nil {
-				return 0xffff, fmt.Errorf("and: %q: %w", and.SYMBOL, err)
-			}
-
-			code |= pc - (loc & 0x1f)
-
-			return code, nil
-		default:
-			code |= and.OFFSET & 0x001f
-			return code, nil
+		offset, err := symbols.Offset(and.SYMBOL, pc, 5)
+		if err != nil {
+			return 0xffff, fmt.Errorf("and: %w", err)
 		}
 
+		code |= offset
+
+		return code, nil
 	default:
-		return 0xffff, errors.New("codegen: address mode error")
+		code |= 1 << 5
+		code |= and.OFFSET & 0x001f
+		return code, nil
 	}
 }
 
@@ -263,7 +240,7 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	var code uint16 = 0o2 << 12
 
 	dr := registerVal(ld.DR)
-	if dr == 0xffff {
+	if dr == BadRegister {
 		return 0xffff, fmt.Errorf("ld: register error")
 	}
 
@@ -287,12 +264,14 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 
 // LDR: Load from memory, register-relative.
 //
-//	LDR DR,SR,#LITERAL
 //	LDR DR,SR,LABEL
+//	LDR DR,SR,#LITERAL
 //
 //	| 0110 | DR | SR | OFFSET6 |
 //	|------+----+----+---------|
 //	|15  12|11 9|8  6|5       0|
+//
+// .
 type LDR struct {
 	DR     string
 	SR     string
@@ -303,8 +282,12 @@ type LDR struct {
 func (ldr LDR) String() string { return fmt.Sprintf("LDR(%#v)", ldr) }
 
 func (ldr *LDR) Parse(opcode string, operands []string) error {
+	var err error
+
 	if opcode != "LDR" {
 		return errors.New("ldr: opcode error")
+	} else if len(operands) != 3 {
+		return errors.New("ldr: operand error")
 	}
 
 	*ldr = LDR{
@@ -312,19 +295,16 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 		SR: operands[1],
 	}
 
-	off, sym, err := parseImmediate(operands[2], 6)
+	ldr.OFFSET, ldr.SYMBOL, err = parseImmediate(operands[2], 6)
 	if err != nil {
 		return fmt.Errorf("ldr: operand error: %w", err)
 	}
-
-	ldr.OFFSET = off
-	ldr.SYMBOL = sym
 
 	return nil
 }
 
 func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	code := uint16(0x6 << 12)
+	var code uint16 = 0x6 << 12
 	dr := registerVal(ldr.DR)
 	sr := registerVal(ldr.SR)
 
@@ -337,18 +317,17 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 
 	switch {
 	case ldr.SYMBOL != "":
-		loc, ok := symbols[ldr.SYMBOL]
-		if !ok {
-			return 0xffff, fmt.Errorf("ldr: symbol error: %q", ldr.SYMBOL)
+		offset, err := symbols.Offset(ldr.SYMBOL, pc, 6)
+		if err != nil {
+			return 0xffff, fmt.Errorf("ldr: %w", err)
 		}
 
-		code |= (pc - loc) & 0x003f
-
-		return code, nil
+		code |= offset
 	default:
 		code |= ldr.OFFSET & 0x003f
-		return code, nil
 	}
+
+	return code, nil
 }
 
 // ADD: Arithmetic addition operator.

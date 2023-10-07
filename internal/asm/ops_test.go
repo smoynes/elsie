@@ -36,7 +36,6 @@ func TestAND_Parse(t *testing.T) {
 			name: "immediate decimal",
 			args: args{"AND", []string{"R0", "R1", "#12"}},
 			want: &AND{
-				Mode:   ImmediateMode,
 				DR:     "R0",
 				SR1:    "R1",
 				OFFSET: uint16(12),
@@ -47,7 +46,6 @@ func TestAND_Parse(t *testing.T) {
 			name: "immediate hex",
 			args: args{"AND", []string{"R0", "R2", "#x1f"}},
 			want: &AND{
-				Mode:   ImmediateMode,
 				DR:     "R0",
 				SR1:    "R2",
 				OFFSET: 0x1f,
@@ -58,7 +56,6 @@ func TestAND_Parse(t *testing.T) {
 			name: "immediate octal",
 			args: args{"AND", []string{"R0", "R3", "#o12"}},
 			want: &AND{
-				Mode:   ImmediateMode,
 				DR:     "R0",
 				SR1:    "R3",
 				OFFSET: 0o12,
@@ -69,7 +66,6 @@ func TestAND_Parse(t *testing.T) {
 			name: "immediate binary",
 			args: args{"AND", []string{"R0", "R4", "#b01111"}},
 			want: &AND{
-				Mode:   ImmediateMode,
 				DR:     "R0",
 				SR1:    "R4",
 				OFFSET: 0b1111,
@@ -80,7 +76,6 @@ func TestAND_Parse(t *testing.T) {
 			name: "immediate symbol",
 			args: args{"AND", []string{"R0", "R4", "LABEL"}},
 			want: &AND{
-				Mode:   ImmediateMode,
 				DR:     "R0",
 				SR1:    "R4",
 				SYMBOL: "LABEL",
@@ -91,10 +86,9 @@ func TestAND_Parse(t *testing.T) {
 			name: "register",
 			args: args{"AND", []string{"R0", "R1", "R2"}},
 			want: &AND{
-				Mode: RegisterMode,
-				DR:   "R0",
-				SR1:  "R1",
-				SR2:  "R2",
+				DR:  "R0",
+				SR1: "R1",
+				SR2: "R2",
 			},
 			wantErr: false,
 		},
@@ -133,41 +127,35 @@ func TestAND_Parse(t *testing.T) {
 }
 
 func TestAND_Generate(t *testing.T) {
-	instrs := []Operation{
-		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", OFFSET: 0x10},
-		&AND{Mode: ImmediateMode, DR: "R0", SR1: "R7", SYMBOL: "LABEL"},
+	tcs := []struct {
+		oper Operation
+		want uint16
+	}{
+		{oper: &AND{DR: "R3", SR1: "R4", SR2: "R6"}, want: 0x5706},
+		{oper: &AND{DR: "R0", SR1: "R7", SYMBOL: "LABEL"}, want: 0x51e6},
+		{oper: &AND{DR: "R1", SR1: "R2", OFFSET: 0x12}, want: 0x52b2},
 	}
 
 	pc := uint16(0x3000)
 	symbols := SymbolTable{
-		"LABEL": 0x3100,
+		"LABEL": 0x3007,
 	}
 
-	if mc, err := instrs[0].Generate(symbols, pc); err != nil {
-		t.Fatal(err)
-	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", instrs[0], mc)
+	for i := range tcs {
+		oper, want := tcs[i].oper, tcs[i].want
 
-		if mc == 0xffff {
-			t.Error("invalid machine code")
-		}
+		if mc, err := oper.Generate(symbols, pc); err != nil {
+			t.Errorf("Code: %#v == error  ==> %0#4x %s", oper, mc, err)
+		} else {
+			t.Logf("Code: %#v == generated ==> %0#4x", oper, mc)
 
-		if mc != 0x51f0 {
-			t.Errorf("bad maching code: want: %0#4x got: %0#4X", 0x6150, mc)
-		}
-	}
+			if mc == 0xffff {
+				t.Error("invalid machine code")
+			}
 
-	if mc, err := instrs[1].Generate(symbols, pc); err != nil {
-		t.Fatalf("Code: %#v == error    ==> %s", instrs[1], err)
-	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", instrs[1], mc)
-
-		if mc == 0xffff {
-			t.Error("invalid machine code")
-		}
-
-		if mc != 0x71e0 {
-			t.Errorf("bad maching code: %04x", mc)
+			if mc != want {
+				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
+			}
 		}
 	}
 }
@@ -391,7 +379,7 @@ func TestLDR_Generate(t *testing.T) {
 
 	pc := uint16(0x3000)
 	symbols := SymbolTable{
-		"LABEL": 0x3100,
+		"LABEL": 0x300a,
 	}
 
 	if mc, err := instrs[0].Generate(symbols, pc); err != nil {
@@ -417,8 +405,8 @@ func TestLDR_Generate(t *testing.T) {
 			t.Error("invalid machine code")
 		}
 
-		if mc != 0x6f00 {
-			t.Errorf("bad machine code: want: %0#4x got: %04x", 0x6f00, mc)
+		if mc != 0x6f09 {
+			t.Errorf("bad machine code: want: %0#4x got: %04x", 0x6f0a, mc)
 		}
 	}
 }
