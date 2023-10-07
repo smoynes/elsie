@@ -64,7 +64,7 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 			break
 		}
 
-		if err = binary.Write(out, binary.LittleEndian, encoded); err != nil {
+		if err = binary.Write(out, binary.BigEndian, encoded); err != nil {
 			break
 		}
 
