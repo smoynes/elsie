@@ -6,7 +6,7 @@
 - [ ] ASM:
   - [x] simple parser: regexp
   - [x] symbol table
-  - [.] code generation: 3/16
+  - [.] code generation: ~5/16
   - [.] directives
     - [x] .BLKW: block words
     - [x] .DW: define word
@@ -14,15 +14,15 @@
     - [x] .ORIG: origin
     - [ ] .STRINGZ: strangz
     - [ ] .END
-  - [ ] memory layout
+  - [.] memory layout
   - [.] cli command
-  - [ ] cleaner error handling
+  - [x] cleaner error handling
   - [ ] document grammar
+- [ ] LOAD: object loader
+- [ ] DUMP: hex encoder
 - [ ] CLI: sub commands for vm, tools, terminal, shell
 - [ ] LOG: program output to STDOUT, logging output to STDERR (unless in
       demo)
-- [ ] DUMP: object dumper; hex encoder
-- [ ] LOAD: object loader
 - [ ] TERM: finish the terminal I/O
 - [ ] MONITOR: trap, exception, and interrupt routines
 - [ ] REPL: step debugger shell
