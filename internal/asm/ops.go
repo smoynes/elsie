@@ -93,7 +93,7 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	if br.SYMBOL != "" {
 		offset, err := symbols.Offset(br.SYMBOL, pc, 5)
 		if err != nil {
-			return 0xffff, fmt.Errorf("and: %w", err)
+			return badValue, fmt.Errorf("and: %w", err)
 		}
 
 		code |= offset
@@ -163,8 +163,8 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	dr := registerVal(and.DR)
 	sr1 := registerVal(and.SR1)
 
-	if dr == BadRegister || sr1 == BadRegister {
-		return 0xffff, errors.New("and: register error")
+	if dr == badValue || sr1 == badValue {
+		return badValue, errors.New("and: register error")
 	}
 
 	code |= 0o5 << 12
@@ -176,8 +176,8 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 		sr2 := registerVal(and.SR2)
 		code |= sr2
 
-		if code == 0xffff {
-			return 0xffff, errors.New("and: register error")
+		if code == badValue {
+			return badValue, errors.New("and: register error")
 		}
 
 		return code, nil
@@ -186,7 +186,7 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 
 		offset, err := symbols.Offset(and.SYMBOL, pc, 5)
 		if err != nil {
-			return 0xffff, fmt.Errorf("and: %w", err)
+			return badValue, fmt.Errorf("and: %w", err)
 		}
 
 		code |= offset
@@ -240,8 +240,8 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	var code uint16 = 0o2 << 12
 
 	dr := registerVal(ld.DR)
-	if dr == BadRegister {
-		return 0xffff, fmt.Errorf("ld: register error")
+	if dr == badValue {
+		return badValue, fmt.Errorf("ld: register error")
 	}
 
 	code |= dr << 9
@@ -250,7 +250,7 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	case ld.SYMBOL != "":
 		loc, ok := symbols[ld.SYMBOL]
 		if !ok {
-			return 0xffff, fmt.Errorf("ld: symbol error: %q", ld.SYMBOL)
+			return badValue, fmt.Errorf("ld: symbol error: %q", ld.SYMBOL)
 		}
 
 		code |= (0x00ff &^ (pc - loc)) // TODO ??
@@ -308,8 +308,8 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	dr := registerVal(ldr.DR)
 	sr := registerVal(ldr.SR)
 
-	if dr == BadRegister || sr == BadRegister {
-		return 0xffff, fmt.Errorf("ldr: register error")
+	if dr == badValue || sr == badValue {
+		return badValue, fmt.Errorf("ldr: register error")
 	}
 
 	code |= dr << 9
@@ -319,7 +319,7 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	case ldr.SYMBOL != "":
 		offset, err := symbols.Offset(ldr.SYMBOL, pc, 6)
 		if err != nil {
-			return 0xffff, fmt.Errorf("ldr: %w", err)
+			return badValue, fmt.Errorf("ldr: %w", err)
 		}
 
 		code |= offset
@@ -385,7 +385,7 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	dr := registerVal(add.DR)
 	sr1 := registerVal(add.SR1)
 
-	if dr == BadRegister || sr1 == BadRegister {
+	if dr == badValue || sr1 == badValue {
 		return 0, errors.New("add: register error")
 	}
 
@@ -480,14 +480,14 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	var code uint16 = 0b1001 << 12
 
 	if not.DR == "" || not.SR == "" {
-		return 0xffff, fmt.Errorf("gen: not: bad operand")
+		return badValue, fmt.Errorf("gen: not: bad operand")
 	}
 
 	dr := registerVal(not.DR)
 	sr := registerVal(not.SR)
 
-	if dr == BadRegister || sr == BadRegister {
-		return 0xffff, errors.New("not: operand error")
+	if dr == badValue || sr == badValue {
+		return badValue, errors.New("not: operand error")
 	}
 
 	code |= registerVal(not.DR) << 9
@@ -572,6 +572,9 @@ func (orig *ORIG) Generate(_ SymbolTable, pc uint16) (uint16, error) {
 	return 0x0000, nil
 }
 
+// badValue is returned when a value is invalid because it is more noticeable than a zero value.
+const badValue uint16 = 0xffff
+
 // registerVal returns the registerVal encoded as an integer or BadRegister if the register does not
 // exist.
 func registerVal(reg string) uint16 {
@@ -593,18 +596,6 @@ func registerVal(reg string) uint16 {
 	case "R7":
 		return 7
 	default:
-		return BadRegister
-	}
-}
-
-// BadRegister is returned when a named register is invalid.
-const BadRegister uint16 = 0xffff
-
-func symbolVal(oper string, sym SymbolTable, _ uint16) (uint16, error) {
-	// TODO
-	if val, ok := sym[oper]; ok {
-		return val, nil
-	} else {
-		return 0xffff, errors.New("symbol: not found")
+		return badValue
 	}
 }
