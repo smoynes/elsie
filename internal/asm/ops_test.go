@@ -570,7 +570,6 @@ func TestADD_Generate(t *testing.T) {
 		if mc[0] != exp {
 			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
 		}
-
 	}
 }
 

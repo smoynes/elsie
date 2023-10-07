@@ -48,7 +48,7 @@ type Parser struct {
 func NewParser(log *log.Logger) *Parser {
 	return &Parser{
 		symbols: make(SymbolTable),
-		syntax:  make([]Operation, 0xffff),
+		syntax:  make(SyntaxTable, 0),
 		log:     log,
 	}
 }
@@ -56,6 +56,11 @@ func NewParser(log *log.Logger) *Parser {
 // Symbols returns the symbol table constructed so far.
 func (p *Parser) Symbols() SymbolTable {
 	return p.symbols
+}
+
+// Syntax returns the abstract syntax table, i.e. "parse tree".
+func (p *Parser) Syntax() SyntaxTable {
+	return p.syntax
 }
 
 // SyntaxError adds an error to the parser errors.
@@ -209,7 +214,7 @@ func (p *Parser) parseInstruction(opcode string, operands []string) error {
 		return fmt.Errorf("parse: %s: %w", opcode, err)
 	}
 
-	p.syntax.Add(p.loc, oper)
+	p.syntax.Add(oper)
 	p.loc++
 
 	return nil
@@ -265,7 +270,9 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 			break
 		}
 
+		p.syntax.Add(&orig)
 		p.loc = orig.LITERAL
+
 	case ".BLKW":
 		blkw := BLKW{}
 
@@ -274,9 +281,9 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 			break
 		}
 
-		p.syntax[p.loc] = &blkw
-		p.loc += blkw.ALLOC
+		p.syntax.Add(&blkw)
 
+		p.loc += blkw.ALLOC
 	case ".FILL", ".DW":
 		fill := FILL{}
 
@@ -285,7 +292,8 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 			break
 		}
 
-		p.syntax[p.loc] = &fill
+		p.syntax.Add(&fill)
+
 		p.loc++
 	case ".END":
 		// TODO: signal end

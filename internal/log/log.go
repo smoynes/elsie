@@ -188,14 +188,9 @@ func (h *Handler) appendAttr(out io.Writer, attr slog.Attr, grouped bool) error 
 		}
 
 	case attr.Value.Kind() == slog.KindGroup && key == "":
-		if key == "STATE" {
-			fmt.Printf("h %+v\nk %v\nv %+v\n", h, value.Kind(), value.Group())
-		}
-
 		for _, a := range value.Group() {
 			err := h.appendAttr(out, a, grouped)
 			if err != nil {
-				fmt.Printf("%v\n", err)
 				return err
 			}
 		}

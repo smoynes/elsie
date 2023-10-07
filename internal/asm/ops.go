@@ -147,7 +147,7 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(and.DR)
 	sr1 := registerVal(and.SR1)
 
-	if dr == badValue || sr1 == badValue {
+	if dr == badGPR || sr1 == badGPR {
 		return nil, errors.New("and: register error")
 	}
 
@@ -156,7 +156,7 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	switch {
 	case and.SR2 != "":
 		sr2 := registerVal(and.SR2)
-		if sr2 == badValue {
+		if sr2 == badGPR {
 			return nil, errors.New("and: register error")
 		}
 
@@ -217,7 +217,7 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 
 func (ld LD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(ld.DR)
-	if dr == badValue {
+	if dr == badGPR {
 		return nil, fmt.Errorf("ld: register error")
 	}
 
@@ -283,9 +283,10 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(ldr.DR)
 	sr := registerVal(ldr.SR)
 
-	if dr == badValue || sr == badValue {
+	if dr == badGPR || sr == badGPR {
 		return nil, fmt.Errorf("ldr: register error")
 	}
+
 	code := vm.NewInstruction(vm.LDR, dr<<9|sr<<6)
 
 	switch {
@@ -356,7 +357,7 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(add.DR)
 	sr1 := registerVal(add.SR1)
 
-	if dr == badValue || sr1 == badValue {
+	if dr == badGPR || sr1 == badGPR {
 		return nil, errors.New("add: register error")
 	}
 
@@ -455,7 +456,7 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(not.DR)
 	sr := registerVal(not.SR)
 
-	if dr == badValue || sr == badValue {
+	if dr == badGPR || sr == badGPR {
 		return nil, errors.New("not: operand error")
 	}
 
@@ -479,7 +480,7 @@ func (fill *FILL) Parse(opcode string, operands []string) error {
 	return err
 }
 
-func (fill *FILL) Generate(_ SymbolTable, pc uint16) ([]uint16, error) {
+func (fill *FILL) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{fill.LITERAL}, nil
 }
 
@@ -522,9 +523,8 @@ func (orig *ORIG) Parse(opcode string, operands []string) error {
 	}
 
 	val, err := strconv.ParseUint(arg, 0, 16)
-	numError := &strconv.NumError{}
 
-	if errors.As(err, &numError) {
+	if numError := (&strconv.NumError{}); errors.As(err, &numError) {
 		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
 	} else if val > math.MaxUint16 {
 		return errors.New("argument error")
@@ -535,14 +535,16 @@ func (orig *ORIG) Parse(opcode string, operands []string) error {
 	return nil
 }
 
+// Generate encodes the origin as the entry point in machine code. It should only be called as the
+// first operation when generating code.
 func (orig *ORIG) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
-	return []uint16{0x0000}, nil
+	return []uint16{orig.LITERAL}, nil
 }
 
-// badValue is returned when a value is invalid because it is more noticeable than a zero value.
-const badValue uint16 = 0xffff
+// badGPR is returned when a value is invalid because it is more noticeable than a zero value.
+const badGPR = uint16(vm.BadGPR)
 
-// registerVal returns the registerVal encoded as an integer or BadRegister if the register does not
+// registerVal returns the registerVal encoded as an integer or badGPR if the register does not
 // exist.
 func registerVal(reg string) uint16 {
 	switch reg {
@@ -563,6 +565,6 @@ func registerVal(reg string) uint16 {
 	case "R7":
 		return 7
 	default:
-		return badValue
+		return uint16(vm.BadGPR)
 	}
 }

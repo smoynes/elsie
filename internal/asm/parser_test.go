@@ -107,31 +107,27 @@ LOOP0 TEST                     ; 0x100d
 LOOP1 TEST R1                  ; 0x100e
 LOOP2 TEST R1,R2               ; 0x100f
 
-     .ORIG 0x3100
-
 LABEL:
 decimal:
-    .DW 123                    ; 0x3100
+    .DW 123                    ; 0x1010
 hex:
-    .DW x0001                  ; 0x3101
+    .DW x0001                  ; 0x1011
 octal:
-    .DW o002                   ; 0x3102
+    .DW o002                   ; 0x1012
 binary:
-    .DW b0000_0000_0000_0111   ; 0x3103
+    .DW b0000_0000_0000_0111   ; 0x1013
 under_score:
 hyphen-ate:
 d1g1t1:
 
+AND R1,R1,#0                   ; 0x1014
+AND R1,R2,#x0                  ; 0x1015
+AND R1,R2,LOOP                 ; 0x1016
 
-.ORIG x3200
-AND R1,R1,#0
-AND R1,R2,#x0
-AND R1,R2,LOOP
+BRNP  LOOP                     ; 0x1017
+BRz   #x0                      ; 0x1018
 
-BRNP  LOOP
-BRz   #x0
-
-  LD  DR,#x0
+  LD  DR,#x0                   ; 0x1019
   LD  DR,#o777
   LD  R1, LOOP
   LD  R1,[LOOP] ; ???
@@ -169,15 +165,15 @@ func TestParser(tt *testing.T) {
 	assertSymbol(t, symbols, "LOOP1", 0x100e)
 	assertSymbol(t, symbols, "LOOP2", 0x100f)
 
-	assertSymbol(t, symbols, "LABEL", 0x3100)
-	assertSymbol(t, symbols, "DECIMAL", 0x3100)
-	assertSymbol(t, symbols, "HEX", 0x3101)
-	assertSymbol(t, symbols, "OCTAL", 0x3102)
-	assertSymbol(t, symbols, "BINARY", 0x3103)
-	assertSymbol(t, symbols, "UNDER_SCORE", 0x3104)
-	assertSymbol(t, symbols, "HYPHEN-ATE", 0x3104)
-	assertSymbol(t, symbols, "D1G1T1", 0x3104)
-	assertSymbol(t, symbols, "EOF", 0x320c)
+	assertSymbol(t, symbols, "LABEL", 0x1010)
+	assertSymbol(t, symbols, "DECIMAL", 0x1010)
+	assertSymbol(t, symbols, "HEX", 0x1011)
+	assertSymbol(t, symbols, "OCTAL", 0x1012)
+	assertSymbol(t, symbols, "BINARY", 0x1013)
+	assertSymbol(t, symbols, "UNDER_SCORE", 0x1014)
+	assertSymbol(t, symbols, "HYPHEN-ATE", 0x1014)
+	assertSymbol(t, symbols, "D1G1T1", 0x1014)
+	assertSymbol(t, symbols, "EOF", 0x1020)
 
 	if len(symbols) != 15 {
 		t.Errorf("unexpected symbols: want: %d, got: %d", 11, len(symbols))
@@ -193,8 +189,8 @@ func TestParser(tt *testing.T) {
 		t.Error(err)
 	}
 
-	instructions := parser.Syntax()
-	if len(instructions) == 0 {
+	syntax := parser.Syntax()
+	if syntax.Size() == 0 {
 		t.Error("no instructions")
 	}
 }
@@ -255,14 +251,14 @@ func TestParser_FILL(tt *testing.T) {
 
 	syntax := parser.Syntax()
 
-	if len(syntax) == 0 {
-		t.Errorf("no data")
+	if syntax.Size() != 2 {
+		t.Errorf("size: %d != %d", syntax.Size(), 2)
 	}
 
-	code := syntax[0x1234]
+	code := syntax[1]
 
 	if fill, ok := code.(*FILL); !ok || fill.LITERAL != 0xdada {
-		t.Errorf("data: 0x1234 %#v != %#v", syntax[0x1234], 0xdada)
+		t.Errorf("data: 0x1234 %#v != %0#4x", code, 0xdada)
 	}
 }
 

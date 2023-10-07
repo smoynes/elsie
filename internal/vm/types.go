@@ -227,6 +227,9 @@ const (
 
 	// Subroutine return address is in R7.
 	RETP GPR = R7
+
+	// BadGPR is a sentinel value for an invalid register.
+	BadGPR GPR = 0xff
 )
 
 // ControlRegister is the master control register.

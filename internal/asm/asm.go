@@ -99,11 +99,13 @@ func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
 	bottom := ^(-1 << n)
 
 	if delta >= (1<<n) || delta < -(1<<n) {
-		return badValue, &OffsetError{uint16(delta)}
+		return badSymbol, &OffsetError{uint16(delta)}
 	}
 
 	return uint16(delta) & uint16(bottom), nil
 }
+
+const badSymbol uint16 = 0xffff
 
 // SyntaxError is a wrapped error returned when the parser encounters a syntax error.
 type SyntaxError struct {
@@ -130,29 +132,16 @@ type SyntaxTable []Operation
 
 // Size returns the number of operations in the table.
 func (s SyntaxTable) Size() int {
-	n := 0
-
-	for _, oper := range s {
-		if oper != nil {
-			n++
-		}
-	}
-
-	return n
+	return len(s)
 }
 
-// Add puts an operation in a location in the table.
-func (s SyntaxTable) Add(loc uint16, oper Operation) {
+// Add appends an operation to the syntax table.
+func (s *SyntaxTable) Add(oper Operation) {
 	if oper == nil {
 		panic("nil operation")
 	}
 
-	s[loc] = oper
-}
-
-// Syntax returns the abstract syntax table (or, AST).
-func (p *Parser) Syntax() SyntaxTable {
-	return p.syntax
+	*s = append(*s, oper)
 }
 
 // Operation is an assembly instruction or directive. It is parsed from source code during the
