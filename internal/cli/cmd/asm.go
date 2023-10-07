@@ -62,9 +62,14 @@ func (a *assembler) Run(ctx context.Context, args []string, out io.Writer, logge
 		parser.Parse(f)
 	}
 
-	logger.Info("Parsed source", "symbols", parser.Symbols(), "err", parser.Err())
+	logger.Debug("Parsed source",
+		"symbols", parser.Symbols().Count(),
+		"size", parser.Syntax().Size(),
+		"err", parser.Err(),
+	)
 
 	if parser.Err() != nil {
+		logger.Error("Parse error", "err", parser.Err())
 		return 1
 	}
 
@@ -75,15 +80,12 @@ func (a *assembler) Run(ctx context.Context, args []string, out io.Writer, logge
 			continue
 		}
 
-		mc, err := code.Generate(parser.Symbols(), uint16(pc))
-		logger.Info("Parsed",
-			"pc", fmt.Sprintf("%0#4x", uint16(pc)),
-			"code", fmt.Sprintf("%#v", code),
-			"code", code,
-			"gen", fmt.Sprintf("%0#4x", mc),
-			"err", err)
+		_, err := code.Generate(parser.Symbols(), uint16(pc))
+
+		if err != nil {
+			logger.Error("Coding error", "err", err)
+		}
 	}
 
-	// TODO: second pass
 	return 0
 }

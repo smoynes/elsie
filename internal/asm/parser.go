@@ -33,7 +33,7 @@ type Parser struct {
 	loc     uint16      // Location counter.
 	pos     uint16      // Line number in source file.
 	symbols SymbolTable // Symbolic references.
-	syntax  []Operation // Parsed code and data indexed by its address in memory.
+	syntax  SyntaxTable // Parsed code and data indexed by its address in memory.
 
 	fatal error   // Error causing parsing to halt, i.e., I/O errors.
 	errs  []error // Syntax errors.
@@ -56,21 +56,6 @@ func NewParser(log *log.Logger) *Parser {
 // Symbols returns the symbol table constructed so far.
 func (p *Parser) Symbols() SymbolTable {
 	return p.symbols
-}
-
-// Syntax returns the abstract syntax "tree". Syntax holds the parsed code and data and is used by
-// the second pass to create generate code and memory layout.
-func (p *Parser) Syntax() []Operation {
-	return p.syntax
-}
-
-// Add instruction appends an instruction to the list of instructions.
-func (p *Parser) AddInstruction(inst Operation) {
-	if inst == nil {
-		panic("nil instruction")
-	}
-
-	p.syntax[p.loc] = inst
 }
 
 // SyntaxError adds an error to the parser errors.
@@ -223,7 +208,7 @@ func (p *Parser) parseInstruction(opcode string, operands []string) error {
 		return fmt.Errorf("parse: %s: %w", opcode, err)
 	}
 
-	p.AddInstruction(oper)
+	p.syntax.Add(p.loc, oper)
 	p.loc++
 
 	return nil

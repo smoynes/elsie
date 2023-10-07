@@ -91,6 +91,11 @@ identchar      = \p{Letter}
 // SymbolTable maps a symbol reference to its location in object code.
 type SymbolTable map[string]uint16
 
+// Count returns the number of symbols in the table.
+func (s SymbolTable) Count() int {
+	return len(s)
+}
+
 // Add adds a symbol to the symbol table.
 func (s SymbolTable) Add(sym string, loc uint16) {
 	if sym == "" {
@@ -126,4 +131,32 @@ type SyntaxError struct {
 
 func (pe *SyntaxError) Error() string {
 	return fmt.Sprintf("syntax error: %s: line: %d %q", pe.Err, pe.Pos, pe.Line)
+}
+
+// SyntaxTable is holds the parsed code and data indexed by its location counter.
+type SyntaxTable []Operation
+
+// Size returns the number of operations in the table.
+func (s SyntaxTable) Size() int {
+	n := 0
+	for _, oper := range s {
+		if oper != nil {
+			n++
+		}
+	}
+	return n
+}
+
+// Add puts an operation in a location in the table.
+func (s SyntaxTable) Add(loc uint16, oper Operation) {
+	if oper == nil {
+		panic("nil operation")
+	}
+
+	s[loc] = oper
+}
+
+// Syntax returns the abstract syntax table (or, AST).
+func (p *Parser) Syntax() SyntaxTable {
+	return p.syntax
 }
