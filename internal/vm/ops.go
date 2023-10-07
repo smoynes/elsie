@@ -14,7 +14,7 @@ type Opcode uint16
 
 // Opcode constants.
 const (
-	BR Opcode = iota << 12
+	BR Opcode = iota
 	ADD
 	LD
 	ST

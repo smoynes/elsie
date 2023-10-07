@@ -15,7 +15,7 @@ func (i Instruction) String() string {
 
 // Opcode returns the instruction opcode which is stored in the top four bits of the instruction.
 func (i Instruction) Opcode() Opcode {
-	return Opcode(i & 0xf000)
+	return Opcode(i&0xf000) >> 12
 }
 
 // Cond returns the condition flags from the instruction.

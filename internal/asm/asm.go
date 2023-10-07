@@ -131,11 +131,13 @@ type SyntaxTable []Operation
 // Size returns the number of operations in the table.
 func (s SyntaxTable) Size() int {
 	n := 0
+
 	for _, oper := range s {
 		if oper != nil {
 			n++
 		}
 	}
+
 	return n
 }
 

@@ -195,6 +195,7 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	default:
 		code |= 1 << 5
 		code |= and.OFFSET & 0x001f
+
 		return code, nil
 	}
 }
@@ -304,7 +305,7 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 }
 
 func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var code uint16 = 0x6 << 12
+	code := uint16(0x6 << 12)
 	dr := registerVal(ldr.DR)
 	sr := registerVal(ldr.SR)
 

@@ -72,7 +72,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	}
 
 	// AND R0,R0,0 ; clear R0
-	program = vm.Register(vm.Word(vm.AND) | 0x0020)
+	program = vm.Register(vm.Word(vm.AND)<<12 | 0x0020)
 	machine.Mem.MAR = vm.Register(0x1000)
 	machine.Mem.MDR = program
 
@@ -82,7 +82,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	}
 
 	// LEA R1,[MCR] ; load MCR addr into R1
-	program = vm.Register(vm.Word(vm.LEA) | 0x0201)
+	program = vm.Register(vm.Word(vm.LEA)<<12 | 0x0201)
 	machine.Mem.MAR = vm.Register(0x1001)
 	machine.Mem.MDR = program
 
@@ -92,7 +92,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	}
 
 	// STR R0,R1,0
-	program = vm.Register(vm.Word(vm.STR) | 0x0040)
+	program = vm.Register(vm.Word(vm.STR)<<12 | 0x0040)
 	machine.Mem.MAR = vm.Register(0x1002)
 	machine.Mem.MDR = program
 
@@ -113,7 +113,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	logger.Info("Loading program")
 
 	// TRAP HALT
-	program = vm.Register(vm.Word(vm.TRAP) | vm.TrapHALT)
+	program = vm.Register(vm.Word(vm.TRAP)<<12 | vm.TrapHALT)
 	machine.Mem.MAR = vm.Register(machine.PC)
 	machine.Mem.MDR = program
 

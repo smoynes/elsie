@@ -81,7 +81,6 @@ func (a *assembler) Run(ctx context.Context, args []string, out io.Writer, logge
 		}
 
 		_, err := code.Generate(parser.Symbols(), uint16(pc))
-
 		if err != nil {
 			logger.Error("Coding error", "err", err)
 		}

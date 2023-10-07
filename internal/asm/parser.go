@@ -138,6 +138,7 @@ func (p *Parser) parseLine(line string) error {
 
 		if !p.isReservedKeyword(label) {
 			remain = remain[matchEnd:]
+
 			p.symbols.Add(label, p.loc)
 		}
 	}

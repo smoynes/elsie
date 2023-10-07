@@ -280,7 +280,7 @@ func TestBR_Generate(t *testing.T) {
 			t.Errorf("expected error: %#v, got: %#v", wantErr, err)
 		} else if wantErr == nil && err != nil {
 			t.Errorf("unexpected error: %s", err)
-		} else if wantErr == nil && err != nil {
+		} else if wantErr == nil && err == nil {
 			t.Logf("Code: %#v == generated ==> %0#4x", op, got)
 
 			if got == 0xffff {

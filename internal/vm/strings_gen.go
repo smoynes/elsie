@@ -9,53 +9,32 @@ func _() {
 	// Re-run the stringer command to generate them again.
 	var x [1]struct{}
 	_ = x[BR-0]
-	_ = x[ADD-4096]
-	_ = x[LD-8192]
-	_ = x[ST-12288]
-	_ = x[JSR-16384]
-	_ = x[AND-20480]
-	_ = x[LDR-24576]
-	_ = x[STR-28672]
-	_ = x[RTI-32768]
-	_ = x[NOT-36864]
-	_ = x[LDI-40960]
-	_ = x[STI-45056]
-	_ = x[JMP-49152]
-	_ = x[RESV-53248]
-	_ = x[LEA-57344]
-	_ = x[TRAP-61440]
-	_ = x[JSRR-20224]
-	_ = x[RET-52992]
+	_ = x[ADD-1]
+	_ = x[LD-2]
+	_ = x[ST-3]
+	_ = x[JSR-4]
+	_ = x[AND-5]
+	_ = x[LDR-6]
+	_ = x[STR-7]
+	_ = x[RTI-8]
+	_ = x[NOT-9]
+	_ = x[LDI-10]
+	_ = x[STI-11]
+	_ = x[JMP-12]
+	_ = x[RESV-13]
+	_ = x[LEA-14]
+	_ = x[TRAP-15]
 }
 
-const _Opcode_name = "BRADDLDSTJSRJSRRANDLDRSTRRTINOTLDISTIJMPRETRESVLEATRAP"
+const _Opcode_name = "BRADDLDSTJSRANDLDRSTRRTINOTLDISTIJMPRESVLEATRAP"
 
-var _Opcode_map = map[Opcode]string{
-	0:     _Opcode_name[0:2],
-	4096:  _Opcode_name[2:5],
-	8192:  _Opcode_name[5:7],
-	12288: _Opcode_name[7:9],
-	16384: _Opcode_name[9:12],
-	20224: _Opcode_name[12:16],
-	20480: _Opcode_name[16:19],
-	24576: _Opcode_name[19:22],
-	28672: _Opcode_name[22:25],
-	32768: _Opcode_name[25:28],
-	36864: _Opcode_name[28:31],
-	40960: _Opcode_name[31:34],
-	45056: _Opcode_name[34:37],
-	49152: _Opcode_name[37:40],
-	52992: _Opcode_name[40:43],
-	53248: _Opcode_name[43:47],
-	57344: _Opcode_name[47:50],
-	61440: _Opcode_name[50:54],
-}
+var _Opcode_index = [...]uint8{0, 2, 5, 7, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 40, 43, 47}
 
 func (i Opcode) String() string {
-	if str, ok := _Opcode_map[i]; ok {
-		return str
+	if i >= Opcode(len(_Opcode_index)-1) {
+		return "Opcode(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return "Opcode(" + strconv.FormatInt(int64(i), 10) + ")"
+	return _Opcode_name[_Opcode_index[i]:_Opcode_index[i+1]]
 }
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
@@ -114,14 +93,15 @@ func _() {
 	_ = x[PL5-5]
 	_ = x[PL6-6]
 	_ = x[PL7-7]
+	_ = x[NumPL-8]
 	_ = x[PriorityLOW-0]
 	_ = x[PriorityNormal-3]
 	_ = x[PriorityHigh-7]
 }
 
-const _Priority_name = "PL0PL1PL2PL3PL4PL5PL6PL7"
+const _Priority_name = "PL0PL1PL2PL3PL4PL5PL6PL7NumPL"
 
-var _Priority_index = [...]uint8{0, 3, 6, 9, 12, 15, 18, 21, 24}
+var _Priority_index = [...]uint8{0, 3, 6, 9, 12, 15, 18, 21, 24, 29}
 
 func (i Priority) String() string {
 	if i >= Priority(len(_Priority_index)-1) {
