@@ -1,39 +1,9 @@
 package vm
 
-// ops.go defines the CPU operations and their semantics.
+// ops.go defines the byte-code instructions and behaviours.
 
 import (
 	"fmt"
-)
-
-// An Opcode identifies the instruction to be executed by the CPU. The ISA has
-// 15 distinct opcodes, plus one reserved value that is undefined.
-//
-// TODO: Move to common definition for vm and assembler both.
-type Opcode uint16
-
-// Opcode constants.
-const (
-	BR Opcode = iota
-	ADD
-	LD
-	ST
-	JSR
-	AND
-	LDR
-	STR
-	RTI
-	NOT
-	LDI
-	STI
-	JMP
-	RESV
-	LEA
-	TRAP
-
-	// Two synthetic opcodes used for printing special cases of the above.
-	JSRR = JSR | 0x0f00
-	RET  = JMP | 0x0f00
 )
 
 type mo struct { // no, mo is NOT a monad. /( ._.)\

@@ -149,11 +149,15 @@ func TestAND_Generate(t *testing.T) {
 		} else {
 			t.Logf("Code: %#v == generated ==> %0#4x", oper, mc)
 
-			if mc == 0xffff {
+			if mc == nil {
 				t.Error("invalid machine code")
 			}
 
-			if mc != want {
+			if len(mc) != 1 {
+				t.Errorf("incorrect machine code: %d bytes", len(mc))
+			}
+
+			if mc[0] != want {
 				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
 			}
 		}
@@ -283,11 +287,15 @@ func TestBR_Generate(t *testing.T) {
 		} else if wantErr == nil && err == nil {
 			t.Logf("Code: %#v == generated ==> %0#4x", op, got)
 
-			if got == 0xffff {
+			if got == nil {
 				t.Error("invalid machine code")
 			}
 
-			if got != want {
+			if len(got) != 1 {
+				t.Errorf("incorrect machine code: %d bytes", len(got))
+			}
+
+			if got[0] != want {
 				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, got)
 			}
 		}
@@ -398,12 +406,17 @@ func TestLDR_Generate(t *testing.T) {
 	} else {
 		t.Logf("Code: %#v == generated ==> %0#4x", instrs[0], mc)
 
-		if mc == 0xffff {
+		if mc == nil {
 			t.Error("invalid machine code")
 		}
 
-		if mc != 0x6150 {
-			t.Errorf("bad machine code: want: %0#4x got: %0#4x", 0x6150, mc)
+		if len(mc) != 1 {
+			t.Errorf("incorrect machine code: %d bytes", len(mc))
+		}
+		want := uint16(0x6150)
+
+		if mc[0] != want {
+			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
 		}
 	}
 
@@ -412,12 +425,17 @@ func TestLDR_Generate(t *testing.T) {
 	} else {
 		t.Logf("Code: %#v == generated ==> %0#4x", instrs[1], mc)
 
-		if mc == 0xffff {
+		if mc == nil {
 			t.Error("invalid machine code")
 		}
 
-		if mc != 0x6f09 {
-			t.Errorf("bad machine code: want: %0#4x got: %04x", 0x6f0a, mc)
+		if len(mc) != 1 {
+			t.Errorf("incorrect machine code: %d bytes", len(mc))
+		}
+
+		want := uint16(0x6f09)
+		if mc[0] != want {
+			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
 		}
 	}
 }
@@ -438,12 +456,17 @@ func TestLD_Generate(t *testing.T) {
 	} else {
 		t.Logf("Code: %#v == generated ==> %0#4x", instrs[0], mc)
 
-		if mc == 0xffff {
+		if mc == nil {
 			t.Error("invalid machine code")
 		}
 
-		if mc != 0x2010 {
-			t.Errorf("bad machine code: want: %0#4x %0#4x", 0x2010, mc)
+		if len(mc) != 1 {
+			t.Errorf("incorrect machine code: %d bytes", len(mc))
+		}
+
+		want := uint16(0x2010)
+		if mc[0] != want {
+			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
 		}
 	}
 
@@ -452,12 +475,21 @@ func TestLD_Generate(t *testing.T) {
 	} else {
 		t.Logf("Code: %#v == generated ==> %0#4x", instrs[1], mc)
 
-		if mc == 0xffff {
+		if mc == nil {
 			t.Error("invalid machine code")
 		}
 
-		if mc != 0x2eff {
-			t.Errorf("bad machine code: want: %0#4x %0#4x", 0x2eff, mc)
+		if mc == nil {
+			t.Error("invalid machine code")
+		}
+
+		if len(mc) != 1 {
+			t.Errorf("incorrect machine code: %d bytes", len(mc))
+		}
+
+		want := uint16(0x2eff)
+		if mc[0] != want {
+			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
 		}
 	}
 }
@@ -527,14 +559,18 @@ func TestADD_Generate(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if mc == 0xffff {
+		if mc == nil {
 			t.Error("invalid machine code")
 		}
 
-		if mc != exp {
-			t.Errorf("tc: %#v", tcs[tc].operation)
+		if len(mc) != 1 {
+			t.Errorf("incorrect machine code: %d bytes", len(mc))
+		}
+
+		if mc[0] != exp {
 			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
 		}
+
 	}
 }
 
@@ -599,11 +635,9 @@ func TestNOT_Parse(t *testing.T) {
 
 func TestNOT_Generate(t *testing.T) {
 	tcs := []struct {
-		op      Operation
-		want    uint16
-		wantErr error
+		op   Operation
+		want uint16
 	}{
-		// TODO		{op: &NOT{DR: "R0", SR: ""}, want: 0x1001, wantErr: &SyntaxError{} },
 		{
 			op:   &NOT{DR: "R1", SR: "R1"},
 			want: 0x927f,
@@ -614,25 +648,23 @@ func TestNOT_Generate(t *testing.T) {
 	symbols := SymbolTable{}
 
 	for tc := range tcs {
-		op, exp, wantErr := tcs[tc].op, tcs[tc].want, tcs[tc].wantErr
+		op, exp := tcs[tc].op, tcs[tc].want
 
 		mc, err := op.Generate(symbols, pc)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 
-		if mc == 0xffff {
+		if mc == nil {
 			t.Error("invalid machine code")
 		}
 
-		if wantErr == nil && mc != exp {
-			t.Errorf("tc: %#v", tcs[tc].op)
-			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
+		if len(mc) != 1 {
+			t.Errorf("incorrect machine code: %d bytes", len(mc))
 		}
 
-		if wantErr != nil && errors.Is(err, wantErr) {
-			t.Errorf("tc: %#v", tcs[tc].op)
-			t.Errorf("expected error: want: %#v, got: %#v", wantErr, err)
+		if mc[0] != exp {
+			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
 		}
 	}
 }
@@ -694,9 +726,8 @@ func TestTRAP_Parse(t *testing.T) {
 
 func TestTRAP_Generate(t *testing.T) {
 	tcs := []struct {
-		op      Operation
-		want    uint16
-		wantErr error
+		op   Operation
+		want uint16
 	}{
 		{
 			op:   &TRAP{LITERAL: 0x00ff},
@@ -712,25 +743,23 @@ func TestTRAP_Generate(t *testing.T) {
 	symbols := SymbolTable{}
 
 	for tc := range tcs {
-		op, exp, wantErr := tcs[tc].op, tcs[tc].want, tcs[tc].wantErr
+		op, exp := tcs[tc].op, tcs[tc].want
 
 		mc, err := op.Generate(symbols, pc)
 		if err != nil {
 			t.Fatalf("unexpected error: %#v", err)
 		}
 
-		if mc == 0xffff {
+		if mc == nil {
 			t.Error("invalid machine code")
 		}
 
-		if wantErr == nil && mc != exp {
-			t.Errorf("tc: %#v", tcs[tc].op)
-			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
+		if len(mc) != 1 {
+			t.Errorf("incorrect machine code: %d bytes", len(mc))
 		}
 
-		if wantErr != nil && errors.Is(err, wantErr) {
-			t.Errorf("tc: %#v", tcs[tc].op)
-			t.Errorf("expected error: want: %#v, got: %#v", wantErr, err)
+		if mc[0] != exp {
+			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
 		}
 	}
 }

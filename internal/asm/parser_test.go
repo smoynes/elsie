@@ -77,8 +77,8 @@ func (fake *fakeInstruction) Parse(oper string, opers []string) error {
 	return nil
 }
 
-func (fake *fakeInstruction) Generate(sym SymbolTable, loc uint16) (uint16, error) {
-	return 0, nil
+func (fake *fakeInstruction) Generate(sym SymbolTable, loc uint16) ([]uint16, error) {
+	return nil, nil
 }
 
 const ValidSyntax = (`

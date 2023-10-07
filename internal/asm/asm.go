@@ -154,3 +154,15 @@ func (s SyntaxTable) Add(loc uint16, oper Operation) {
 func (p *Parser) Syntax() SyntaxTable {
 	return p.syntax
 }
+
+// Operation is an assembly instruction or directive. It is parsed from source code during the
+// assembler's first pass and encoded to object code in the second pass.
+type Operation interface {
+	// Parse initializes an assembly operation by parsing an opcode and its operands. An error is
+	// returned if parsing the operands fails.
+	Parse(operator string, operands []string) error
+
+	// Generate encodes an operation as machine code. Using the values from Parse, the operation is
+	// converted to one (or more) words.
+	Generate(symbols SymbolTable, pc uint16) ([]uint16, error)
+}
