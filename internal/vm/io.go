@@ -9,16 +9,13 @@ import (
 	"github.com/smoynes/elsie/internal/log"
 )
 
-// The memory controller redirects accesses of addresses in the I/O page to the MMIO controller.
-// During boot, addresses are mapped to registers in the CPU or external devices.
+// MMIO is the memory-mapped I/O controller. It holds a table indexed by logical address and points
+// to either a register or a device driver that will perform the actual data exechange.
 //
 // Different kinds of devices have different types of registers, i.e., Register, StatusRegister,
 // KeyboardRegister, etc. However, in Go, pointer types are unconvertible: we cannot convert from
 // *StatusRegister to *Register, even though they have the same underlying type. So, we keep any
 // pointers and type cast to the register types that the MMIO supports.
-
-// MMIO is the memory-mapped I/O controller. It holds a table indexed by logical address and points
-// to either a register or a device driver.
 type MMIO struct {
 	devs map[Word]any
 	log  *log.Logger

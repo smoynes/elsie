@@ -1,4 +1,4 @@
-# `ELSIE`: A pedagogical LC-3 simulator #
+# `ELSIE`: A pedagogical LC-3 emulator #
 
 This is `ELSIE`, a virtual machine for the LC-3: a little computer that is
 simple, comprehensive, and imaginary.
@@ -99,14 +99,17 @@ Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License
 
 Focus right now:
 
-- assembler
+ASM: assembler
+  - have a very rough parser
+  - generates code for a few opcodes
+  - not much error handling
 
 On deck:
 
-- keyboard interrupts
-- BIOS
+- KBD: interrupts
+- BIOS:
 
-See [TODO.md](`TODO.md`) for ideas.
+See [TODO.md](`TODO.md`) for more ideas.
 
 </details>
 

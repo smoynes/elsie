@@ -45,8 +45,8 @@ type Handler struct {
 	attrs []Attr
 }
 
-// The log options for Handlers.
-var logOptions = &slog.HandlerOptions{
+// Options for log handlers.
+var Options = &slog.HandlerOptions{
 	AddSource:   true,
 	Level:       LogLevel,
 	ReplaceAttr: func(_ []string, attr Attr) Attr { return attr },
@@ -57,7 +57,7 @@ func NewHandler(out io.Writer) *Handler {
 	h := Handler{
 		out:  out,
 		mut:  new(sync.Mutex),
-		opts: logOptions,
+		opts: Options,
 	}
 
 	return &h
