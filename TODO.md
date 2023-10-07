@@ -3,21 +3,21 @@
 - [ ] DOCS:
   - [ ] tutorial
   - [ ] design
-- [ ] ASM:
-  - [x] simple parser: regexp
-  - [x] symbol table
-  - [.] code generation: ~5/16
+- [.] ASM:
+  - [.] code generation: ~7/16
   - [.] directives
+    - [ ] .STRINGZ: strangz
+    - [ ] .END
     - [x] .BLKW: block words
     - [x] .DW: define word
     - [x] .FILL: fill word
     - [x] .ORIG: origin
-    - [ ] .STRINGZ: strangz
-    - [ ] .END
-  - [.] memory layout
   - [.] cli command
+  - [.] document grammar
+  - [x] memory layout
   - [x] cleaner error handling
-  - [ ] document grammar
+  - [x] simple parser: regexp
+  - [x] symbol table
 - [ ] LOAD: object loader
 - [ ] DUMP: hex encoder
 - [ ] CLI: sub commands for vm, tools, terminal, shell
