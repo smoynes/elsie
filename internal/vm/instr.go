@@ -92,14 +92,14 @@ const (
 	VECTOR8  = vector(8)
 )
 
-// Condition represents a ZNP condition operand from an instruction.
+// Condition represents a NZP condition operand from an instruction.
 type Condition Word
 
 // Condition flags.
 const (
-	ConditionPositive Condition = 1 << iota
-	ConditionZero
-	ConditionNegative
+	ConditionPositive Condition = 0x1 // P
+	ConditionZero     Condition = 0x2 // Z
+	ConditionNegative Condition = 0x4 // N
 )
 
 func (c Condition) String() string {

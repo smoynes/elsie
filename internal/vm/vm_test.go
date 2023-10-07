@@ -166,7 +166,7 @@ func TestInstructions(tt *testing.T) {
 		}
 
 		if !cpu.PSR.Negative() {
-			t.Errorf("cond incorrect, want: %s, got: %s",
+			t.Errorf("cond incorrect, want: %v, got: %s",
 				ConditionNegative, cpu.PSR.Cond())
 		}
 	})
@@ -194,7 +194,7 @@ func TestInstructions(tt *testing.T) {
 		}
 
 		if cpu.PSR.Cond() != ConditionNegative {
-			t.Errorf("COND incorrect, want: %s, got: %s", ConditionNegative, cpu.PSR.Cond())
+			t.Errorf("COND incorrect, want: %v, got: %s", ConditionNegative, cpu.PSR.Cond())
 		}
 	})
 

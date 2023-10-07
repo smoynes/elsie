@@ -8,6 +8,8 @@ import (
 	"math"
 	"strconv"
 	"strings"
+
+	"github.com/smoynes/elsie/internal/vm"
 )
 
 // Operation is an assembly instruction or directive. It is parsed from source code during the
@@ -87,7 +89,7 @@ func (br *BR) Parse(oper string, opers []string) error {
 func (br *BR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 	var code uint16
 
-	code |= 0o0 << 12
+	code |= uint16(vm.BR) << 12
 	code |= uint16(br.NZP) << 9
 
 	if br.SYMBOL != "" {
@@ -167,7 +169,7 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 		return badValue, errors.New("and: register error")
 	}
 
-	code |= 0o5 << 12
+	code |= uint16(vm.AND) << 12
 	code |= dr << 9
 	code |= sr1 << 6
 
@@ -238,13 +240,14 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 }
 
 func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var code uint16 = 0o2 << 12
+	var code uint16
 
 	dr := registerVal(ld.DR)
 	if dr == badValue {
 		return badValue, fmt.Errorf("ld: register error")
 	}
 
+	code |= uint16(vm.LD) << 12
 	code |= dr << 9
 
 	switch {
@@ -305,7 +308,7 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 }
 
 func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	code := uint16(0x6 << 12)
+	code := uint16(vm.LDR) << 12
 	dr := registerVal(ldr.DR)
 	sr := registerVal(ldr.SR)
 
@@ -381,7 +384,7 @@ func (add *ADD) Parse(opcode string, operands []string) error {
 }
 
 func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var code uint16 = 0b0001 << 12
+	var code uint16
 
 	dr := registerVal(add.DR)
 	sr1 := registerVal(add.SR1)
@@ -390,6 +393,7 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 		return 0, errors.New("add: register error")
 	}
 
+	code |= uint16(vm.ADD) << 12
 	code |= dr << 9
 	code |= sr1 << 6
 
@@ -439,7 +443,7 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 }
 
 func (trap TRAP) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	code := 0xf<<12 | trap.LITERAL&0x00ff
+	code := uint16(vm.TRAP)<<12 | trap.LITERAL&0x00ff
 	return code, nil
 }
 
@@ -478,7 +482,7 @@ func (not *NOT) Parse(opcode string, operands []string) error {
 }
 
 func (not *NOT) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var code uint16 = 0b1001 << 12
+	var code uint16
 
 	if not.DR == "" || not.SR == "" {
 		return badValue, fmt.Errorf("gen: not: bad operand")
@@ -491,6 +495,7 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
 		return badValue, errors.New("not: operand error")
 	}
 
+	code |= uint16(vm.NOT) << 12
 	code |= registerVal(not.DR) << 9
 	code |= registerVal(not.SR) << 6
 	code |= 0x003f
