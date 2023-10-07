@@ -47,7 +47,7 @@ type BR struct {
 func (br BR) String() string { return fmt.Sprintf("BR(%#v)", br) }
 
 func (br *BR) Parse(oper string, opers []string) error {
-	var nzp uint8
+	var nzp uint16
 
 	if len(opers) != 1 {
 		return errors.New("br: invalid operands")
@@ -55,19 +55,19 @@ func (br *BR) Parse(oper string, opers []string) error {
 
 	switch strings.ToUpper(oper) {
 	case "BR", "BRNZP":
-		nzp = 0o7
+		nzp = uint16(vm.ConditionNegative | vm.ConditionZero | vm.ConditionPositive)
 	case "BRP":
-		nzp = 0o1
+		nzp = uint16(vm.ConditionPositive)
 	case "BRZ":
-		nzp = 0o2
+		nzp = uint16(vm.ConditionZero)
 	case "BRZP":
-		nzp = 0o3
+		nzp = uint16(vm.ConditionZero | vm.ConditionPositive)
 	case "BRN":
-		nzp = 0o4
+		nzp = uint16(vm.ConditionNegative)
 	case "BRNP":
-		nzp = 0o5
+		nzp = uint16(vm.ConditionNegative | vm.ConditionPositive)
 	case "BRNZ":
-		nzp = 0o6
+		nzp = uint16(vm.ConditionNegative | vm.ConditionZero)
 	default:
 		return fmt.Errorf("unknown opcode: %s", oper)
 	}
@@ -78,7 +78,7 @@ func (br *BR) Parse(oper string, opers []string) error {
 	}
 
 	*br = BR{
-		NZP:    nzp,
+		NZP:    uint8(nzp),
 		SYMBOL: sym,
 		OFFSET: off,
 	}
