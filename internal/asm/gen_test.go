@@ -192,13 +192,13 @@ func TestADD_Generate(tt *testing.T) {
 	t := generatorHarness{tt}
 	tcs := []generateCase{
 		{&ADD{DR: "R0", SR1: "R0", SR2: "RR"}, 0, &RegisterError{Reg: "RR"}},
-		{&ADD{DR: "R4", SR1: "R1", LITERAL: ^uint16(0x0004)}, 0x185b, nil},
-		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x000f}, 0x124f, nil},
+		{&ADD{DR: "R4", SR1: "R1", LITERAL: ^uint16(0x0004)}, 0x187b, nil},
+		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x000f}, 0x126f, nil},
 		{&ADD{DR: "R1", SR1: "R1", SR2: "R0"}, 0x1240, nil},
-		{&ADD{DR: "R0", SR1: "R7", LITERAL: 0b0000_0000_0000_1010}, 0b0001_0001_1100_1010, nil},
-		{&ADD{DR: "R2", SR1: "R6", LITERAL: 0x15cf}, 0x15cf, nil},
-		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x21c0}, 0x1240, nil},
-		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0}, 0x1240, nil},
+		{&ADD{DR: "R0", SR1: "R7", LITERAL: 0b0000_0000_0000_1010}, 0b0001_0001_1110_1010, nil},
+		{&ADD{DR: "R2", SR1: "R6", LITERAL: 0x15cf}, 0x15af, nil},
+		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x21c0}, 0x1260, nil},
+		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0}, 0x1260, nil},
 	}
 
 	pc := uint16(0x3000)
