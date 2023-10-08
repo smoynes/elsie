@@ -295,8 +295,20 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 		p.syntax.Add(&fill)
 
 		p.loc++
+	case ".STRINGZ":
+		strz := STRINGZ{}
+
+		err = strz.ParseString(ident, arg)
+		if err != nil {
+			break
+		}
+
+		p.syntax.Add(&strz)
+
+		p.loc += uint16(len(strz.LITERAL) + 1)
+
 	case ".END":
-		// TODO: signal end
+		// TODO: add to syntax table
 	default:
 		return fmt.Errorf("directive error: %s", ident)
 	}
