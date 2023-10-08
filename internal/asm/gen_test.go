@@ -18,6 +18,57 @@ type generateCase struct {
 	wantErr error
 }
 
+// Run tests a collection of generator tests cases.
+func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCase) {
+	t.Helper()
+
+	for i := range tcs {
+		oper, want, expErr := tcs[i].oper, tcs[i].want, tcs[i].wantErr
+
+		t.Log(oper)
+
+		if mc, err := oper.Generate(symbols, pc); expErr == nil && err != nil {
+			t.Errorf("Code: %#v == error  ==> %s", oper, err)
+		} else if expErr != nil {
+			switch wantErr := expErr.(type) { //nolint:errorlint
+			case *RegisterError:
+				if !errors.As(err, &wantErr) {
+					// 5 indents is 2 too many
+					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, err)
+				}
+				if wantErr.Reg != expErr.(*RegisterError).Reg { //nolint:errorlint
+					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, expErr)
+				}
+			case *OffsetError:
+				if !errors.As(err, &wantErr) {
+					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, wantErr)
+				}
+				if wantErr.Offset != expErr.(*OffsetError).Offset { //nolint:errorlint
+					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, wantErr)
+				}
+			}
+		} else {
+			t.Logf("Code: %#v == generated ==> %0#4x", oper, mc)
+
+			if mc == nil {
+				t.Error("invalid machine code")
+			}
+
+			if len(mc) != 1 {
+				t.Errorf("incorrect machine code: %d bytes", len(mc))
+			}
+
+			if mc[0] != want {
+				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
+			}
+
+			if err != nil {
+				t.Error(err)
+			}
+		}
+	}
+}
+
 func TestGenerator(tt *testing.T) {
 	t := generatorHarness{tt}
 
@@ -122,57 +173,6 @@ func TestLDR_Generate(tt *testing.T) {
 	}
 
 	t.Run(pc, symbols, tcs)
-}
-
-// Run tests a collection of generator tests cases.
-func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCase) {
-	t.Helper()
-
-	for i := range tcs {
-		oper, want, expErr := tcs[i].oper, tcs[i].want, tcs[i].wantErr
-
-		t.Log(oper)
-
-		if mc, err := oper.Generate(symbols, pc); expErr == nil && err != nil {
-			t.Errorf("Code: %#v == error  ==> %s", oper, err)
-		} else if expErr != nil {
-			switch wantErr := expErr.(type) { //nolint:errorlint
-			case *RegisterError:
-				if !errors.As(err, &wantErr) {
-					// 5 indents is 2 too many
-					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, err)
-				}
-				if wantErr.Reg != expErr.(*RegisterError).Reg { //nolint:errorlint
-					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, expErr)
-				}
-			case *OffsetError:
-				if !errors.As(err, &wantErr) {
-					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, wantErr)
-				}
-				if wantErr.Offset != expErr.(*OffsetError).Offset { //nolint:errorlint
-					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, wantErr)
-				}
-			}
-		} else {
-			t.Logf("Code: %#v == generated ==> %0#4x", oper, mc)
-
-			if mc == nil {
-				t.Error("invalid machine code")
-			}
-
-			if len(mc) != 1 {
-				t.Errorf("incorrect machine code: %d bytes", len(mc))
-			}
-
-			if mc[0] != want {
-				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
-			}
-
-			if err != nil {
-				t.Error(err)
-			}
-		}
-	}
 }
 
 func TestLD_Generate(tt *testing.T) {
