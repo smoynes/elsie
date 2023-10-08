@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
@@ -76,6 +77,7 @@ func (a *assembler) Run(ctx context.Context, args []string, stdout io.Writer, lo
 	// Second pass: generate code.
 	symbols := parser.Symbols()
 	syntax := parser.Syntax()
+	generator := asm.NewGenerator(symbols, syntax)
 
 	out, err := os.Create(a.output)
 	if err != nil {
@@ -85,15 +87,20 @@ func (a *assembler) Run(ctx context.Context, args []string, stdout io.Writer, lo
 
 	logger.Debug("Writing object", "file", a.output)
 
-	generator := asm.NewGenerator(symbols, syntax)
-
-	wrote, err := generator.WriteTo(out)
+	buf := bufio.NewWriter(out)
+	wrote, err := generator.WriteTo(buf)
 	if err != nil {
-		logger.Error("Compile error", "out", "a.o", "err", err)
+		logger.Error("Compile error", "out", a.output, "err", err)
+		return -1
+	}
+
+	if err = buf.Flush(); err != nil {
+		logger.Error("I/O error", "out", a.output, "err", err)
 		return -1
 	}
 
 	logger.Debug("Compiled object",
+		"out", a.output,
 		"size", wrote,
 		"symbols", symbols.Count(),
 		"syntax", syntax.Size(),
