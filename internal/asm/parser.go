@@ -231,6 +231,7 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		Pos:      p.pos,
 		Line:     p.line,
 	}
+
 	switch strings.ToUpper(opcode) {
 	case "ADD":
 		return &ADD{SourceInfo: source}
@@ -268,6 +269,7 @@ func (p *Parser) isReservedKeyword(word string) bool {
 // parseDirective parses a directive, or pseudo-instruction, by its identifier and argument.
 func (p *Parser) parseDirective(ident string, arg string) error {
 	var err error
+
 	source := SourceInfo{
 		Filename: p.filename,
 		Pos:      p.pos,

@@ -75,6 +75,7 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 				Line: src.Line,
 				Err:  err,
 			}
+
 			break
 		}
 

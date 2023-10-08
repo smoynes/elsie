@@ -249,6 +249,7 @@ func TestNOT_Generate(tt *testing.T) {
 
 func TestSTRINGZ_Generate(tt *testing.T) {
 	t := generatorHarness{tt}
+
 	tcs := []generateCase{
 		{
 			oper:     &STRINGZ{LITERAL: "Hello, there!"},
