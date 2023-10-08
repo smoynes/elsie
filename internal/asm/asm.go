@@ -109,13 +109,22 @@ const badSymbol uint16 = 0xffff
 
 // SyntaxError is a wrapped error returned when the parser encounters a syntax error.
 type SyntaxError struct {
-	Loc, Pos uint16
-	Line     string
-	Err      error
+	Loc  uint16 // Location counter.
+	Pos  uint16 // Line counter, zero value if now known.
+	Line string // Source code line, zero value if not known.
+	Err  error  // Error cause.
 }
 
 func (pe *SyntaxError) Error() string {
-	return fmt.Sprintf("syntax error: %s: line: %d %q", pe.Err, pe.Pos, pe.Line)
+	if pe.Err == nil && pe.Line == "" {
+		return fmt.Sprintf("syntax error: loc: %0#4x", pe.Loc)
+	} else if pe.Err == nil && pe.Line != "" {
+		return fmt.Sprintf("syntax error: line: %q", pe.Line)
+	} else if pe.Err != nil && pe.Line == "" {
+		return fmt.Sprintf("syntax error: %s: loc: %0#4x", pe.Err, pe.Loc)
+	} else {
+		return fmt.Sprintf("syntax error: %s: line: %0#4X %q", pe.Err, pe.Pos, pe.Line)
+	}
 }
 
 // OffsetError is a wrapped error returned when an offset value exceeds its range.

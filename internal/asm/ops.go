@@ -33,14 +33,15 @@ type BR struct {
 
 func (br BR) String() string { return fmt.Sprintf("BR(%#v)", br) }
 
-func (br *BR) Parse(oper string, opers []string) error {
+// Parse parses all variations of the BR* instruction based on the opcode.
+func (br *BR) Parse(opcode string, opers []string) error {
 	var nzp uint16
 
 	if len(opers) != 1 {
 		return errors.New("br: invalid operands")
 	}
 
-	switch strings.ToUpper(oper) {
+	switch strings.ToUpper(opcode) {
 	case "BR", "BRNZP":
 		nzp = uint16(vm.ConditionNegative | vm.ConditionZero | vm.ConditionPositive)
 	case "BRP":
@@ -56,7 +57,7 @@ func (br *BR) Parse(oper string, opers []string) error {
 	case "BRNZ":
 		nzp = uint16(vm.ConditionNegative | vm.ConditionZero)
 	default:
-		return fmt.Errorf("unknown opcode: %s", oper)
+		return fmt.Errorf("unknown opcode: %s", opcode)
 	}
 
 	off, sym, err := parseImmediate(opers[0], 9)
@@ -220,7 +221,7 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 func (ld LD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(ld.DR)
 	if dr == badGPR {
-		return nil, fmt.Errorf("ld: register error")
+		return nil, &RegisterError{op: "ld", Reg: ld.DR}
 	}
 
 	code := vm.NewInstruction(vm.LD, dr<<9)
@@ -338,9 +339,12 @@ func (add *ADD) Parse(opcode string, operands []string) error {
 		return errors.New("add: operand error")
 	}
 
+	dr := parseRegister(operands[0])
+	sr1 := parseRegister(operands[1])
+
 	*add = ADD{
-		DR:  parseRegister(operands[0]),
-		SR1: parseRegister(operands[1]),
+		DR:  dr,
+		SR1: sr1,
 	}
 
 	if sr2 := parseRegister(operands[2]); sr2 != "" {
@@ -362,9 +366,9 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	sr1 := registerVal(add.SR1)
 
 	if dr == badGPR {
-		return nil, &RegisterError{"AND", add.DR}
+		return nil, &RegisterError{"and", add.DR}
 	} else if sr1 == badGPR {
-		return nil, &RegisterError{"AND", add.SR1}
+		return nil, &RegisterError{"and", add.SR1}
 	}
 
 	code := vm.NewInstruction(vm.ADD, dr<<9|sr1<<6)
@@ -465,8 +469,10 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(not.DR)
 	sr := registerVal(not.SR)
 
-	if dr == badGPR || sr == badGPR {
-		return nil, errors.New("not: operand error")
+	if dr == badGPR {
+		return nil, &RegisterError{"not", not.DR}
+	} else if sr == badGPR {
+		return nil, &RegisterError{"not", not.SR}
 	}
 
 	code := vm.NewInstruction(vm.NOT, dr<<9|sr<<6|0x003f)

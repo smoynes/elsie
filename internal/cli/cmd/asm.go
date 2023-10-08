@@ -88,6 +88,7 @@ func (a *assembler) Run(ctx context.Context, args []string, stdout io.Writer, lo
 	logger.Debug("Writing object", "file", a.output)
 
 	buf := bufio.NewWriter(out)
+
 	wrote, err := generator.WriteTo(buf)
 	if err != nil {
 		logger.Error("Compile error", "out", a.output, "err", err)
