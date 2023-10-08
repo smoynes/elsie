@@ -12,19 +12,6 @@ import (
 	"github.com/smoynes/elsie/internal/vm"
 )
 
-// Operation is an assembly instruction or directive. It is parsed from source code during the
-// assembler's first pass and encoded to object code in the second pass.
-type Operation interface {
-	// Parse initializes an assembly operation by parsing an opcode and its operands. An error is
-	// returned if parsing the operands fails.
-	Parse(operator string, operands []string) error
-
-	// Generate encodes an operation as machine code. Using the values from Parse, the operation is
-	// converted to one (or more) words.
-	//// TODO: should allow (or more) words.
-	Generate(symbols SymbolTable, pc uint16) (uint16, error)
-}
-
 // BR: Conditional branch.
 //
 //	BR    [ IDENT | LITERAL ]
@@ -86,24 +73,21 @@ func (br *BR) Parse(oper string, opers []string) error {
 	return nil
 }
 
-func (br *BR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var code uint16
-
-	code |= uint16(vm.BR) << 12
-	code |= uint16(br.NZP) << 9
+func (br *BR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	code := vm.NewInstruction(vm.BR, uint16(br.NZP)<<9)
 
 	if br.SYMBOL != "" {
-		offset, err := symbols.Offset(br.SYMBOL, pc, 5)
+		offset, err := symbols.Offset(br.SYMBOL, pc, 9)
 		if err != nil {
-			return badValue, fmt.Errorf("and: %w", err)
+			return nil, fmt.Errorf("and: %w", err)
 		}
 
-		code |= offset
+		code.Operand(offset)
 	} else {
-		code |= br.OFFSET & 0x01ff
+		code.Operand(br.OFFSET & 0x01ff)
 	}
 
-	return code, nil
+	return []uint16{code.Encode()}, nil
 }
 
 // AND: Bitwise AND binary operator.
@@ -159,47 +143,41 @@ func (and *AND) Parse(oper string, opers []string) error {
 }
 
 // Generate returns the machine code for an AND instruction.
-func (and *AND) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var code uint16
-
+func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(and.DR)
 	sr1 := registerVal(and.SR1)
 
-	if dr == badValue || sr1 == badValue {
-		return badValue, errors.New("and: register error")
+	if dr == badGPR {
+		return nil, &RegisterError{"and", and.DR}
+	} else if sr1 == badGPR {
+		return nil, &RegisterError{"and", and.SR1}
 	}
 
-	code |= uint16(vm.AND) << 12
-	code |= dr << 9
-	code |= sr1 << 6
+	code := vm.NewInstruction(vm.AND, dr<<9|sr1<<6)
 
 	switch {
 	case and.SR2 != "":
 		sr2 := registerVal(and.SR2)
-		code |= sr2
-
-		if code == badValue {
-			return badValue, errors.New("and: register error")
+		if sr2 == badGPR {
+			return nil, &RegisterError{"and", and.SR2}
 		}
 
-		return code, nil
+		code.Operand(sr2)
 	case and.SYMBOL != "":
-		code |= 1 << 5
+		code.Operand(1 << 5)
 
 		offset, err := symbols.Offset(and.SYMBOL, pc, 5)
 		if err != nil {
-			return badValue, fmt.Errorf("and: %w", err)
+			return nil, fmt.Errorf("and: %w", err)
 		}
 
-		code |= offset
-
-		return code, nil
+		code.Operand(offset)
 	default:
-		code |= 1 << 5
-		code |= and.OFFSET & 0x001f
-
-		return code, nil
+		code.Operand(1 << 5)
+		code.Operand(and.OFFSET & 0x001f)
 	}
+
+	return []uint16{code.Encode()}, nil
 }
 
 // LD: Load from memory, PC-relative..
@@ -239,31 +217,27 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (ld LD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var code uint16
-
+func (ld LD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(ld.DR)
-	if dr == badValue {
-		return badValue, fmt.Errorf("ld: register error")
+	if dr == badGPR {
+		return nil, fmt.Errorf("ld: register error")
 	}
 
-	code |= uint16(vm.LD) << 12
-	code |= dr << 9
+	code := vm.NewInstruction(vm.LD, dr<<9)
 
 	switch {
 	case ld.SYMBOL != "":
-		loc, ok := symbols[ld.SYMBOL]
-		if !ok {
-			return badValue, fmt.Errorf("ld: symbol error: %q", ld.SYMBOL)
+		offset, err := symbols.Offset(ld.SYMBOL, pc, 8)
+		if err != nil {
+			return nil, fmt.Errorf("and: %w", err)
 		}
 
-		code |= (0x00ff &^ (pc - loc)) // TODO ??
-
-		return code, nil
+		code.Operand(offset)
 	default:
-		code |= ld.OFFSET & 0x0ff
-		return code, nil
+		code.Operand(ld.OFFSET & 0x0ff)
 	}
+
+	return []uint16{code.Encode()}, nil
 }
 
 // LDR: Load from memory, register-relative.
@@ -307,31 +281,31 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (ldr LDR) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	code := uint16(vm.LDR) << 12
+func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(ldr.DR)
 	sr := registerVal(ldr.SR)
 
-	if dr == badValue || sr == badValue {
-		return badValue, fmt.Errorf("ldr: register error")
+	if dr == badGPR {
+		return nil, &RegisterError{"ldr", ldr.DR}
+	} else if sr == badGPR {
+		return nil, &RegisterError{"ldr", ldr.SR}
 	}
 
-	code |= dr << 9
-	code |= sr << 6
+	code := vm.NewInstruction(vm.LDR, dr<<9|sr<<6)
 
 	switch {
 	case ldr.SYMBOL != "":
 		offset, err := symbols.Offset(ldr.SYMBOL, pc, 6)
 		if err != nil {
-			return badValue, fmt.Errorf("ldr: %w", err)
+			return nil, fmt.Errorf("ldr: %w", err)
 		}
 
-		code |= offset
+		code.Operand(offset)
 	default:
-		code |= ldr.OFFSET & 0x003f
+		code.Operand(ldr.OFFSET & 0x003f)
 	}
 
-	return code, nil
+	return []uint16{code.Encode()}, nil
 }
 
 // ADD: Arithmetic addition operator.
@@ -383,29 +357,31 @@ func (add *ADD) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (add ADD) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var code uint16
-
+func (add ADD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(add.DR)
 	sr1 := registerVal(add.SR1)
 
-	if dr == badValue || sr1 == badValue {
-		return 0, errors.New("add: register error")
+	if dr == badGPR {
+		return nil, &RegisterError{"AND", add.DR}
+	} else if sr1 == badGPR {
+		return nil, &RegisterError{"AND", add.SR1}
 	}
 
-	code |= uint16(vm.ADD) << 12
-	code |= dr << 9
-	code |= sr1 << 6
+	code := vm.NewInstruction(vm.ADD, dr<<9|sr1<<6)
 
 	if add.SR2 != "" {
 		sr2 := registerVal(add.SR2)
-		code |= sr2
+		if sr2 == badGPR {
+			return nil, &RegisterError{"and", add.SR2}
+		}
+
+		code.Operand(sr2)
 	} else {
-		code |= 1 << 6
-		code |= add.LITERAL & 0x001f
+		code.Operand(1 << 5)
+		code.Operand(add.LITERAL & 0x001f)
 	}
 
-	return code, nil
+	return []uint16{code.Encode()}, nil
 }
 
 // TRAP: System call or software interrupt.
@@ -442,9 +418,9 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (trap TRAP) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
+func (trap TRAP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	code := uint16(vm.TRAP)<<12 | trap.LITERAL&0x00ff
-	return code, nil
+	return []uint16{code}, nil
 }
 
 // NOT: Bitwise complement.
@@ -481,26 +457,21 @@ func (not *NOT) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (not *NOT) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	var code uint16
-
+func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	if not.DR == "" || not.SR == "" {
-		return badValue, fmt.Errorf("gen: not: bad operand")
+		return nil, fmt.Errorf("gen: not: bad operand")
 	}
 
 	dr := registerVal(not.DR)
 	sr := registerVal(not.SR)
 
-	if dr == badValue || sr == badValue {
-		return badValue, errors.New("not: operand error")
+	if dr == badGPR || sr == badGPR {
+		return nil, errors.New("not: operand error")
 	}
 
-	code |= uint16(vm.NOT) << 12
-	code |= registerVal(not.DR) << 9
-	code |= registerVal(not.SR) << 6
-	code |= 0x003f
+	code := vm.NewInstruction(vm.NOT, dr<<9|sr<<6|0x003f)
 
-	return code, nil
+	return []uint16{code.Encode()}, nil
 }
 
 // .FILL: Allocate and initialize one word of data.
@@ -518,8 +489,8 @@ func (fill *FILL) Parse(opcode string, operands []string) error {
 	return err
 }
 
-func (fill *FILL) Generate(_ SymbolTable, pc uint16) (uint16, error) {
-	return fill.LITERAL, nil
+func (fill *FILL) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	return []uint16{fill.LITERAL}, nil
 }
 
 // .BLKW: Data allocation directive.
@@ -536,8 +507,8 @@ func (blkw *BLKW) Parse(opcode string, operands []string) error {
 	return err
 }
 
-func (blkw *BLKW) Generate(symbols SymbolTable, pc uint16) (uint16, error) {
-	return 0x2361, nil // TODO: un-init memory ?
+func (blkw *BLKW) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	return []uint16{0x2361}, nil // TODO: un-init memory ?
 }
 
 // .ORIG: Origin directive. Sets the location counter to the value.
@@ -561,9 +532,8 @@ func (orig *ORIG) Parse(opcode string, operands []string) error {
 	}
 
 	val, err := strconv.ParseUint(arg, 0, 16)
-	numError := &strconv.NumError{}
 
-	if errors.As(err, &numError) {
+	if numError := (&strconv.NumError{}); errors.As(err, &numError) {
 		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
 	} else if val > math.MaxUint16 {
 		return errors.New("argument error")
@@ -574,14 +544,16 @@ func (orig *ORIG) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (orig *ORIG) Generate(_ SymbolTable, pc uint16) (uint16, error) {
-	return 0x0000, nil
+// Generate encodes the origin as the entry point in machine code. It should only be called as the
+// first operation when generating code.
+func (orig *ORIG) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	return []uint16{orig.LITERAL}, nil
 }
 
-// badValue is returned when a value is invalid because it is more noticeable than a zero value.
-const badValue uint16 = 0xffff
+// badGPR is returned when a value is invalid because it is more noticeable than a zero value.
+const badGPR = uint16(vm.BadGPR)
 
-// registerVal returns the registerVal encoded as an integer or BadRegister if the register does not
+// registerVal returns the registerVal encoded as an integer or badGPR if the register does not
 // exist.
 func registerVal(reg string) uint16 {
 	switch reg {
@@ -602,6 +574,6 @@ func registerVal(reg string) uint16 {
 	case "R7":
 		return 7
 	default:
-		return badValue
+		return uint16(vm.BadGPR)
 	}
 }

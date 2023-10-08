@@ -95,15 +95,17 @@ func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
 		return 0xffff, fmt.Errorf("%s: symbol not found", sym)
 	}
 
-	delta := int16(loc - pc - 1)
+	delta := int16(loc - pc)
 	bottom := ^(-1 << n)
 
 	if delta >= (1<<n) || delta < -(1<<n) {
-		return badValue, &OffsetError{uint16(delta)}
+		return badSymbol, &OffsetError{uint16(delta)}
 	}
 
 	return uint16(delta) & uint16(bottom), nil
 }
+
+const badSymbol uint16 = 0xffff
 
 // SyntaxError is a wrapped error returned when the parser encounters a syntax error.
 type SyntaxError struct {
@@ -116,7 +118,7 @@ func (pe *SyntaxError) Error() string {
 	return fmt.Sprintf("syntax error: %s: line: %d %q", pe.Err, pe.Pos, pe.Line)
 }
 
-// OffsetError is a wrapped error returned when the a offset value exceeds its range.
+// OffsetError is a wrapped error returned when an offset value exceeds its range.
 type OffsetError struct {
 	Offset uint16
 }
@@ -125,32 +127,51 @@ func (oe *OffsetError) Error() string {
 	return fmt.Sprintf("offset error: %0#4x", oe.Offset)
 }
 
+// RegisterError is a wrapped error returned when an instruction names an invalid register.
+type RegisterError struct {
+	op  string
+	Reg string
+}
+
+func (re *RegisterError) Error() string {
+	return fmt.Sprintf("%s: register error: %s", re.op, re.Reg)
+}
+
+// Symbol is a wrapped error returned when a symbol could not be found in the symbol table.
+type SymbolError struct {
+	Loc    uint16
+	Symbol string
+}
+
+func (se *SymbolError) Error() string {
+	return fmt.Sprintf("symbol error: %q", se.Symbol)
+}
+
 // SyntaxTable is holds the parsed code and data indexed by its location counter.
 type SyntaxTable []Operation
 
 // Size returns the number of operations in the table.
 func (s SyntaxTable) Size() int {
-	n := 0
-
-	for _, oper := range s {
-		if oper != nil {
-			n++
-		}
-	}
-
-	return n
+	return len(s)
 }
 
-// Add puts an operation in a location in the table.
-func (s SyntaxTable) Add(loc uint16, oper Operation) {
+// Add appends an operation to the syntax table.
+func (s *SyntaxTable) Add(oper Operation) {
 	if oper == nil {
 		panic("nil operation")
 	}
 
-	s[loc] = oper
+	*s = append(*s, oper)
 }
 
-// Syntax returns the abstract syntax table (or, AST).
-func (p *Parser) Syntax() SyntaxTable {
-	return p.syntax
+// Operation is an assembly instruction or directive. It is parsed from source code during the
+// assembler's first pass and encoded to object code in the second pass.
+type Operation interface {
+	// Parse initializes an assembly operation by parsing an opcode and its operands. An error is
+	// returned if parsing the operands fails.
+	Parse(operator string, operands []string) error
+
+	// Generate encodes an operation as machine code. Using the values from Parse, the operation is
+	// converted to one (or more) words.
+	Generate(symbols SymbolTable, pc uint16) ([]uint16, error)
 }

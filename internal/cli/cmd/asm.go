@@ -43,7 +43,7 @@ func (a *assembler) FlagSet() *cli.FlagSet {
 }
 
 // Run calls the assembler to assemble the assembly.
-func (a *assembler) Run(ctx context.Context, args []string, out io.Writer, logger *log.Logger) int {
+func (a *assembler) Run(ctx context.Context, args []string, stdout io.Writer, logger *log.Logger) int {
 	if a.debug {
 		log.LogLevel.Set(log.Debug)
 	}
@@ -73,18 +73,31 @@ func (a *assembler) Run(ctx context.Context, args []string, out io.Writer, logge
 		return 1
 	}
 
+	// Second pass: generate code.
+	symbols := parser.Symbols()
 	syntax := parser.Syntax()
 
-	for pc, code := range syntax {
-		if code == nil {
-			continue
-		}
-
-		_, err := code.Generate(parser.Symbols(), uint16(pc))
-		if err != nil {
-			logger.Error("Coding error", "err", err)
-		}
+	out, err := os.Create(a.output)
+	if err != nil {
+		logger.Error("open failed", "out", a.output, "err", err)
+		return -1
 	}
+
+	logger.Debug("Writing object", "file", a.output)
+
+	generator := asm.NewGenerator(symbols, syntax)
+
+	wrote, err := generator.WriteTo(out)
+	if err != nil {
+		logger.Error("Compile error", "out", "a.o", "err", err)
+		return -1
+	}
+
+	logger.Debug("Compiled object",
+		"size", wrote,
+		"symbols", symbols.Count(),
+		"syntax", syntax.Size(),
+	)
 
 	return 0
 }
