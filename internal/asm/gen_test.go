@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"testing"
+	"unicode/utf16"
 
 	. "github.com/smoynes/elsie/internal/asm"
 )
@@ -14,10 +15,10 @@ type generatorHarness struct {
 }
 
 type generateCase struct {
-	oper      Operation
-	want      uint16
-	wantBytes []byte
-	wantErr   error
+	oper     Operation
+	want     uint16   // A single code point.
+	wantCode []uint16 // Multiple code points.
+	wantErr  error
 }
 
 // Run tests a collection of generator tests cases.
@@ -250,8 +251,16 @@ func TestSTRINGZ_Generate(tt *testing.T) {
 	t := generatorHarness{tt}
 	tcs := []generateCase{
 		{
-			oper:      &STRINGZ{LITERAL: "Hello, there!"},
-			wantBytes: []byte("Hello, there!"),
+			oper:     &STRINGZ{LITERAL: "Hello, there!"},
+			wantCode: utf16.Encode([]rune("Hello, there!\x00")),
+		},
+		{
+			oper:     &STRINGZ{LITERAL: ""},
+			wantCode: []uint16{0x0000},
+		},
+		{
+			oper:     &STRINGZ{LITERAL: "⍤"},
+			wantCode: append(utf16.Encode([]rune{'⍤'}), 0x0000),
 		},
 	}
 
@@ -260,7 +269,7 @@ func TestSTRINGZ_Generate(tt *testing.T) {
 
 	for tc := range tcs {
 		op := tcs[tc].oper
-		wantBytes := tcs[tc].wantBytes
+		wantCode := tcs[tc].wantCode
 
 		code, err := op.Generate(symbols, pc)
 		if err != nil {
@@ -280,8 +289,18 @@ func TestSTRINGZ_Generate(tt *testing.T) {
 			return
 		}
 
-		if bytes.Compare(codeBuffer.Bytes(), wantBytes) != 0 {
+		wantBytes := new(bytes.Buffer)
+		err = binary.Write(wantBytes, binary.BigEndian, wantCode)
 
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		if bytes.Compare(codeBuffer.Bytes(), wantBytes.Bytes()) != 0 {
+			t.Error("code differs")
+			t.Errorf("%s", codeBuffer.Bytes())
+			t.Errorf("%s", wantBytes.Bytes())
 		}
 	}
 }

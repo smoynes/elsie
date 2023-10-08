@@ -8,6 +8,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf16"
 
 	"github.com/smoynes/elsie/internal/vm"
 )
@@ -573,14 +574,8 @@ func (s *STRINGZ) ParseString(opcode string, val string) error {
 }
 
 func (s *STRINGZ) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
-	bytes := []byte(s.LITERAL)
-	words := make([]uint16, len(bytes))
-
-	for i := range bytes {
-		words[i] = uint16(bytes[i] & 0x7f)
-	}
-
-	return words, nil
+	code := append(utf16.Encode([]rune(s.LITERAL)), 0) // null terminate value.
+	return code, nil
 }
 
 // badGPR is returned when a value is invalid because it is more noticeable than a zero value.
