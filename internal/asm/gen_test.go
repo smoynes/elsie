@@ -23,11 +23,13 @@ func TestGenerator(tt *testing.T) {
 
 	var buf bytes.Buffer
 
-	symbols := SymbolTable{}
 	syntax := make(SyntaxTable, 0)
-
 	syntax.Add(&ORIG{LITERAL: 0x3000})
 	syntax.Add(&NOT{DR: "R0", SR: "R7"})
+	syntax.Add(&AND{DR: "R3", SR1: "R4", SR2: "R6"})
+
+	symbols := SymbolTable{}
+	symbols.Add("LABEL", 0x2ff0)
 
 	gen := NewGenerator(symbols, syntax)
 
@@ -39,12 +41,13 @@ func TestGenerator(tt *testing.T) {
 	expected := []byte{ // big endian
 		0x30, 0x00,
 		0x91, 0xff,
+		0x57, 0x06,
 	}
 
 	bytes := buf.Bytes()
 
-	if count != int64(len(expected)) {
-		t.Error("expected: 4 bytes")
+	if want, got := len(expected), count; want != int(got) {
+		t.Errorf("expected: %d, got: %d bytes", want, got)
 	}
 
 	for i := range expected {
@@ -236,6 +239,40 @@ func TestNOT_Generate(tt *testing.T) {
 
 		if mc[0] != exp {
 			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
+		}
+	}
+}
+
+func TestSTRINGZ_Generate(tt *testing.T) {
+	want := "Hello, there!"
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &STRINGZ{LITERAL: want}},
+	}
+
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	for tc := range tcs {
+		op := tcs[tc].oper
+
+		bytes, err := op.Generate(symbols, pc)
+		if err != nil {
+			t.Fatalf("unexpected error: %#v", err)
+		}
+
+		if bytes == nil {
+			t.Error("invalid machine code")
+		}
+
+		if len(bytes) != len(want) {
+			t.Errorf("incorrect machine code: %d bytes", len(bytes))
+		}
+
+		for i := range want {
+			if uint16(want[i]) != bytes[i] {
+				t.Errorf("incorrect machine code: bytes[%d] != %d", i, bytes[i])
+			}
 		}
 	}
 }

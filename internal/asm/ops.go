@@ -574,7 +574,7 @@ func (s *STRINGZ) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 		words[i] = uint16(bytes[i] & 0x7f)
 	}
 
-	return nil, nil
+	return words, nil
 }
 
 // badGPR is returned when a value is invalid because it is more noticeable than a zero value.

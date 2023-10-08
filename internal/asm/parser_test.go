@@ -262,6 +262,33 @@ func TestParser_FILL(tt *testing.T) {
 	}
 }
 
+func TestParser_STRINGZ(tt *testing.T) {
+	t := parserHarness{tt}
+
+	want := "Hello, there!"
+	in := t.inputString(`
+.ORIG x1234
+.STRINGZ ` + want)
+
+	parser := t.ParseStream(in)
+
+	if err := parser.Err(); err != nil {
+		t.Error(err)
+	}
+
+	syntax := parser.Syntax()
+
+	if syntax.Size() != 2 {
+		t.Errorf("size: %d != %d", syntax.Size(), 2)
+	}
+
+	code := syntax[1]
+
+	if fill, ok := code.(*STRINGZ); !ok || fill.LITERAL != want {
+		t.Errorf("data: %#v != %0#4x", code, want)
+	}
+}
+
 func assertSymbol(t parserHarness, symbols SymbolTable, label string, want uint16) {
 	t.Helper()
 
