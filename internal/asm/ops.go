@@ -361,14 +361,19 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(add.DR)
 	sr1 := registerVal(add.SR1)
 
-	if dr == badGPR || sr1 == badGPR {
-		return nil, errors.New("add: register error")
+	if dr == badGPR {
+		return nil, &RegisterError{"AND", add.DR}
+	} else if sr1 == badGPR {
+		return nil, &RegisterError{"AND", add.SR1}
 	}
 
 	code := vm.NewInstruction(vm.ADD, dr<<9|sr1<<6)
 
 	if add.SR2 != "" {
 		sr2 := registerVal(add.SR2)
+		if sr2 == badGPR {
+			return nil, &RegisterError{"and", add.SR2}
+		}
 
 		code.Operand(sr2)
 	} else {

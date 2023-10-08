@@ -131,13 +131,13 @@ func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCas
 		if mc, err := oper.Generate(symbols, pc); expErr == nil && err != nil {
 			t.Errorf("Code: %#v == error  ==> %s", oper, err)
 		} else if expErr != nil {
-			switch wantErr := expErr.(type) {
+			switch wantErr := expErr.(type) { //nolint:errorlint
 			case *RegisterError:
 				if !errors.As(err, &wantErr) {
 					// 5 indents is 2 too many
 					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, err)
 				}
-				if wantErr.Reg != expErr.(*RegisterError).Reg {
+				if wantErr.Reg != expErr.(*RegisterError).Reg { //nolint:errorlint
 					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, expErr)
 				}
 			case *OffsetError:
@@ -168,7 +168,6 @@ func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCas
 			}
 		}
 	}
-
 }
 
 func TestLD_Generate(tt *testing.T) {
@@ -192,10 +191,11 @@ func TestLD_Generate(tt *testing.T) {
 func TestADD_Generate(tt *testing.T) {
 	t := generatorHarness{tt}
 	tcs := []generateCase{
-		{&ADD{DR: "R0", SR1: "R0", SR2: "R1"}, 0x1001, nil},
+		{&ADD{DR: "R0", SR1: "R0", SR2: "RR"}, 0, &RegisterError{Reg: "RR"}},
 		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x000f}, 0x124f, nil},
 		{&ADD{DR: "R1", SR1: "R1", SR2: "R0"}, 0x1240, nil},
 		{&ADD{DR: "R0", SR1: "R7", LITERAL: 0b0000_0000_0000_1010}, 0b0001_0001_1100_1010, nil},
+		{&ADD{DR: "R2", SR1: "R6", LITERAL: 0x15cf}, 0x15cf, nil},
 	}
 
 	pc := uint16(0x3000)
