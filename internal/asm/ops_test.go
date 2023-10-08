@@ -6,14 +6,10 @@ import (
 	"testing"
 )
 
-type testParseOperation struct {
+type parserCase struct {
+	name     string
 	opcode   string
 	operands []string
-}
-
-type testParseOperationCase struct {
-	name      string
-	operation testParseOperation
 
 	want    Operation
 	wantErr error
@@ -21,20 +17,17 @@ type testParseOperationCase struct {
 
 func TestAND_Parse(t *testing.T) {
 	// I still not sure I like this style of table tests.
-	type args struct {
-		oper  string
-		opers []string
-	}
-
 	tests := []struct {
-		name    string
-		args    args
-		want    Operation
-		wantErr bool
+		name     string
+		opcode   string
+		operands []string
+		want     Operation
+		wantErr  bool
 	}{
 		{
-			name: "immediate decimal",
-			args: args{"AND", []string{"R0", "R1", "#12"}},
+			name:     "immediate decimal",
+			opcode:   "AND",
+			operands: []string{"R0", "R1", "#12"},
 			want: &AND{
 				DR:     "R0",
 				SR1:    "R1",
@@ -43,8 +36,8 @@ func TestAND_Parse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "immediate hex",
-			args: args{"AND", []string{"R0", "R2", "#x1f"}},
+			name:   "immediate hex",
+			opcode: "AND", operands: []string{"R0", "R2", "#x1f"},
 			want: &AND{
 				DR:     "R0",
 				SR1:    "R2",
@@ -53,8 +46,8 @@ func TestAND_Parse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "immediate octal",
-			args: args{"AND", []string{"R0", "R3", "#o12"}},
+			name:   "immediate octal",
+			opcode: "AND", operands: []string{"R0", "R3", "#o12"},
 			want: &AND{
 				DR:     "R0",
 				SR1:    "R3",
@@ -63,8 +56,8 @@ func TestAND_Parse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "immediate binary",
-			args: args{"AND", []string{"R0", "R4", "#b01111"}},
+			name:   "immediate binary",
+			opcode: "AND", operands: []string{"R0", "R4", "#b01111"},
 			want: &AND{
 				DR:     "R0",
 				SR1:    "R4",
@@ -73,8 +66,8 @@ func TestAND_Parse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "immediate symbol",
-			args: args{"AND", []string{"R0", "R4", "LABEL"}},
+			name:   "immediate symbol",
+			opcode: "AND", operands: []string{"R0", "R4", "LABEL"},
 			want: &AND{
 				DR:     "R0",
 				SR1:    "R4",
@@ -83,8 +76,8 @@ func TestAND_Parse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "register",
-			args: args{"AND", []string{"R0", "R1", "R2"}},
+			name:   "register",
+			opcode: "AND", operands: []string{"R0", "R1", "R2"},
 			want: &AND{
 				DR:  "R0",
 				SR1: "R1",
@@ -93,18 +86,18 @@ func TestAND_Parse(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "no operands",
-			args:    args{"AND", nil},
+			name:   "no operands",
+			opcode: "AND", operands: nil,
 			wantErr: true,
 		},
 		{
-			name:    "one operand",
-			args:    args{"AND", []string{"R0"}},
+			name:   "one operand",
+			opcode: "AND", operands: []string{"R0"},
 			wantErr: true,
 		},
 		{
-			name:    "two operands",
-			args:    args{"AND", []string{"R0", "R0"}},
+			name:   "two operands",
+			opcode: "AND", operands: []string{"R0", "R0"},
 			wantErr: true,
 		},
 	}
@@ -112,7 +105,7 @@ func TestAND_Parse(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := &AND{}
 
-			err := got.Parse(tt.args.oper, tt.args.opers)
+			err := got.Parse(tt.opcode, tt.operands)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("AND.Parse() error = %v, wantErr %v", err, tt.wantErr)
@@ -217,25 +210,25 @@ func TestBR_Parse(t *testing.T) {
 }
 
 func TestLD_Parse(t *testing.T) {
-	tests := []testParseOperationCase{
+	tests := []parserCase{
 		{
-			name:      "bad oper",
-			operation: testParseOperation{"OP", []string{"IDENT"}},
-			want:      nil,
-			wantErr:   &SyntaxError{},
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "LD label",
-			operation: testParseOperation{"LD", []string{"DR", "LABEL"}},
-			want:      &LD{DR: "DR", OFFSET: 0, SYMBOL: "LABEL"},
-			wantErr:   nil,
+			name:   "LD label",
+			opcode: "LD", operands: []string{"DR", "LABEL"},
+			want:    &LD{DR: "DR", OFFSET: 0, SYMBOL: "LABEL"},
+			wantErr: nil,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := &LD{}
-			err := got.Parse(tt.operation.opcode, tt.operation.operands)
+			err := got.Parse(tt.opcode, tt.operands)
 
 			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
 				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
@@ -252,43 +245,43 @@ func TestLD_Parse(t *testing.T) {
 }
 
 func TestLDR_Parse(t *testing.T) {
-	tests := []testParseOperationCase{
+	tests := []parserCase{
 		{
-			name:      "bad oper",
-			operation: testParseOperation{"OP", []string{"IDENT"}},
-			want:      nil,
-			wantErr:   &SyntaxError{},
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "LDR label",
-			operation: testParseOperation{"LDR", []string{"DR", "SR", "LABEL"}},
-			want:      &LDR{DR: "DR", SR: "SR", OFFSET: 0, SYMBOL: "LABEL"},
-			wantErr:   nil,
+			name:   "LDR label",
+			opcode: "LDR", operands: []string{"DR", "SR", "LABEL"},
+			want:    &LDR{DR: "DR", SR: "SR", OFFSET: 0, SYMBOL: "LABEL"},
+			wantErr: nil,
 		},
 		{
-			name:      "LDR literal",
-			operation: testParseOperation{"LDR", []string{"DR", "SR", "#-1"}},
-			want:      &LDR{DR: "DR", SR: "SR", OFFSET: 0x3f},
-			wantErr:   nil,
+			name:   "LDR literal",
+			opcode: "LDR", operands: []string{"DR", "SR", "#-1"},
+			want:    &LDR{DR: "DR", SR: "SR", OFFSET: 0x3f},
+			wantErr: nil,
 		},
 		{
-			name:      "LDR literal too large",
-			operation: testParseOperation{"LDR", []string{"DR", "SR", "#x40"}},
-			want:      &LDR{DR: "DR", SR: "SR", OFFSET: 0x00},
-			wantErr:   &SyntaxError{},
+			name:   "LDR literal too large",
+			opcode: "LDR", operands: []string{"DR", "SR", "#x40"},
+			want:    &LDR{DR: "DR", SR: "SR", OFFSET: 0x00},
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "LDR literal too negative",
-			operation: testParseOperation{"LDR", []string{"DR", "SR", "#-64"}},
-			want:      &LDR{DR: "DR", SR: "SR", OFFSET: 0x3f},
-			wantErr:   &SyntaxError{},
+			name:   "LDR literal too negative",
+			opcode: "LDR", operands: []string{"DR", "SR", "#-64"},
+			want:    &LDR{DR: "DR", SR: "SR", OFFSET: 0x3f},
+			wantErr: &SyntaxError{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := &LDR{}
-			err := got.Parse(tt.operation.opcode, tt.operation.operands)
+			err := got.Parse(tt.opcode, tt.operands)
 
 			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
 				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
@@ -305,143 +298,141 @@ func TestLDR_Parse(t *testing.T) {
 }
 
 func TestADD_Parse(t *testing.T) {
-	tests := []testParseOperationCase{
+	tcs := []parserCase{
 		{
-			name:      "bad oper",
-			operation: testParseOperation{"OP", []string{"IDENT"}},
-			want:      nil,
-			wantErr:   &SyntaxError{},
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "ADD register",
-			operation: testParseOperation{"ADD", []string{"R0", "R0", "R1"}},
-			want:      &ADD{DR: "R0", SR1: "R0", SR2: "R1"},
-			wantErr:   nil,
+			name:   "ADD register",
+			opcode: "ADD", operands: []string{"R0", "R0", "R1"},
+			want:    &ADD{DR: "R0", SR1: "R0", SR2: "R1"},
+			wantErr: nil,
 		},
 		{
-			name:      "ADD literal",
-			operation: testParseOperation{"ADD", []string{"R0", "R1", "#-1"}},
-			want:      &ADD{DR: "R0", SR1: "R1", LITERAL: 0x001f},
-			wantErr:   nil,
+			name:   "ADD literal",
+			opcode: "ADD", operands: []string{"R0", "R1", "#-1"},
+			want:    &ADD{DR: "R0", SR1: "R1", LITERAL: 0x001f},
+			wantErr: nil,
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
 			got := &ADD{}
-			err := got.Parse(tt.operation.opcode, tt.operation.operands)
+			err := got.Parse(tc.opcode, tc.operands)
 
-			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
-				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
-
-				t.Errorf("ADD.Parse() error = %v, wantErr %v", err, tt.wantErr)
+			if (tc.wantErr != nil && err == nil) || err != nil && tc.wantErr == nil {
+				t.Errorf("ADD.Parse() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
 
-			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ADD.Parse() = %#v, want %#v", got, tt.want)
+			if (err == nil) && !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("ADD.Parse() = %#v, want %#v", got, tc.want)
 			}
 		})
 	}
 }
 
 func TestNOT_Parse(t *testing.T) {
-	tests := []testParseOperationCase{
+	tcs := []parserCase{
 		{
-			name:      "bad oper",
-			operation: testParseOperation{"OP", []string{"IDENT"}},
-			want:      nil,
-			wantErr:   &SyntaxError{},
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "too few operands",
-			operation: testParseOperation{"NOT", []string{"DR"}},
-			want:      nil,
-			wantErr:   &SyntaxError{},
+			name:   "too few operands",
+			opcode: "NOT", operands: []string{"DR"},
+			want:    nil,
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "too many operands",
-			operation: testParseOperation{"NOT", []string{"OP", "DR", "SR1", "SR2"}},
-			want:      nil,
-			wantErr:   &SyntaxError{},
+			name:   "too many operands",
+			opcode: "NOT", operands: []string{"OP", "DR", "SR1", "SR2"},
+			want:    nil,
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "NOT register",
-			operation: testParseOperation{"NOT", []string{"R6", "R2"}},
-			want:      &NOT{DR: "R6", SR: "R2"},
-			wantErr:   nil,
+			name:   "NOT register",
+			opcode: "NOT", operands: []string{"R6", "R2"},
+			want:    &NOT{DR: "R6", SR: "R2"},
+			wantErr: nil,
 		},
 		{
-			name:      "NOT label",
-			operation: testParseOperation{"NOT", []string{"R7", "R0", "LABEL"}},
-			want:      &NOT{DR: "R7", SR: "R0"},
-			wantErr:   &SyntaxError{},
+			name:   "NOT label",
+			opcode: "NOT", operands: []string{"R7", "R0", "LABEL"},
+			want:    &NOT{DR: "R7", SR: "R0"},
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "NOT literal",
-			operation: testParseOperation{"NOT", []string{"R0", "0x0"}},
-			want:      &NOT{DR: "R0", SR: ""},
-			wantErr:   nil, // This is a semantic, not syntactic error. 🤔
+			name:   "NOT literal",
+			opcode: "NOT", operands: []string{"R0", "0x0"},
+			want:    &NOT{DR: "R0", SR: ""},
+			wantErr: nil, // This is a semantic, not syntactic error. 🤔
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, tc := range tcs {
+		t.Run(tc.name, func(t *testing.T) {
 			got := &NOT{}
-			err := got.Parse(tt.operation.opcode, tt.operation.operands)
+			err := got.Parse(tc.opcode, tc.operands)
 
-			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
-				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+			if (tc.wantErr != nil && err == nil) || err != nil && tc.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tc.wantErr)
 
-				t.Errorf("NOT.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NOT.Parse() error = %v, wantErr %v", err, tc.wantErr)
 				return
 			}
 
-			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NOT.Parse() = %#v, want %#v", got, tt.want)
+			if (err == nil) && !reflect.DeepEqual(got, tc.want) {
+				t.Errorf("NOT.Parse() = %#v, want %#v", got, tc.want)
 			}
 		})
 	}
 }
 
 func TestTRAP_Parse(t *testing.T) {
-	tests := []testParseOperationCase{
+	tests := []parserCase{
 		{
-			name:      "bad oper",
-			operation: testParseOperation{"OP", []string{"x21"}},
-			want:      nil,
-			wantErr:   &SyntaxError{},
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"x21"},
+			want:    nil,
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "too few operands",
-			operation: testParseOperation{"TRAP", []string{}},
-			want:      nil,
-			wantErr:   &SyntaxError{},
+			name:   "too few operands",
+			opcode: "TRAP", operands: []string{},
+			want:    nil,
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "too many operands",
-			operation: testParseOperation{"TRAP", []string{"x25", "x21"}},
-			want:      nil,
-			wantErr:   &SyntaxError{},
+			name:   "too many operands",
+			opcode: "TRAP", operands: []string{"x25", "x21"},
+			want:    nil,
+			wantErr: &SyntaxError{},
 		},
 		{
-			name:      "TRAP",
-			operation: testParseOperation{"TRAP", []string{"x25"}},
-			want:      &TRAP{LITERAL: 0x0025},
-			wantErr:   nil,
+			name:   "TRAP",
+			opcode: "TRAP", operands: []string{"x25"},
+			want:    &TRAP{LITERAL: 0x0025},
+			wantErr: nil,
 		},
 		{
-			name:      "TRAP literal too big",
-			operation: testParseOperation{"TRAP", []string{"x100"}},
-			want:      &TRAP{LITERAL: 0x00ff},
-			wantErr:   &SyntaxError{},
+			name:   "TRAP literal too big",
+			opcode: "TRAP", operands: []string{"x100"},
+			want:    &TRAP{LITERAL: 0x00ff},
+			wantErr: &SyntaxError{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := &TRAP{}
-			err := got.Parse(tt.operation.opcode, tt.operation.operands)
+			err := got.Parse(tt.opcode, tt.operands)
 
 			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
 				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
