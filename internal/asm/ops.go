@@ -550,6 +550,33 @@ func (orig *ORIG) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{orig.LITERAL}, nil
 }
 
+// .STRINGZ: A directive to allocate a ASCII-encoded, zero-terminated string.
+//
+//	HELLO .STRINGZ "Hello, world!"
+type STRINGZ struct {
+	LITERAL string // Literal constant.
+}
+
+func (s *STRINGZ) Parse(opcode string, val []string) error {
+	return s.ParseString(opcode, val[0])
+}
+
+func (s *STRINGZ) ParseString(opcode string, val string) error {
+	s.LITERAL = strings.Trim(val, `"`)
+	return nil
+}
+
+func (s *STRINGZ) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	bytes := []byte(s.LITERAL)
+	words := make([]uint16, len(bytes))
+
+	for i := range bytes {
+		words[i] = uint16(bytes[i] & 0x7f)
+	}
+
+	return nil, nil
+}
+
 // badGPR is returned when a value is invalid because it is more noticeable than a zero value.
 const badGPR = uint16(vm.BadGPR)
 

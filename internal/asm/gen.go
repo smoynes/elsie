@@ -1,5 +1,7 @@
 package asm
 
+// gen.go contains a code generation pass for our two-pass assembler.
+
 import (
 	"encoding/binary"
 	"errors"
@@ -9,8 +11,9 @@ import (
 	"github.com/smoynes/elsie/internal/log"
 )
 
-// gen.go contains a code generation pass for our two-pass assembler.
-
+// Generator controls the code generation pass of the assembler. The generator starts at the
+// beginning of the parsed-syntax table, generates code fore each operation, and then writes the
+// bytes to the output (usually, a file).
 type Generator struct {
 	pc      uint16
 	symbols SymbolTable
@@ -19,6 +22,7 @@ type Generator struct {
 	log *log.Logger
 }
 
+// NewGenerator creates a code generator using the given symbol and syntax tables.
 func NewGenerator(symbols SymbolTable, syntax SyntaxTable) *Generator {
 	return &Generator{
 		pc:      0x0000,
@@ -28,6 +32,7 @@ func NewGenerator(symbols SymbolTable, syntax SyntaxTable) *Generator {
 	}
 }
 
+// WriteTo writes generated machine code to an output stream.
 func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 	var (
 		encoded []uint16
@@ -39,12 +44,9 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 		return 0, nil
 	}
 
-	gen.log.Debug("syntax", "syntax", gen.syntax)
-
 	// Write the object-code header: the origin offset. The .ORIG directive should be the first
 	// operation in the syntax table.
 	if orig := origin(gen.syntax[0]); orig == nil {
-		gen.log.Debug("first", "op", orig)
 		return 0, errors.New("gen: .ORIG directive must be the first operation")
 	} else {
 		gen.pc = orig.LITERAL
