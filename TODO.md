@@ -6,19 +6,21 @@
 - [.] ASM:
   - [.] code generation: ~7/16
   - [.] directives
-    - [ ] .STRINGZ: strangz
     - [ ] .END
+    - [ ] .EXTERNAL
+    - [x] .STRINGZ: strangz
     - [x] .BLKW: block words
     - [x] .DW: define word
     - [x] .FILL: fill word
     - [x] .ORIG: origin
-  - [.] cli command
-  - [.] document grammar
+  - [x] cli command
+  - [.] document grammar more completely
   - [x] memory layout
   - [x] cleaner error handling
   - [x] simple parser: regexp
   - [x] symbol table
 - [ ] LOAD: object loader
+- [ ] LINK: code linker
 - [ ] DUMP: hex encoder
 - [ ] CLI: sub commands for vm, tools, terminal, shell
 - [ ] LOG: program output to STDOUT, logging output to STDERR (unless in

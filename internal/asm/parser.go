@@ -272,7 +272,6 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 
 		p.syntax.Add(&orig)
 		p.loc = orig.LITERAL
-
 	case ".BLKW":
 		blkw := BLKW{}
 
@@ -282,7 +281,6 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 		}
 
 		p.syntax.Add(&blkw)
-
 		p.loc += blkw.ALLOC
 	case ".FILL", ".DW":
 		fill := FILL{}
@@ -293,7 +291,6 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 		}
 
 		p.syntax.Add(&fill)
-
 		p.loc++
 	case ".STRINGZ":
 		strz := STRINGZ{}
@@ -304,11 +301,11 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 		}
 
 		p.syntax.Add(&strz)
-
 		p.loc += uint16(len(strz.LITERAL) + 1)
-
 	case ".END":
 		// TODO: add to syntax table
+	case ".EXTERNAL":
+		// TODO: add link-time references to symbol table
 	default:
 		return fmt.Errorf("directive error: %s", ident)
 	}
