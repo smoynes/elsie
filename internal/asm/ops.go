@@ -77,7 +77,7 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	code := vm.NewInstruction(vm.BR, uint16(br.NZP)<<9)
 
 	if br.SYMBOL != "" {
-		offset, err := symbols.Offset(br.SYMBOL, pc, 5)
+		offset, err := symbols.Offset(br.SYMBOL, pc, 9)
 		if err != nil {
 			return nil, fmt.Errorf("and: %w", err)
 		}

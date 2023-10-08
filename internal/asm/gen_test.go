@@ -84,14 +84,14 @@ func TestBR_Generate(tt *testing.T) {
 		{&BR{NZP: 0x2, OFFSET: 0xfff0}, 0x05f0, nil},
 		{&BR{NZP: 0x3, SYMBOL: "LABEL"}, 0x0605, nil},
 		{&BR{NZP: 0x3, SYMBOL: "BACK"}, 0x0600, nil},
-		{&BR{NZP: 0x4, SYMBOL: "LONG"}, 0x061f, &OffsetError{Offset: 0xff00}},
+		{&BR{NZP: 0x4, SYMBOL: "LONG"}, 0x061f, &OffsetError{Offset: 0xd000}},
 	}
 
 	pc := uint16(0x3000)
 	symbols := SymbolTable{
 		"LABEL":  0x3005,
 		"BACK":   0x3000,
-		"LONG":   0x2f00,
+		"LONG":   0x0,
 		"YONDER": 0x4000,
 	}
 
@@ -105,7 +105,7 @@ func TestLDR_Generate(tt *testing.T) {
 		{&LDR{DR: "R7", SR: "R4", SYMBOL: "LABEL"}, 0x6f05, nil},
 		{&LDR{DR: "R5", SR: "R1", SYMBOL: "BACK"}, 0x6a40, nil},
 		{&LDR{DR: "R3", SR: "R2", SYMBOL: "GONE"}, 0, &SymbolError{0x3000, "GONE"}},
-		{&LDR{DR: "R1", SR: "R3", SYMBOL: "FAR"}, 0, &OffsetError{Offset: 0xff00}},
+		{&LDR{DR: "R1", SR: "R3", SYMBOL: "FAR"}, 0, &OffsetError{Offset: 0xbf00}},
 		{&LDR{DR: "R2", SR: "R4", SYMBOL: "YONDER"}, 0, &OffsetError{Offset: 0x1000}},
 		{&LDR{DR: "R8", SR: "R2", SYMBOL: "LABEL"}, 0, &RegisterError{Reg: "R8"}},
 		{&LDR{DR: "R0", SR: "DR", SYMBOL: "LABEL"}, 0, &RegisterError{Reg: "DR"}},
@@ -114,7 +114,7 @@ func TestLDR_Generate(tt *testing.T) {
 	symbols := SymbolTable{
 		"LABEL":  0x3005,
 		"BACK":   0x3000,
-		"FAR":    0x2f00,
+		"FAR":    0xef00,
 		"YONDER": 0x4000,
 	}
 
@@ -127,6 +127,8 @@ func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCas
 
 	for i := range tcs {
 		oper, want, expErr := tcs[i].oper, tcs[i].want, tcs[i].wantErr
+
+		t.Log(oper)
 
 		if mc, err := oper.Generate(symbols, pc); expErr == nil && err != nil {
 			t.Errorf("Code: %#v == error  ==> %s", oper, err)
@@ -142,10 +144,10 @@ func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCas
 				}
 			case *OffsetError:
 				if !errors.As(err, &wantErr) {
-					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, err)
+					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, wantErr)
 				}
 				if wantErr.Offset != expErr.(*OffsetError).Offset { //nolint:errorlint
-					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, expErr)
+					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, wantErr)
 				}
 			}
 		} else {
