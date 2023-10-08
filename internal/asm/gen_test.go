@@ -69,6 +69,7 @@ func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCas
 	}
 }
 
+// TestGenerator is something like an integration test for the code generator.
 func TestGenerator(tt *testing.T) {
 	t := generatorHarness{tt}
 
