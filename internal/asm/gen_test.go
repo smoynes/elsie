@@ -196,15 +196,12 @@ func TestADD_Generate(tt *testing.T) {
 		{&ADD{DR: "R1", SR1: "R1", SR2: "R0"}, 0x1240, nil},
 		{&ADD{DR: "R0", SR1: "R7", LITERAL: 0b0000_0000_0000_1010}, 0b0001_0001_1100_1010, nil},
 		{&ADD{DR: "R2", SR1: "R6", LITERAL: 0x15cf}, 0x15cf, nil},
+		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x21c0}, 0x1240, nil},
+		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0}, 0x1240, nil},
 	}
 
 	pc := uint16(0x3000)
-	symbols := SymbolTable{
-		"LABEL":  0x3005,
-		"BACK":   0x3000,
-		"FAR":    0x2f00,
-		"YONDER": 0x4000,
-	}
+	symbols := SymbolTable{}
 
 	t.Run(pc, symbols, tcs)
 }
