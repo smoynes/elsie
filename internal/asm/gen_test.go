@@ -12,6 +12,12 @@ type generatorHarness struct {
 	*testing.T
 }
 
+type generateCase struct {
+	oper    Operation
+	want    uint16
+	wantErr error
+}
+
 func TestGenerator(tt *testing.T) {
 	t := generatorHarness{tt}
 
@@ -48,26 +54,100 @@ func TestGenerator(tt *testing.T) {
 	}
 }
 
-func TestAND_Generate(t *testing.T) {
-	tcs := []struct {
-		oper Operation
-		want uint16
-	}{
+func TestAND_Generate(tt *testing.T) {
+	t := generatorHarness{tt}
+	tcs := []generateCase{
 		{oper: &AND{DR: "R3", SR1: "R4", SR2: "R6"}, want: 0x5706},
-		{oper: &AND{DR: "R0", SR1: "R7", SYMBOL: "LABEL"}, want: 0x51e6},
+		{oper: &AND{DR: "R0", SR1: "R7", SYMBOL: "LABEL"}, want: 0x51e7},
 		{oper: &AND{DR: "R1", SR1: "R2", OFFSET: 0x12}, want: 0x52b2},
+		{oper: &AND{DR: "BAD", SR1: "R0", OFFSET: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
+		{oper: &AND{DR: "R7", SR1: "BAD", OFFSET: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
+		{oper: &AND{DR: "R0", SR1: "R0", SR2: "R9"}, wantErr: &RegisterError{Reg: "R9"}},
+		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "BACK"}, want: 0x503e},
+		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "FAR"}, wantErr: &OffsetError{Offset: 0xffd0}},
 	}
 
 	pc := uint16(0x3000)
 	symbols := SymbolTable{
 		"LABEL": 0x3007,
+		"BACK":  0x2ffe,
+		"FAR":   0x2fd0,
 	}
 
-	for i := range tcs {
-		oper, want := tcs[i].oper, tcs[i].want
+	t.Run(pc, symbols, tcs)
+}
 
-		if mc, err := oper.Generate(symbols, pc); err != nil {
-			t.Errorf("Code: %#v == error  ==> %0#4x %s", oper, mc, err)
+func TestBR_Generate(tt *testing.T) {
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{&BR{NZP: 0x7, OFFSET: 0x01}, 0x0e01, nil},
+		{&BR{NZP: 0x2, OFFSET: 0xfff0}, 0x05f0, nil},
+		{&BR{NZP: 0x3, SYMBOL: "LABEL"}, 0x0605, nil},
+		{&BR{NZP: 0x3, SYMBOL: "BACK"}, 0x0600, nil},
+		{&BR{NZP: 0x4, SYMBOL: "LONG"}, 0x061f, &OffsetError{Offset: 0xff00}},
+	}
+
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":  0x3005,
+		"BACK":   0x3000,
+		"LONG":   0x2f00,
+		"YONDER": 0x4000,
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestLDR_Generate(tt *testing.T) {
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{&LDR{DR: "R0", SR: "R5", OFFSET: 0x10}, 0x6150, nil},
+		{&LDR{DR: "R7", SR: "R4", SYMBOL: "LABEL"}, 0x6f05, nil},
+		{&LDR{DR: "R5", SR: "R1", SYMBOL: "BACK"}, 0x6a40, nil},
+		{&LDR{DR: "R3", SR: "R2", SYMBOL: "GONE"}, 0, &SymbolError{0x3000, "GONE"}},
+		{&LDR{DR: "R1", SR: "R3", SYMBOL: "FAR"}, 0, &OffsetError{Offset: 0xff00}},
+		{&LDR{DR: "R2", SR: "R4", SYMBOL: "YONDER"}, 0, &OffsetError{Offset: 0x1000}},
+		{&LDR{DR: "R8", SR: "R2", SYMBOL: "LABEL"}, 0, &RegisterError{Reg: "R8"}},
+		{&LDR{DR: "R0", SR: "DR", SYMBOL: "LABEL"}, 0, &RegisterError{Reg: "DR"}},
+	}
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":  0x3005,
+		"BACK":   0x3000,
+		"FAR":    0x2f00,
+		"YONDER": 0x4000,
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+// Run tests a collection of generator tests cases.
+func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCase) {
+	t.Helper()
+
+	for i := range tcs {
+		oper, want, expErr := tcs[i].oper, tcs[i].want, tcs[i].wantErr
+
+		if mc, err := oper.Generate(symbols, pc); expErr == nil && err != nil {
+			t.Errorf("Code: %#v == error  ==> %s", oper, err)
+		} else if expErr != nil {
+			switch wantErr := expErr.(type) {
+			case *RegisterError:
+				if !errors.As(err, &wantErr) {
+					// 5 indents is 2 too many
+					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, err)
+				}
+				if wantErr.Reg != expErr.(*RegisterError).Reg {
+					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, expErr)
+				}
+			case *OffsetError:
+				if !errors.As(err, &wantErr) {
+					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, err)
+				}
+				if wantErr.Offset != expErr.(*OffsetError).Offset {
+					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, expErr)
+				}
+			}
 		} else {
 			t.Logf("Code: %#v == generated ==> %0#4x", oper, mc)
 
@@ -82,216 +162,64 @@ func TestAND_Generate(t *testing.T) {
 			if mc[0] != want {
 				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
 			}
-		}
-	}
-}
 
-func TestBR_Generate(t *testing.T) {
-	tcs := []struct {
-		i       Operation
-		mc      uint16
-		wantErr *OffsetError
-	}{
-		{&BR{NZP: 0x7, OFFSET: 0x01}, 0x0e01, nil},
-		{&BR{NZP: 0x2, OFFSET: 0xfff0}, 0x05f0, nil},
-		{&BR{NZP: 0x3, SYMBOL: "LABEL"}, 0x0604, nil},
-		{&BR{NZP: 0x3, SYMBOL: "BACK"}, 0x061f, nil},
-		{&BR{NZP: 0x4, SYMBOL: "LONG"}, 0x061f, &OffsetError{}},
-	}
-
-	pc := uint16(0x3000)
-
-	symbols := SymbolTable{
-		"LABEL": 0x3005,
-		"BACK":  0x3000,
-		"LONG":  0x2fe0,
-	}
-
-	for i := range tcs {
-		op, want, wantErr := tcs[i].i, tcs[i].mc, tcs[i].wantErr
-		got, err := op.Generate(symbols, pc)
-
-		if wantErr != nil && !errors.As(err, &wantErr) {
-			t.Logf("err: %#v", err)
-			t.Errorf("expected error: %#v, got: %#v", wantErr, err)
-		} else if wantErr == nil && err != nil {
-			t.Errorf("unexpected error: %s", err)
-		} else if wantErr == nil && err == nil {
-			t.Logf("Code: %#v == generated ==> %0#4x", op, got)
-
-			if got == nil {
-				t.Error("invalid machine code")
-			}
-
-			if len(got) != 1 {
-				t.Errorf("incorrect machine code: %d bytes", len(got))
-			}
-
-			if got[0] != want {
-				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, got)
+			if err != nil {
+				t.Error(err)
 			}
 		}
 	}
+
 }
 
-func TestLDR_Generate(t *testing.T) {
-	instrs := []Operation{
-		&LDR{DR: "R0", SR: "R5", OFFSET: 0x10},
-		&LDR{DR: "R7", SR: "R4", SYMBOL: "LABEL"},
+func TestLD_Generate(tt *testing.T) {
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{&LD{DR: "R0", OFFSET: 0x10}, 0x2010, nil},
+		{&LD{DR: "R7", SYMBOL: "LABEL"}, 0x2e05, nil},
 	}
 
 	pc := uint16(0x3000)
 	symbols := SymbolTable{
-		"LABEL": 0x300a,
+		"LABEL":  0x3005,
+		"BACK":   0x3000,
+		"FAR":    0x2f00,
+		"YONDER": 0x4000,
 	}
 
-	if mc, err := instrs[0].Generate(symbols, pc); err != nil {
-		t.Fatal(err)
-	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", instrs[0], mc)
-
-		if mc == nil {
-			t.Error("invalid machine code")
-		}
-
-		if len(mc) != 1 {
-			t.Errorf("incorrect machine code: %d bytes", len(mc))
-		}
-		want := uint16(0x6150)
-
-		if mc[0] != want {
-			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
-		}
-	}
-
-	if mc, err := instrs[1].Generate(symbols, pc); err != nil {
-		t.Fatalf("Code: %#v == error    ==> %s", instrs[1], err)
-	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", instrs[1], mc)
-
-		if mc == nil {
-			t.Error("invalid machine code")
-		}
-
-		if len(mc) != 1 {
-			t.Errorf("incorrect machine code: %d bytes", len(mc))
-		}
-
-		want := uint16(0x6f09)
-		if mc[0] != want {
-			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
-		}
-	}
+	t.Run(pc, symbols, tcs)
 }
 
-func TestLD_Generate(t *testing.T) {
-	instrs := []Operation{
-		&LD{DR: "R0", OFFSET: 0x10},
-		&LD{DR: "R7", SYMBOL: "LABEL"},
+func TestADD_Generate(tt *testing.T) {
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{&ADD{DR: "R0", SR1: "R0", SR2: "R1"}, 0x1001, nil},
+		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x000f}, 0x124f, nil},
+		{&ADD{DR: "R1", SR1: "R1", SR2: "R0"}, 0x1240, nil},
+		{&ADD{DR: "R0", SR1: "R7", LITERAL: 0b0000_0000_0000_1010}, 0b0001_0001_1100_1010, nil},
 	}
 
 	pc := uint16(0x3000)
 	symbols := SymbolTable{
-		"LABEL": 0x3100,
+		"LABEL":  0x3005,
+		"BACK":   0x3000,
+		"FAR":    0x2f00,
+		"YONDER": 0x4000,
 	}
 
-	if mc, err := instrs[0].Generate(symbols, pc); err != nil {
-		t.Fatal(err)
-	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", instrs[0], mc)
-
-		if mc == nil {
-			t.Error("invalid machine code")
-		}
-
-		if len(mc) != 1 {
-			t.Errorf("incorrect machine code: %d bytes", len(mc))
-		}
-
-		want := uint16(0x2010)
-		if mc[0] != want {
-			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
-		}
-	}
-
-	if mc, err := instrs[1].Generate(symbols, pc); err != nil {
-		t.Fatalf("Code: %#v == error    ==> %s", instrs[1], err)
-	} else {
-		t.Logf("Code: %#v == generated ==> %0#4x", instrs[1], mc)
-
-		if mc == nil {
-			t.Error("invalid machine code")
-		}
-
-		if mc == nil {
-			t.Error("invalid machine code")
-		}
-
-		if len(mc) != 1 {
-			t.Errorf("incorrect machine code: %d bytes", len(mc))
-		}
-
-		want := uint16(0x2eff)
-		if mc[0] != want {
-			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
-		}
-	}
+	t.Run(pc, symbols, tcs)
 }
 
-func TestADD_Generate(t *testing.T) {
-	tcs := []struct {
-		operation Operation
-		mc        uint16
-	}{
-		{&ADD{DR: "R0", SR1: "R0", SR2: "R1"}, 0x1001},
-		{&ADD{DR: "R1", SR1: "R1", LITERAL: 0x000f}, 0x124f},
-		{&ADD{DR: "R1", SR1: "R1", SR2: "R0"}, 0x1240},
-		{&ADD{DR: "R0", SR1: "R7", LITERAL: 0b0000_0000_0000_1010}, 0b0001_0001_1100_1010},
-	}
-
-	pc := uint16(0x3000)
-	symbols := SymbolTable{
-		"LABEL": 0x3100,
-	}
-
-	for tc := range tcs {
-		op, exp := tcs[tc].operation, tcs[tc].mc
-
-		mc, err := op.Generate(symbols, pc)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if mc == nil {
-			t.Error("invalid machine code")
-		}
-
-		if len(mc) != 1 {
-			t.Errorf("incorrect machine code: %d bytes", len(mc))
-		}
-
-		if mc[0] != exp {
-			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
-		}
-	}
-}
-
-func TestNOT_Generate(t *testing.T) {
-	tcs := []struct {
-		op   Operation
-		want uint16
-	}{
-		{
-			op:   &NOT{DR: "R1", SR: "R1"},
-			want: 0x927f,
-		},
+func TestNOT_Generate(tt *testing.T) {
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &NOT{DR: "R1", SR: "R1"}, want: 0x927f, wantErr: nil},
 	}
 
 	pc := uint16(0x3000)
 	symbols := SymbolTable{}
 
 	for tc := range tcs {
-		op, exp := tcs[tc].op, tcs[tc].want
+		op, exp := tcs[tc].oper, tcs[tc].want
 
 		mc, err := op.Generate(symbols, pc)
 		if err != nil {

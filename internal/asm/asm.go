@@ -95,7 +95,7 @@ func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
 		return 0xffff, fmt.Errorf("%s: symbol not found", sym)
 	}
 
-	delta := int16(loc - pc - 1)
+	delta := int16(loc - pc)
 	bottom := ^(-1 << n)
 
 	if delta >= (1<<n) || delta < -(1<<n) {
@@ -118,13 +118,33 @@ func (pe *SyntaxError) Error() string {
 	return fmt.Sprintf("syntax error: %s: line: %d %q", pe.Err, pe.Pos, pe.Line)
 }
 
-// OffsetError is a wrapped error returned when the a offset value exceeds its range.
+// OffsetError is a wrapped error returned when an offset value exceeds its range.
 type OffsetError struct {
 	Offset uint16
 }
 
 func (oe *OffsetError) Error() string {
 	return fmt.Sprintf("offset error: %0#4x", oe.Offset)
+}
+
+// RegisterError is a wrapped error returned when an instruction names an invalid register.
+type RegisterError struct {
+	op  string
+	Reg string
+}
+
+func (re *RegisterError) Error() string {
+	return fmt.Sprintf("%s: register error: %s", re.op, re.Reg)
+}
+
+// Symbol is a wrapped error returned when a symbol could not be found in the symbol table.
+type SymbolError struct {
+	Loc    uint16
+	Symbol string
+}
+
+func (se *SymbolError) Error() string {
+	return fmt.Sprintf("symbol error: %q", se.Symbol)
 }
 
 // SyntaxTable is holds the parsed code and data indexed by its location counter.

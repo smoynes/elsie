@@ -147,8 +147,10 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(and.DR)
 	sr1 := registerVal(and.SR1)
 
-	if dr == badGPR || sr1 == badGPR {
-		return nil, errors.New("and: register error")
+	if dr == badGPR {
+		return nil, &RegisterError{"and", and.DR}
+	} else if sr1 == badGPR {
+		return nil, &RegisterError{"and", and.SR1}
 	}
 
 	code := vm.NewInstruction(vm.AND, dr<<9|sr1<<6)
@@ -157,7 +159,7 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	case and.SR2 != "":
 		sr2 := registerVal(and.SR2)
 		if sr2 == badGPR {
-			return nil, errors.New("and: register error")
+			return nil, &RegisterError{"and", and.SR2}
 		}
 
 		code.Operand(sr2)
@@ -225,12 +227,12 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 
 	switch {
 	case ld.SYMBOL != "":
-		loc, ok := symbols[ld.SYMBOL]
-		if !ok {
-			return nil, fmt.Errorf("ld: symbol error: %q", ld.SYMBOL)
+		offset, err := symbols.Offset(ld.SYMBOL, pc, 8)
+		if err != nil {
+			return nil, fmt.Errorf("and: %w", err)
 		}
 
-		code.Operand(0x00ff &^ (pc - loc))
+		code.Operand(offset)
 	default:
 		code.Operand(ld.OFFSET & 0x0ff)
 	}
@@ -283,8 +285,10 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(ldr.DR)
 	sr := registerVal(ldr.SR)
 
-	if dr == badGPR || sr == badGPR {
-		return nil, fmt.Errorf("ldr: register error")
+	if dr == badGPR {
+		return nil, &RegisterError{"ldr", ldr.DR}
+	} else if sr == badGPR {
+		return nil, &RegisterError{"ldr", ldr.SR}
 	}
 
 	code := vm.NewInstruction(vm.LDR, dr<<9|sr<<6)

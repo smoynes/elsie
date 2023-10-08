@@ -61,6 +61,10 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 		encoded, err = code.Generate(gen.symbols, gen.pc)
 
 		if err != nil {
+			err = &SyntaxError{
+				Loc: gen.pc,
+				Err: err,
+			}
 			break
 		}
 
@@ -68,6 +72,7 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 			break
 		}
 
+		gen.pc += uint16(len(encoded))
 		count += int64(len(encoded) * 2)
 	}
 

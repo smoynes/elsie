@@ -66,7 +66,7 @@ type Instruction Register
 // NewInstruction creates a new instruction value for the given opcode.
 func NewInstruction(opcode Opcode, operands uint16) Instruction {
 	val := uint16(opcode) << 12
-	val |= operands
+	val |= operands & 0x0fff
 
 	return Instruction(val)
 }
