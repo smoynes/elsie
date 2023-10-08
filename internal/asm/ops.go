@@ -377,7 +377,7 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 
 		code.Operand(sr2)
 	} else {
-		code.Operand(1 << 6)
+		code.Operand(1 << 5)
 		code.Operand(add.LITERAL & 0x001f)
 	}
 
