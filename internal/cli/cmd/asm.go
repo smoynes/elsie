@@ -38,7 +38,7 @@ Assemble source into object code.`)
 func (a *assembler) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("asm", flag.ExitOnError)
 	fs.BoolVar(&a.debug, "debug", false, "enable debug logging")
-	fs.StringVar(&a.output, "o", "a.out", "output `filename`")
+	fs.StringVar(&a.output, "o", "a.o", "output `filename`")
 
 	return fs
 }
@@ -88,6 +88,7 @@ func (a *assembler) Run(ctx context.Context, args []string, stdout io.Writer, lo
 	logger.Debug("Writing object", "file", a.output)
 
 	buf := bufio.NewWriter(out)
+
 	wrote, err := generator.WriteTo(buf)
 	if err != nil {
 		logger.Error("Compile error", "out", a.output, "err", err)

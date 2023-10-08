@@ -8,6 +8,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"unicode/utf16"
 
 	"github.com/smoynes/elsie/internal/vm"
 )
@@ -26,6 +27,7 @@ import (
 //	|------+-----+---------|
 //	|15  12|11  9|8       0|
 type BR struct {
+	SourceInfo
 	NZP    uint8
 	SYMBOL string
 	OFFSET uint16
@@ -33,14 +35,15 @@ type BR struct {
 
 func (br BR) String() string { return fmt.Sprintf("BR(%#v)", br) }
 
-func (br *BR) Parse(oper string, opers []string) error {
+// Parse parses all variations of the BR* instruction based on the opcode.
+func (br *BR) Parse(opcode string, opers []string) error {
 	var nzp uint16
 
 	if len(opers) != 1 {
 		return errors.New("br: invalid operands")
 	}
 
-	switch strings.ToUpper(oper) {
+	switch strings.ToUpper(opcode) {
 	case "BR", "BRNZP":
 		nzp = uint16(vm.ConditionNegative | vm.ConditionZero | vm.ConditionPositive)
 	case "BRP":
@@ -56,7 +59,7 @@ func (br *BR) Parse(oper string, opers []string) error {
 	case "BRNZ":
 		nzp = uint16(vm.ConditionNegative | vm.ConditionZero)
 	default:
-		return fmt.Errorf("unknown opcode: %s", oper)
+		return fmt.Errorf("unknown opcode: %s", opcode)
 	}
 
 	off, sym, err := parseImmediate(opers[0], 9)
@@ -65,9 +68,10 @@ func (br *BR) Parse(oper string, opers []string) error {
 	}
 
 	*br = BR{
-		NZP:    uint8(nzp),
-		SYMBOL: sym,
-		OFFSET: off,
+		SourceInfo: br.SourceInfo,
+		NZP:        uint8(nzp),
+		SYMBOL:     sym,
+		OFFSET:     off,
 	}
 
 	return nil
@@ -105,8 +109,9 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	|------+----+-----+---+------|
 //	|15  12|11 9|8   6| 5 |4    0|
 type AND struct {
-	DR, SR1 string
-
+	SourceInfo
+	DR     string
+	SR1    string
 	SR2    string // Register mode.
 	SYMBOL string // Symbolic reference.
 	OFFSET uint16 // Otherwise.
@@ -121,8 +126,9 @@ func (and *AND) Parse(oper string, opers []string) error {
 	}
 
 	*and = AND{
-		DR:  parseRegister(opers[0]),
-		SR1: parseRegister(opers[1]),
+		SourceInfo: and.SourceInfo,
+		DR:         parseRegister(opers[0]),
+		SR1:        parseRegister(opers[1]),
 	}
 
 	if sr2 := parseRegister(opers[2]); sr2 != "" {
@@ -189,6 +195,7 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	|------+----+---------|
 //	|15  12|11 9|8       0|
 type LD struct {
+	SourceInfo
 	DR     string
 	OFFSET uint16
 	SYMBOL string
@@ -206,7 +213,8 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 	}
 
 	*ld = LD{
-		DR: operands[0],
+		SourceInfo: ld.SourceInfo,
+		DR:         operands[0],
 	}
 
 	ld.OFFSET, ld.SYMBOL, err = parseImmediate(operands[1], 9)
@@ -220,7 +228,7 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 func (ld LD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(ld.DR)
 	if dr == badGPR {
-		return nil, fmt.Errorf("ld: register error")
+		return nil, &RegisterError{op: "ld", Reg: ld.DR}
 	}
 
 	code := vm.NewInstruction(vm.LD, dr<<9)
@@ -251,6 +259,7 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type LDR struct {
+	SourceInfo
 	DR     string
 	SR     string
 	OFFSET uint16
@@ -269,8 +278,9 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 	}
 
 	*ldr = LDR{
-		DR: operands[0],
-		SR: operands[1],
+		SourceInfo: ldr.SourceInfo,
+		DR:         operands[0],
+		SR:         operands[1],
 	}
 
 	ldr.OFFSET, ldr.SYMBOL, err = parseImmediate(operands[2], 6)
@@ -323,6 +333,7 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type ADD struct {
+	SourceInfo
 	DR      string
 	SR1     string
 	SR2     string // Not empty when register mode.
@@ -338,9 +349,13 @@ func (add *ADD) Parse(opcode string, operands []string) error {
 		return errors.New("add: operand error")
 	}
 
+	dr := parseRegister(operands[0])
+	sr1 := parseRegister(operands[1])
+
 	*add = ADD{
-		DR:  parseRegister(operands[0]),
-		SR1: parseRegister(operands[1]),
+		SourceInfo: add.SourceInfo,
+		DR:         dr,
+		SR1:        sr1,
 	}
 
 	if sr2 := parseRegister(operands[2]); sr2 != "" {
@@ -362,9 +377,9 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	sr1 := registerVal(add.SR1)
 
 	if dr == badGPR {
-		return nil, &RegisterError{"AND", add.DR}
+		return nil, &RegisterError{"and", add.DR}
 	} else if sr1 == badGPR {
-		return nil, &RegisterError{"AND", add.SR1}
+		return nil, &RegisterError{"and", add.SR1}
 	}
 
 	code := vm.NewInstruction(vm.ADD, dr<<9|sr1<<6)
@@ -394,6 +409,7 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type TRAP struct {
+	SourceInfo
 	LITERAL uint16
 }
 
@@ -412,7 +428,8 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 	}
 
 	*trap = TRAP{
-		LITERAL: lit,
+		SourceInfo: trap.SourceInfo,
+		LITERAL:    lit,
 	}
 
 	return nil
@@ -433,6 +450,7 @@ func (trap TRAP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type NOT struct {
+	SourceInfo
 	DR string
 	SR string
 }
@@ -450,8 +468,9 @@ func (not *NOT) Parse(opcode string, operands []string) error {
 	sr := parseRegister(operands[1])
 
 	*not = NOT{
-		DR: dr,
-		SR: sr,
+		SourceInfo: not.SourceInfo,
+		DR:         dr,
+		SR:         sr,
 	}
 
 	return nil
@@ -465,8 +484,10 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(not.DR)
 	sr := registerVal(not.SR)
 
-	if dr == badGPR || sr == badGPR {
-		return nil, errors.New("not: operand error")
+	if dr == badGPR {
+		return nil, &RegisterError{"not", not.DR}
+	} else if sr == badGPR {
+		return nil, &RegisterError{"not", not.SR}
 	}
 
 	code := vm.NewInstruction(vm.NOT, dr<<9|sr<<6|0x003f)
@@ -479,6 +500,7 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	.FILL x1234
 //	.FILL 0
 type FILL struct {
+	SourceInfo
 	LITERAL uint16 // Literal constant.
 }
 
@@ -497,6 +519,7 @@ func (fill *FILL) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 //	.BLKW 1
 type BLKW struct {
+	SourceInfo
 	ALLOC uint16 // Number of words allocated.
 }
 
@@ -516,6 +539,7 @@ func (blkw *BLKW) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	.ORIG x1234
 //	.ORIG 0
 type ORIG struct {
+	SourceInfo
 	LITERAL uint16 // Literal constant.
 }
 
@@ -554,6 +578,7 @@ func (orig *ORIG) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 //	HELLO .STRINGZ "Hello, world!"
 type STRINGZ struct {
+	SourceInfo
 	LITERAL string // Literal constant.
 }
 
@@ -567,14 +592,8 @@ func (s *STRINGZ) ParseString(opcode string, val string) error {
 }
 
 func (s *STRINGZ) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
-	bytes := []byte(s.LITERAL)
-	words := make([]uint16, len(bytes))
-
-	for i := range bytes {
-		words[i] = uint16(bytes[i] & 0x7f)
-	}
-
-	return words, nil
+	code := append(utf16.Encode([]rune(s.LITERAL)), 0) // null terminate value.
+	return code, nil
 }
 
 // badGPR is returned when a value is invalid because it is more noticeable than a zero value.

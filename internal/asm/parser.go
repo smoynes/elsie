@@ -30,10 +30,12 @@ import (
 //
 // .
 type Parser struct {
-	loc     uint16      // Location counter.
-	pos     uint16      // Line number in source file.
-	symbols SymbolTable // Symbolic references.
-	syntax  SyntaxTable // Parsed code and data indexed by its address in memory.
+	loc      uint16      // Location counter.
+	pos      uint16      // Line number in source file.
+	filename string      // Current filename being parsed.
+	line     string      // Line being parsed.
+	symbols  SymbolTable // Symbolic references.
+	syntax   SyntaxTable // Parsed code and data indexed by its address in memory.
 
 	fatal error   // Error causing parsing to halt, i.e., I/O errors.
 	errs  []error // Syntax errors.
@@ -61,11 +63,6 @@ func (p *Parser) Symbols() SymbolTable {
 // Syntax returns the abstract syntax table, i.e. "parse tree".
 func (p *Parser) Syntax() SyntaxTable {
 	return p.syntax
-}
-
-// SyntaxError adds an error to the parser errors.
-func (p *Parser) SyntaxError(loc uint16, pos uint16, line string, err error) {
-	p.errs = append(p.errs, &SyntaxError{Loc: loc, Pos: pos, Line: line, Err: err})
 }
 
 // Err returns errors that occur during parsing. If a fatal error occurs that prevents parsing from
@@ -98,6 +95,12 @@ func (p *Parser) Parse(in io.ReadCloser) {
 		return
 	}
 
+	if file, ok := in.(interface{ Name() string }); ok {
+		p.filename = file.Name()
+	} else {
+		p.filename = "(unknown)"
+	}
+
 	for {
 		scanned := lines.Scan()
 
@@ -106,14 +109,14 @@ func (p *Parser) Parse(in io.ReadCloser) {
 			break
 		}
 
-		line := lines.Text()
+		p.line = lines.Text()
 		p.pos++
 
 		if !scanned {
 			break
 		}
 
-		if err := p.parseLine(line); err != nil {
+		if err := p.parseLine(p.line); err != nil {
 			// Assume descendant accumulated syntax errors and that any errors returned are
 			// therefore fatal.
 			p.fatal = err
@@ -171,7 +174,7 @@ func (p *Parser) parseLine(line string) error {
 		}
 
 		if err := p.parseInstruction(operator, operands); err != nil {
-			p.SyntaxError(p.loc, p.pos, line, err)
+			p.errs = append(p.errs, &SyntaxError{Loc: p.loc, Pos: p.pos, Line: p.line, Err: err})
 		}
 	}
 
@@ -223,21 +226,27 @@ func (p *Parser) parseInstruction(opcode string, operands []string) error {
 // parseOperator returns the operation for the given opcode or an error if there is no such
 // operation.
 func (p *Parser) parseOperator(opcode string) Operation {
+	source := SourceInfo{
+		Filename: p.filename,
+		Pos:      p.pos,
+		Line:     p.line,
+	}
+
 	switch strings.ToUpper(opcode) {
 	case "ADD":
-		return &ADD{}
+		return &ADD{SourceInfo: source}
 	case "AND":
-		return &AND{}
+		return &AND{SourceInfo: source}
 	case "BR", "BRNZP", "BRN", "BRZ", "BRP", "BRZN", "BRNP", "BRZP":
-		return &BR{}
+		return &BR{SourceInfo: source}
 	case "NOT":
-		return &NOT{}
+		return &NOT{SourceInfo: source}
 	case "LD":
-		return &LD{}
+		return &LD{SourceInfo: source}
 	case "LDR":
-		return &LDR{}
+		return &LDR{SourceInfo: source}
 	case "TRAP":
-		return &TRAP{}
+		return &TRAP{SourceInfo: source}
 	case p.probeOpcode:
 		return p.probeInstr
 	default:
@@ -261,9 +270,15 @@ func (p *Parser) isReservedKeyword(word string) bool {
 func (p *Parser) parseDirective(ident string, arg string) error {
 	var err error
 
+	source := SourceInfo{
+		Filename: p.filename,
+		Pos:      p.pos,
+		Line:     p.line,
+	}
+
 	switch ident {
 	case ".ORIG":
-		orig := ORIG{}
+		orig := ORIG{SourceInfo: source}
 
 		err = orig.Parse(ident, []string{arg})
 		if err != nil {
@@ -272,9 +287,8 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 
 		p.syntax.Add(&orig)
 		p.loc = orig.LITERAL
-
 	case ".BLKW":
-		blkw := BLKW{}
+		blkw := BLKW{SourceInfo: source}
 
 		err = blkw.Parse(ident, []string{arg})
 		if err != nil {
@@ -282,10 +296,9 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 		}
 
 		p.syntax.Add(&blkw)
-
 		p.loc += blkw.ALLOC
 	case ".FILL", ".DW":
-		fill := FILL{}
+		fill := FILL{SourceInfo: source}
 
 		err = fill.Parse(ident, []string{arg})
 		if err != nil {
@@ -293,10 +306,9 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 		}
 
 		p.syntax.Add(&fill)
-
 		p.loc++
 	case ".STRINGZ":
-		strz := STRINGZ{}
+		strz := STRINGZ{SourceInfo: source}
 
 		err = strz.ParseString(ident, arg)
 		if err != nil {
@@ -304,11 +316,11 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 		}
 
 		p.syntax.Add(&strz)
-
 		p.loc += uint16(len(strz.LITERAL) + 1)
-
 	case ".END":
 		// TODO: add to syntax table
+	case ".EXTERNAL":
+		// TODO: add link-time references to symbol table
 	default:
 		return fmt.Errorf("directive error: %s", ident)
 	}

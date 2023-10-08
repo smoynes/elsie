@@ -12,8 +12,12 @@ import (
 )
 
 // Generator controls the code generation pass of the assembler. The generator starts at the
-// beginning of the parsed-syntax table, generates code fore each operation, and then writes the
+// beginning of the parsed-syntax table, generates code for each operation, and then writes the
 // bytes to the output (usually, a file).
+//
+// During the generation pass, any syntax or semantic errors that prevent generating machine code
+// are immediately returned from WriteTo. The errors are wrapped SyntaxErrors and may be tested and
+// retrieved using the errors package.
 type Generator struct {
 	pc      uint16
 	symbols SymbolTable
@@ -63,9 +67,13 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 		encoded, err = code.Generate(gen.symbols, gen.pc)
 
 		if err != nil {
+			src := code.Source()
 			err = &SyntaxError{
-				Loc: gen.pc,
-				Err: err,
+				File: src.Filename,
+				Loc:  gen.pc,
+				Pos:  src.Pos,
+				Line: src.Line,
+				Err:  err,
 			}
 
 			break
