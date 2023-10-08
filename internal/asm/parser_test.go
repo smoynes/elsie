@@ -81,6 +81,12 @@ func (fake *fakeInstruction) Generate(sym SymbolTable, loc uint16) ([]uint16, er
 	return nil, nil
 }
 
+func (fake *fakeInstruction) Source() SourceInfo {
+	return SourceInfo{
+		Filename: "parser_test",
+	}
+}
+
 const ValidSyntax = (`
 ; Let's go!
      .ORIG x1000       ; origin

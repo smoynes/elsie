@@ -109,6 +109,7 @@ const badSymbol uint16 = 0xffff
 
 // SyntaxError is a wrapped error returned when the parser encounters a syntax error.
 type SyntaxError struct {
+	File string // Source file name.
 	Loc  uint16 // Location counter.
 	Pos  uint16 // Line counter, zero value if now known.
 	Line string // Source code line, zero value if not known.
@@ -120,8 +121,6 @@ func (pe *SyntaxError) Error() string {
 		return fmt.Sprintf("syntax error: loc: %0#4x", pe.Loc)
 	} else if pe.Err == nil && pe.Line != "" {
 		return fmt.Sprintf("syntax error: line: %q", pe.Line)
-	} else if pe.Err != nil && pe.Line == "" {
-		return fmt.Sprintf("syntax error: %s: loc: %0#4x", pe.Err, pe.Loc)
 	} else {
 		return fmt.Sprintf("syntax error: %s: line: %0#4X %q", pe.Err, pe.Pos, pe.Line)
 	}
@@ -183,4 +182,17 @@ type Operation interface {
 	// Generate encodes an operation as machine code. Using the values from Parse, the operation is
 	// converted to one (or more) words.
 	Generate(symbols SymbolTable, pc uint16) ([]uint16, error)
+
+	// Source returns information about the source code location of an operation.
+	Source() SourceInfo
 }
+
+// SourceInfo holds information on the source of an operation.
+type SourceInfo struct {
+	Filename string
+	Pos      uint16
+	Line     string
+}
+
+// Source returns a copy of the source information.
+func (s SourceInfo) Source() SourceInfo { return s }

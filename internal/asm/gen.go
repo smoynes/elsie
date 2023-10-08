@@ -67,11 +67,14 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 		encoded, err = code.Generate(gen.symbols, gen.pc)
 
 		if err != nil {
+			src := code.Source()
 			err = &SyntaxError{
-				Loc: gen.pc,
-				Err: err,
+				File: src.Filename,
+				Loc:  gen.pc,
+				Pos:  src.Pos,
+				Line: src.Line,
+				Err:  err,
 			}
-
 			break
 		}
 
