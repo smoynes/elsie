@@ -249,6 +249,14 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		return &AND{SourceInfo: source}
 	case "BR", "BRNZP", "BRN", "BRZ", "BRP", "BRZN", "BRNP", "BRZP":
 		return &BR{SourceInfo: source}
+	case "JMP":
+		return &JMP{SourceInfo: source}
+	case "RET":
+		return &RET{SourceInfo: source}
+	case "JSR":
+		return &JSR{SourceInfo: source}
+	case "JSRR":
+		return &JSRR{SourceInfo: source}
 	case "NOT":
 		return &NOT{SourceInfo: source}
 	case "LD":
@@ -265,10 +273,6 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		return &STR{SourceInfo: source}
 	case "STI":
 		return &STI{SourceInfo: source}
-	case "JMP":
-		return &JMP{SourceInfo: source}
-	case "RET":
-		return &RET{SourceInfo: source}
 	case "TRAP":
 		return &TRAP{SourceInfo: source}
 	case p.probeOpcode:

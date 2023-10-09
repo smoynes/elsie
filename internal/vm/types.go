@@ -219,17 +219,11 @@ const (
 	R6
 	R7
 
-	// NumGPR is the count of general purpose registers.
-	NumGPR
+	NumGPR             // Count of general purpose registers.
+	SP     = R6        // Current stack is in R6.
+	RETP   = R7        // Subroutine return address is in R7.
+	BadGPR = GPR(0xff) // Invalid sentinel value.
 
-	// Current stack is in R6.
-	SP = GPR(R6)
-
-	// Subroutine return address is in R7.
-	RETP = GPR(R7)
-
-	// BadGPR is a sentinel value for an invalid register.
-	BadGPR = GPR(0xff)
 )
 
 // ControlRegister is the master control register.

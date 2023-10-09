@@ -901,6 +901,106 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{code.Encode()}, nil
 }
 
+// JSR: Jump to subroutine.
+//
+//	JSR LABEL
+//	JSR #OFFSET11
+//
+//	| 0100 |  1 | OFFSET11 |
+//	|------+----+----------|
+//	|15  12| 11 |10       0|
+//
+// .
+type JSR struct {
+	SourceInfo
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (jsr *JSR) String() string { return fmt.Sprintf("%#v", jsr) }
+
+func (jsr *JSR) Parse(opcode string, operands []string) error {
+	if opcode != "JSR" {
+		return errors.New("jsr: opcode error")
+	} else if len(operands) != 1 {
+		return errors.New("jsr: operand error")
+	}
+
+	off, sym, err := parseImmediate(operands[0], 11)
+	if err != nil {
+		return fmt.Errorf("jsr: operand error: %w", err)
+	}
+
+	*jsr = JSR{
+		SourceInfo: jsr.SourceInfo,
+		OFFSET:     off,
+		SYMBOL:     sym,
+	}
+
+	return nil
+}
+
+func (jsr *JSR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	code := vm.NewInstruction(vm.JSR, 1<<11)
+
+	switch {
+	case jsr.SYMBOL != "":
+		offset, err := symbols.Offset(jsr.SYMBOL, pc, 11)
+		if err != nil {
+			return nil, fmt.Errorf("str: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(jsr.OFFSET & 0x03ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
+// JSRR: Jump to subroutine, register mode.
+//
+//	JSRR SR
+//	JSRR SR
+//
+//	| 0100 |  0 | 00 | SR | 0 0000 |
+//	|------+----+----+----+--------|
+//	|15  12| 11 |10 9|8  6|5      0|
+//
+// .
+type JSRR struct {
+	SourceInfo
+	SR string
+}
+
+func (jsrr *JSRR) String() string { return fmt.Sprintf("%#v", jsrr) }
+
+func (jsrr *JSRR) Parse(opcode string, operands []string) error {
+	if opcode != "JSRR" {
+		return errors.New("jsrr: opcode error")
+	} else if len(operands) != 1 {
+		return errors.New("jsrr: operand error")
+	}
+
+	*jsrr = JSRR{
+		SourceInfo: jsrr.SourceInfo,
+		SR:         operands[0],
+	}
+
+	return nil
+}
+
+func (jsrr *JSRR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	reg := registerVal(jsrr.SR)
+	if reg == badGPR {
+		return nil, &RegisterError{"jsrr", jsrr.SR}
+	}
+
+	code := vm.NewInstruction(vm.JSRR, reg<<6)
+
+	return []uint16{code.Encode()}, nil
+}
+
 // .FILL: Allocate and initialize one word of data.
 //
 //	.FILL x1234

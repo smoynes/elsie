@@ -824,3 +824,82 @@ func TestTRAP_Generate(t *testing.T) {
 		}
 	}
 }
+
+func TestJSR_Parse(t *testing.T) {
+	tests := []parserCase{
+		{
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "JSR label",
+			opcode: "JSR", operands: []string{"LABEL"},
+			want: &JSR{SYMBOL: "LABEL"},
+		},
+		{
+			name:   "JSR literal",
+			opcode: "JSR", operands: []string{"#x0100"},
+			want: &JSR{OFFSET: 0x0100},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &JSR{}
+			err := got.Parse(tt.opcode, tt.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Errorf("JSR.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("JSR.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestJSRR_Parse(t *testing.T) {
+	tests := []parserCase{
+		{
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "JSRR reg",
+			opcode: "JSRR", operands: []string{"R1"},
+			want: &JSRR{SR: "R1"},
+		},
+		{
+			name:   "JSRR bad reg",
+			opcode: "JSRR", operands: []string{"RR"},
+			want: &JSRR{SR: "RR"},
+		},
+		{
+			name:   "JSRR literal",
+			opcode: "JSRR", operands: []string{"#x0100"},
+			want: &JSRR{SR: "#x0100"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &JSRR{}
+			err := got.Parse(tt.opcode, tt.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Errorf("JSRR.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("JSRR.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
