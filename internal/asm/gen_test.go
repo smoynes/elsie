@@ -442,6 +442,44 @@ func TestNOT_Generate(tt *testing.T) {
 	}
 }
 
+func TestTRAP_Generate(tt *testing.T) {
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{
+			oper: &TRAP{LITERAL: 0x00ff},
+			want: 0xf0ff,
+		},
+		{
+			oper: &TRAP{LITERAL: 0x0025},
+			want: 0xf025,
+		},
+	}
+
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestRTI_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{
+			oper: &TRAP{LITERAL: 0x00ff},
+			want: 0xf0ff,
+		},
+		{
+			oper: &TRAP{LITERAL: 0x0025},
+			want: 0xf025,
+		},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
 func TestSTRINGZ_Generate(tt *testing.T) {
 	t := generatorHarness{tt}
 

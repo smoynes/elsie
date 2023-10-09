@@ -842,8 +842,38 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 }
 
 func (trap TRAP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
-	code := uint16(vm.TRAP)<<12 | trap.LITERAL&0x00ff
-	return []uint16{code}, nil
+	code := vm.NewInstruction(vm.TRAP, trap.LITERAL&0x00ff)
+	return []uint16{code.Encode()}, nil
+}
+
+// RTI: Return from Trap or Interrupt
+//
+//	RTI
+//
+//	| 1000 | 0000 0000 0000 |
+//	|------+----------------|
+//	|15  12|11             0|
+//
+// .
+type RTI struct {
+	SourceInfo
+}
+
+func (rti RTI) String() string { return fmt.Sprintf("%#v", rti) }
+
+func (rti *RTI) Parse(opcode string, operands []string) error {
+	if opcode != "RTI" {
+		return errors.New("rti: operator error")
+	} else if len(operands) != 0 {
+		return errors.New("rti: operand error")
+	}
+
+	return nil
+}
+
+func (rti RTI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	code := vm.NewInstruction(vm.RTI, 0x000)
+	return []uint16{code.Encode()}, nil
 }
 
 // NOT: Bitwise complement.

@@ -785,46 +785,6 @@ func TestTRAP_Parse(t *testing.T) {
 	}
 }
 
-func TestTRAP_Generate(t *testing.T) {
-	tcs := []struct {
-		op   Operation
-		want uint16
-	}{
-		{
-			op:   &TRAP{LITERAL: 0x00ff},
-			want: 0xf0ff,
-		},
-		{
-			op:   &TRAP{LITERAL: 0x0025},
-			want: 0xf025,
-		},
-	}
-
-	pc := uint16(0x3000)
-	symbols := SymbolTable{}
-
-	for tc := range tcs {
-		op, exp := tcs[tc].op, tcs[tc].want
-
-		mc, err := op.Generate(symbols, pc)
-		if err != nil {
-			t.Fatalf("unexpected error: %#v", err)
-		}
-
-		if mc == nil {
-			t.Error("invalid machine code")
-		}
-
-		if len(mc) != 1 {
-			t.Errorf("incorrect machine code: %d bytes", len(mc))
-		}
-
-		if mc[0] != exp {
-			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
-		}
-	}
-}
-
 func TestJSR_Parse(t *testing.T) {
 	tests := []parserCase{
 		{

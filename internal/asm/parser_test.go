@@ -152,6 +152,9 @@ BRz   #x0                      ; 0x1018
 
   JSR LABEL
   JSRR R1
+
+  TRAP x25
+  RTI
 eof:
   .END
 `)
@@ -192,7 +195,7 @@ func TestParser(tt *testing.T) {
 	assertSymbol(t, symbols, "D1G1T1", 0x1014)
 
 	// You should expect to update this value every time the test source changes.
-	assertSymbol(t, symbols, "EOF", 0x102a)
+	assertSymbol(t, symbols, "EOF", 0x102c)
 
 	if len(symbols) != 15 {
 		t.Errorf("unexpected symbols: want: %d, got: %d", 11, len(symbols))
