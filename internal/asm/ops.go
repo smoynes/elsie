@@ -15,13 +15,13 @@ import (
 
 // BR: Conditional branch.
 //
-//	BR    [ IDENT | LITERAL ]
-//	BRn   [ IDENT | LITERAL ]
-//	BRnz  [ IDENT | LITERAL ]
-//	BRz   [ IDENT | LITERAL ]
-//	BRzp  [ IDENT | LITERAL ]
-//	BRp   [ IDENT | LITERAL ]
-//	BRnzp [ IDENT | LITERAL ]
+//	BR    [ LABEL | #OFFSET9 ]
+//	BRn   [ LABEL | #OFFSET9 ]
+//	BRnz  [ LABEL | #OFFSET9 ]
+//	BRz   [ LABEL | #OFFSET9 ]
+//	BRzp  [ LABEL | #OFFSET9 ]
+//	BRp   [ LABEL | #OFFSET9 ]
+//	BRnzp [ LABEL | #OFFSET9 ]
 //
 //	| 0000 | NZP | OFFSET9 |
 //	|------+-----+---------|
@@ -102,12 +102,11 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	|------+----+-----+---+----+-----|
 //	|15  12|11 9|8   6| 5 |4  3|2   0|
 //
-//	AND DR,SR1,#LITERAL               ; (immediate mode)
-//	AND DR,SR1,LABEL                  ;
+//	AND DR,SR1,#IMM5                  ; (immediate mode)
 //
-//	| 0101 | DR | SR1 | 1 | IMM5 |
-//	|------+----+-----+---+------|
-//	|15  12|11 9|8   6| 5 |4    0|
+//	| 0101 | DR | SR1 | 1 |   IMM5   |
+//	|------+----+-----+---+----------|
+//	|15  12|11 9|8   6| 5 |4        0|
 type AND struct {
 	SourceInfo
 	DR     string
@@ -186,10 +185,10 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{code.Encode()}, nil
 }
 
-// LD: Load from memory, PC-relative..
+// LD: Load from memory.
 //
 //	LD DR,LABEL
-//	LD DR,#LITERAL
+//	LD DR,#OFFSET9
 //
 //	| 0010 | DR | OFFSET9 |
 //	|------+----+---------|
@@ -251,7 +250,7 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 // LDR: Load from memory, register-relative.
 //
 //	LDR DR,SR,LABEL
-//	LDR DR,SR,#LITERAL
+//	LDR DR,SR,#OFFSET6
 //
 //	| 0110 | DR | SR | OFFSET6 |
 //	|------+----+----+---------|
@@ -321,7 +320,7 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 // LEA: Load effective address.
 //
 //	LDR DR,LABEL
-//	LDR DR,#LITERAL
+//	LDR DR,#OFFSET9
 //
 //	| 1110 | DR | OFFSET9 |
 //	|------+----+---------|
@@ -383,10 +382,74 @@ func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{code.Encode()}, nil
 }
 
+// ST: Store word in memory.
+//
+//	ST SR,LABEL
+//	ST SR,#OFFSET9
+//
+//	| 0011 | SR  | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
+
+type ST struct {
+	SourceInfo
+	SR     string
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (st ST) String() string { return fmt.Sprintf("%#v", st) }
+
+func (st *ST) Parse(opcode string, operands []string) error {
+	var err error
+
+	if opcode != "ST" {
+		return errors.New("st: opcode error")
+	} else if len(operands) != 2 {
+		return errors.New("st: operand error")
+	}
+
+	*st = ST{
+		SourceInfo: st.SourceInfo,
+		SR:         operands[0],
+	}
+
+	st.OFFSET, st.SYMBOL, err = parseImmediate(operands[1], 9)
+	if err != nil {
+		return fmt.Errorf("st: operand error: %w", err)
+	}
+
+	return nil
+}
+
+func (st ST) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	dr := registerVal(st.SR)
+
+	if dr == badGPR {
+		return nil, &RegisterError{"st", st.SR}
+	}
+
+	code := vm.NewInstruction(vm.ST, dr<<9)
+
+	switch {
+	case st.SYMBOL != "":
+		offset, err := symbols.Offset(st.SYMBOL, pc, 9)
+		if err != nil {
+			return nil, fmt.Errorf("st: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(st.OFFSET & 0x01ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
 // ADD: Arithmetic addition operator.
 //
 //	ADD DR,SR1,SR2
-//	ADD DR,SR1,#LITERAL
+//	ADD DR,SR1,#IMM5
 //
 //	| 0001 | DR | SR1 | 0 | 00 | SR2 | (register mode)
 //	|------+----+-----+---+----+-----|
