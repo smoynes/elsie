@@ -398,11 +398,11 @@ func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type ADD struct {
-	SourceInfo
-	DR      string
-	SR1     string
-	SR2     string // Not empty when register mode.
-	LITERAL uint16 // Literal value otherwise, immediate mode.
+	SourceInfo // TODO: This might be cleaner as a decorator instead of embedded.
+	DR         string
+	SR1        string
+	SR2        string // Not empty when register mode.
+	LITERAL    uint16 // Literal value otherwise, immediate mode.
 }
 
 func (add ADD) String() string { return fmt.Sprintf("%#v", add) }
