@@ -167,10 +167,20 @@ func (p *Parser) parseLine(line string) error {
 
 	if matched := instructionPattern.FindStringSubmatch(remain); len(matched) > 2 {
 		operator := matched[1]
-		operands := strings.Split(matched[2], ",")
 
-		for i := range operands {
-			operands[i] = strings.TrimSpace(operands[i])
+		// Split, trim, and clean operands.
+		operands := make([]string, 0, 3)
+		matched[2] = strings.TrimSpace(matched[2])
+		split := strings.Split(matched[2], ",")
+
+		for i := range split {
+			split[i] = strings.TrimSpace(split[i])
+
+			if split[i] == "" {
+				continue
+			}
+
+			operands = append(operands, split[i])
 		}
 
 		if err := p.parseInstruction(operator, operands); err != nil {
@@ -239,14 +249,34 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		return &AND{SourceInfo: source}
 	case "BR", "BRNZP", "BRN", "BRZ", "BRP", "BRZN", "BRNP", "BRZP":
 		return &BR{SourceInfo: source}
+	case "JMP":
+		return &JMP{SourceInfo: source}
+	case "RET":
+		return &RET{SourceInfo: source}
+	case "JSR":
+		return &JSR{SourceInfo: source}
+	case "JSRR":
+		return &JSRR{SourceInfo: source}
 	case "NOT":
 		return &NOT{SourceInfo: source}
 	case "LD":
 		return &LD{SourceInfo: source}
+	case "LDI":
+		return &LDI{SourceInfo: source}
 	case "LDR":
 		return &LDR{SourceInfo: source}
+	case "LEA":
+		return &LEA{SourceInfo: source}
+	case "ST":
+		return &ST{SourceInfo: source}
+	case "STR":
+		return &STR{SourceInfo: source}
+	case "STI":
+		return &STI{SourceInfo: source}
 	case "TRAP":
 		return &TRAP{SourceInfo: source}
+	case "RTI":
+		return &RTI{SourceInfo: source}
 	case p.probeOpcode:
 		return p.probeInstr
 	default:

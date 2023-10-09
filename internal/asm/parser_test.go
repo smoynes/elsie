@@ -141,8 +141,22 @@ BRz   #x0                      ; 0x1018
   LD  DR,#012
   LD  R9,#x0123
 
+  LDR DR,R1,#-1
+  LEA DR,LABEL
+  LDI DR,LABEL
+  ST  SR,LABEL
+  STR SR1,SR2,LABEL
+  STI SR1,LABEL
+  JMP R1
+  RET
+
+  JSR LABEL
+  JSRR R1
+
+  TRAP x25
+  RTI
 eof:
-.END
+  .END
 `)
 
 // A rough integration test for the parser. It is quite brittle and, yet, has proven valuable during
@@ -179,7 +193,9 @@ func TestParser(tt *testing.T) {
 	assertSymbol(t, symbols, "UNDER_SCORE", 0x1014)
 	assertSymbol(t, symbols, "HYPHEN-ATE", 0x1014)
 	assertSymbol(t, symbols, "D1G1T1", 0x1014)
-	assertSymbol(t, symbols, "EOF", 0x1020)
+
+	// You should expect to update this value every time the test source changes.
+	assertSymbol(t, symbols, "EOF", 0x102c)
 
 	if len(symbols) != 15 {
 		t.Errorf("unexpected symbols: want: %d, got: %d", 11, len(symbols))

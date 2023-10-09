@@ -15,13 +15,13 @@ import (
 
 // BR: Conditional branch.
 //
-//	BR    [ IDENT | LITERAL ]
-//	BRn   [ IDENT | LITERAL ]
-//	BRnz  [ IDENT | LITERAL ]
-//	BRz   [ IDENT | LITERAL ]
-//	BRzp  [ IDENT | LITERAL ]
-//	BRp   [ IDENT | LITERAL ]
-//	BRnzp [ IDENT | LITERAL ]
+//	BR    [ LABEL | #OFFSET9 ]
+//	BRn   [ LABEL | #OFFSET9 ]
+//	BRnz  [ LABEL | #OFFSET9 ]
+//	BRz   [ LABEL | #OFFSET9 ]
+//	BRzp  [ LABEL | #OFFSET9 ]
+//	BRp   [ LABEL | #OFFSET9 ]
+//	BRnzp [ LABEL | #OFFSET9 ]
 //
 //	| 0000 | NZP | OFFSET9 |
 //	|------+-----+---------|
@@ -33,7 +33,7 @@ type BR struct {
 	OFFSET uint16
 }
 
-func (br BR) String() string { return fmt.Sprintf("BR(%#v)", br) }
+func (br BR) String() string { return fmt.Sprintf("%#v", br) }
 
 // Parse parses all variations of the BR* instruction based on the opcode.
 func (br *BR) Parse(opcode string, opers []string) error {
@@ -102,12 +102,11 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	|------+----+-----+---+----+-----|
 //	|15  12|11 9|8   6| 5 |4  3|2   0|
 //
-//	AND DR,SR1,#LITERAL               ; (immediate mode)
-//	AND DR,SR1,LABEL                  ;
+//	AND DR,SR1,#IMM5                  ; (immediate mode)
 //
-//	| 0101 | DR | SR1 | 1 | IMM5 |
-//	|------+----+-----+---+------|
-//	|15  12|11 9|8   6| 5 |4    0|
+//	| 0101 | DR | SR1 | 1 |   IMM5   |
+//	|------+----+-----+---+----------|
+//	|15  12|11 9|8   6| 5 |4        0|
 type AND struct {
 	SourceInfo
 	DR     string
@@ -117,7 +116,7 @@ type AND struct {
 	OFFSET uint16 // Otherwise.
 }
 
-func (and AND) String() string { return fmt.Sprintf("AND(%#v)", and) }
+func (and AND) String() string { return fmt.Sprintf("%#v", and) }
 
 // Parse parses an AND instruction from its opcode and operands.
 func (and *AND) Parse(oper string, opers []string) error {
@@ -186,10 +185,10 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{code.Encode()}, nil
 }
 
-// LD: Load from memory, PC-relative..
+// LD: Load from memory.
 //
 //	LD DR,LABEL
-//	LD DR,#LITERAL
+//	LD DR,#OFFSET9
 //
 //	| 0010 | DR | OFFSET9 |
 //	|------+----+---------|
@@ -201,7 +200,7 @@ type LD struct {
 	SYMBOL string
 }
 
-func (ld LD) String() string { return fmt.Sprintf("LD(%#v)", ld) }
+func (ld LD) String() string { return fmt.Sprintf("%#v", ld) }
 
 func (ld *LD) Parse(opcode string, operands []string) error {
 	var err error
@@ -251,7 +250,7 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 // LDR: Load from memory, register-relative.
 //
 //	LDR DR,SR,LABEL
-//	LDR DR,SR,#LITERAL
+//	LDR DR,SR,#OFFSET6
 //
 //	| 0110 | DR | SR | OFFSET6 |
 //	|------+----+----+---------|
@@ -266,7 +265,7 @@ type LDR struct {
 	SYMBOL string
 }
 
-func (ldr LDR) String() string { return fmt.Sprintf("LDR(%#v)", ldr) }
+func (ldr LDR) String() string { return fmt.Sprintf("%#v", ldr) }
 
 func (ldr *LDR) Parse(opcode string, operands []string) error {
 	var err error
@@ -318,10 +317,417 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{code.Encode()}, nil
 }
 
+// LEA: Load effective address.
+//
+//	LDR DR,LABEL
+//	LDR DR,#OFFSET9
+//
+//	| 1110 | DR | OFFSET9 |
+//	|------+----+---------|
+//	|15  12|11 9|8       0|
+//
+// .
+type LEA struct {
+	SourceInfo
+	DR     string
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (lea LEA) String() string { return fmt.Sprintf("%#v", lea) }
+
+func (lea *LEA) Parse(opcode string, operands []string) error {
+	var err error
+
+	if opcode != "LEA" {
+		return errors.New("lea: opcode error")
+	} else if len(operands) != 2 {
+		return errors.New("lea: operand error")
+	}
+
+	*lea = LEA{
+		SourceInfo: lea.SourceInfo,
+		DR:         operands[0],
+	}
+
+	lea.OFFSET, lea.SYMBOL, err = parseImmediate(operands[1], 9)
+	if err != nil {
+		return fmt.Errorf("lea: operand error: %w", err)
+	}
+
+	return nil
+}
+
+func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	dr := registerVal(lea.DR)
+
+	if dr == badGPR {
+		return nil, &RegisterError{"lea", lea.DR}
+	}
+
+	code := vm.NewInstruction(vm.LEA, dr<<9)
+
+	switch {
+	case lea.SYMBOL != "":
+		offset, err := symbols.Offset(lea.SYMBOL, pc, 9)
+		if err != nil {
+			return nil, fmt.Errorf("lea: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(lea.OFFSET & 0x01ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
+// LDI: Load indirect
+//
+//	LDI SR,LABEL
+//	LDI SR,#OFFSET9
+//
+//	| 1010 | SR  | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
+//
+// .
+type LDI struct {
+	SourceInfo
+	SR     string
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (ldi LDI) String() string { return fmt.Sprintf("%#v", ldi) }
+
+func (ldi *LDI) Parse(opcode string, operands []string) error {
+	var err error
+
+	if opcode != "LDI" {
+		return errors.New("ldi: opcode error")
+	} else if len(operands) != 2 {
+		return errors.New("ldi: operand error")
+	}
+
+	*ldi = LDI{
+		SourceInfo: ldi.SourceInfo,
+		SR:         operands[0],
+	}
+
+	ldi.OFFSET, ldi.SYMBOL, err = parseImmediate(operands[1], 9)
+	if err != nil {
+		return fmt.Errorf("ldi: operand error: %w", err)
+	}
+
+	return nil
+}
+
+func (ldi LDI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	sr := registerVal(ldi.SR)
+
+	if sr == badGPR {
+		return nil, &RegisterError{"ldi", ldi.SR}
+	}
+
+	code := vm.NewInstruction(vm.LDI, sr<<9)
+
+	switch {
+	case ldi.SYMBOL != "":
+		offset, err := symbols.Offset(ldi.SYMBOL, pc, 9)
+		if err != nil {
+			return nil, fmt.Errorf("ldi: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(ldi.OFFSET & 0x01ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
+// ST: Store word in memory.
+//
+//	ST SR,LABEL
+//	ST SR,#OFFSET9
+//
+//	| 0011 | SR  | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
+
+type ST struct {
+	SourceInfo
+	SR     string
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (st ST) String() string { return fmt.Sprintf("%#v", st) }
+
+func (st *ST) Parse(opcode string, operands []string) error {
+	var err error
+
+	if opcode != "ST" {
+		return errors.New("st: opcode error")
+	} else if len(operands) != 2 {
+		return errors.New("st: operand error")
+	}
+
+	*st = ST{
+		SourceInfo: st.SourceInfo,
+		SR:         operands[0],
+	}
+
+	st.OFFSET, st.SYMBOL, err = parseImmediate(operands[1], 9)
+	if err != nil {
+		return fmt.Errorf("st: operand error: %w", err)
+	}
+
+	return nil
+}
+
+func (st ST) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	dr := registerVal(st.SR)
+
+	if dr == badGPR {
+		return nil, &RegisterError{"st", st.SR}
+	}
+
+	code := vm.NewInstruction(vm.ST, dr<<9)
+
+	switch {
+	case st.SYMBOL != "":
+		offset, err := symbols.Offset(st.SYMBOL, pc, 9)
+		if err != nil {
+			return nil, fmt.Errorf("st: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(st.OFFSET & 0x01ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
+// STI: Store Indirect.
+//
+//	STI SR,LABEL
+//	STI SR,#OFFSET9
+//
+//	| 1011 | SR  | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
+//
+// .
+type STI struct {
+	SourceInfo
+	SR     string
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (sti STI) String() string { return fmt.Sprintf("%#v", sti) }
+
+func (sti *STI) Parse(opcode string, operands []string) error {
+	var err error
+
+	if opcode != "STI" {
+		return errors.New("sti: opcode error")
+	} else if len(operands) != 2 {
+		return errors.New("sti: operand error")
+	}
+
+	*sti = STI{
+		SourceInfo: sti.SourceInfo,
+		SR:         operands[0],
+	}
+
+	sti.OFFSET, sti.SYMBOL, err = parseImmediate(operands[1], 9)
+	if err != nil {
+		return fmt.Errorf("sti: operand error: %w", err)
+	}
+
+	return nil
+}
+
+func (sti STI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	dr := registerVal(sti.SR)
+
+	if dr == badGPR {
+		return nil, &RegisterError{"sti", sti.SR}
+	}
+
+	code := vm.NewInstruction(vm.STI, dr<<9)
+
+	switch {
+	case sti.SYMBOL != "":
+		offset, err := symbols.Offset(sti.SYMBOL, pc, 9)
+		if err != nil {
+			return nil, fmt.Errorf("sti: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(sti.OFFSET & 0x01ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
+// STR: Store Relative.
+//
+//	STR SR1,SR2,LABEL
+//	STR SR1,SR2,#OFFSET6
+//
+//	| 0111 | SR1 | SR2 | OFFSET6 |
+//	|------+-----+-----+---------|
+//	|15  12|11  9|8   6|5       0|
+//
+// .
+type STR struct {
+	SourceInfo
+	SR1    string
+	SR2    string
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (str STR) String() string { return fmt.Sprintf("%#v", str) }
+
+func (str *STR) Parse(opcode string, operands []string) error {
+	var err error
+
+	if opcode != "STR" {
+		return errors.New("str: opcode error")
+	} else if len(operands) != 3 {
+		return errors.New("str: operand error")
+	}
+
+	*str = STR{
+		SourceInfo: str.SourceInfo,
+		SR1:        operands[0],
+		SR2:        operands[1],
+	}
+
+	str.OFFSET, str.SYMBOL, err = parseImmediate(operands[2], 6)
+	if err != nil {
+		return fmt.Errorf("str: operand error: %w", err)
+	}
+
+	return nil
+}
+
+func (str STR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	sr1 := registerVal(str.SR1)
+	sr2 := registerVal(str.SR2)
+
+	if sr1 == badGPR {
+		return nil, &RegisterError{"str", str.SR1}
+	} else if sr2 == badGPR {
+		return nil, &RegisterError{"str", str.SR2}
+	}
+
+	code := vm.NewInstruction(vm.STR, sr1<<9|sr2<<6)
+
+	switch {
+	case str.SYMBOL != "":
+		offset, err := symbols.Offset(str.SYMBOL, pc, 5)
+		if err != nil {
+			return nil, fmt.Errorf("str: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(str.OFFSET & 0x003f)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
+// JMP: Unconditional branch.
+//
+//	JMP SR
+//
+//	| 1100 | 000 | SR | 00 0000 |
+//	|------+-----+----+---------|
+//	|15  12|11  9|8  6|5       0|
+//
+// .
+type JMP struct {
+	SourceInfo
+	SR string
+}
+
+func (jmp *JMP) String() string { return fmt.Sprintf("%#v", jmp) }
+
+func (jmp *JMP) Parse(opcode string, operands []string) error {
+	if opcode != "JMP" {
+		return errors.New("jmp: opcode error")
+	} else if len(operands) != 1 {
+		return errors.New("jmp: operand error")
+	}
+
+	*jmp = JMP{
+		SourceInfo: jmp.SourceInfo,
+		SR:         operands[0],
+	}
+
+	return nil
+}
+
+func (jmp *JMP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	sr := registerVal(jmp.SR)
+
+	if sr == badGPR {
+		return nil, &RegisterError{"str", jmp.SR}
+	}
+
+	code := vm.NewInstruction(vm.JMP, sr<<6)
+
+	return []uint16{code.Encode()}, nil
+}
+
+// RET: Return from subroutine.
+//
+//	RET
+//
+//	| 1100 | 000 | 111 | 00 0000 |
+//	|------+-----+-----+---------|
+//	|15  12|11  9|8   6|5       0|
+//
+// .
+type RET struct {
+	SourceInfo
+}
+
+func (ret *RET) String() string { return fmt.Sprintf("%#v", ret) }
+
+func (ret *RET) Parse(opcode string, operands []string) error {
+	if opcode != "RET" {
+		return errors.New("ret: opcode error")
+	} else if len(operands) > 0 {
+		return errors.New("ret: operand error")
+	}
+
+	*ret = RET{
+		SourceInfo: ret.SourceInfo,
+	}
+
+	return nil
+}
+
+func (ret *RET) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	code := vm.NewInstruction(vm.RET, uint16(vm.RETP)<<6)
+
+	return []uint16{code.Encode()}, nil
+}
+
 // ADD: Arithmetic addition operator.
 //
 //	ADD DR,SR1,SR2
-//	ADD DR,SR1,#LITERAL
+//	ADD DR,SR1,#IMM5
 //
 //	| 0001 | DR | SR1 | 0 | 00 | SR2 | (register mode)
 //	|------+----+-----+---+----+-----|
@@ -333,11 +739,11 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type ADD struct {
-	SourceInfo
-	DR      string
-	SR1     string
-	SR2     string // Not empty when register mode.
-	LITERAL uint16 // Literal value otherwise, immediate mode.
+	SourceInfo // TODO: This might be cleaner as a decorator instead of embedded.
+	DR         string
+	SR1        string
+	SR2        string // Not empty when register mode.
+	LITERAL    uint16 // Literal value otherwise, immediate mode.
 }
 
 func (add ADD) String() string { return fmt.Sprintf("%#v", add) }
@@ -436,8 +842,38 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 }
 
 func (trap TRAP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
-	code := uint16(vm.TRAP)<<12 | trap.LITERAL&0x00ff
-	return []uint16{code}, nil
+	code := vm.NewInstruction(vm.TRAP, trap.LITERAL&0x00ff)
+	return []uint16{code.Encode()}, nil
+}
+
+// RTI: Return from Trap or Interrupt
+//
+//	RTI
+//
+//	| 1000 | 0000 0000 0000 |
+//	|------+----------------|
+//	|15  12|11             0|
+//
+// .
+type RTI struct {
+	SourceInfo
+}
+
+func (rti RTI) String() string { return fmt.Sprintf("%#v", rti) }
+
+func (rti *RTI) Parse(opcode string, operands []string) error {
+	if opcode != "RTI" {
+		return errors.New("rti: operator error")
+	} else if len(operands) != 0 {
+		return errors.New("rti: operand error")
+	}
+
+	return nil
+}
+
+func (rti RTI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	code := vm.NewInstruction(vm.RTI, 0x000)
+	return []uint16{code.Encode()}, nil
 }
 
 // NOT: Bitwise complement.
@@ -491,6 +927,106 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	}
 
 	code := vm.NewInstruction(vm.NOT, dr<<9|sr<<6|0x003f)
+
+	return []uint16{code.Encode()}, nil
+}
+
+// JSR: Jump to subroutine.
+//
+//	JSR LABEL
+//	JSR #OFFSET11
+//
+//	| 0100 |  1 | OFFSET11 |
+//	|------+----+----------|
+//	|15  12| 11 |10       0|
+//
+// .
+type JSR struct {
+	SourceInfo
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (jsr *JSR) String() string { return fmt.Sprintf("%#v", jsr) }
+
+func (jsr *JSR) Parse(opcode string, operands []string) error {
+	if opcode != "JSR" {
+		return errors.New("jsr: opcode error")
+	} else if len(operands) != 1 {
+		return errors.New("jsr: operand error")
+	}
+
+	off, sym, err := parseImmediate(operands[0], 11)
+	if err != nil {
+		return fmt.Errorf("jsr: operand error: %w", err)
+	}
+
+	*jsr = JSR{
+		SourceInfo: jsr.SourceInfo,
+		OFFSET:     off,
+		SYMBOL:     sym,
+	}
+
+	return nil
+}
+
+func (jsr *JSR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	code := vm.NewInstruction(vm.JSR, 1<<11)
+
+	switch {
+	case jsr.SYMBOL != "":
+		offset, err := symbols.Offset(jsr.SYMBOL, pc, 11)
+		if err != nil {
+			return nil, fmt.Errorf("str: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(jsr.OFFSET & 0x03ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
+// JSRR: Jump to subroutine, register mode.
+//
+//	JSRR SR
+//	JSRR SR
+//
+//	| 0100 |  0 | 00 | SR | 0 0000 |
+//	|------+----+----+----+--------|
+//	|15  12| 11 |10 9|8  6|5      0|
+//
+// .
+type JSRR struct {
+	SourceInfo
+	SR string
+}
+
+func (jsrr *JSRR) String() string { return fmt.Sprintf("%#v", jsrr) }
+
+func (jsrr *JSRR) Parse(opcode string, operands []string) error {
+	if opcode != "JSRR" {
+		return errors.New("jsrr: opcode error")
+	} else if len(operands) != 1 {
+		return errors.New("jsrr: operand error")
+	}
+
+	*jsrr = JSRR{
+		SourceInfo: jsrr.SourceInfo,
+		SR:         operands[0],
+	}
+
+	return nil
+}
+
+func (jsrr *JSRR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	reg := registerVal(jsrr.SR)
+	if reg == badGPR {
+		return nil, &RegisterError{"jsrr", jsrr.SR}
+	}
+
+	code := vm.NewInstruction(vm.JSRR, reg<<6)
 
 	return []uint16{code.Encode()}, nil
 }

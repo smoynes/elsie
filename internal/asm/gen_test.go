@@ -28,37 +28,47 @@ func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCas
 	for i := range tcs {
 		oper, want, expErr := tcs[i].oper, tcs[i].want, tcs[i].wantErr
 
-		t.Log(oper)
+		mc, err := oper.Generate(symbols, pc)
 
-		if mc, err := oper.Generate(symbols, pc); expErr == nil && err != nil {
-			t.Errorf("Code: %#v == error  ==> %s", oper, err)
+		t.Logf("oper: %#v", oper)
+
+		if expErr == nil && err != nil {
+			t.Errorf("unexpected error: %#v %s", oper, err)
 		} else if expErr != nil {
 			switch wantErr := expErr.(type) { //nolint:errorlint
 			case *RegisterError:
 				if !errors.As(err, &wantErr) {
 					// 5 indents is 2 too many
-					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, err)
+					t.Errorf("expected error: want: %#v, got: %#v", wantErr, err)
 				}
 				if wantErr.Reg != expErr.(*RegisterError).Reg { //nolint:errorlint
-					t.Errorf("unexpected error: want: %#v, got: %#v", wantErr, expErr)
+					t.Errorf("expected error: want: %#v, got: %#v", wantErr, expErr)
 				}
 			case *OffsetError:
 				if !errors.As(err, &wantErr) {
-					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, wantErr)
+					t.Errorf("expected error: want: %#v, got: %#v", expErr, err)
 				}
 				if wantErr.Offset != expErr.(*OffsetError).Offset { //nolint:errorlint
-					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, wantErr)
+					t.Errorf("expected error: want: %#v, got: %#v", expErr, err)
 				}
+			case *SymbolError:
+				if !errors.As(err, &wantErr) {
+					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, err)
+				}
+				if wantErr.Symbol != expErr.(*SymbolError).Symbol { //nolint:errorlint
+					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, err)
+				}
+			default:
+				t.Errorf("expected error: want: %#v, got: %#v", expErr, err)
 			}
 		} else {
-			t.Logf("Code: %#v == generated ==> %0#4x", oper, mc)
-
 			if mc == nil {
 				t.Error("invalid machine code")
 			}
 
 			if len(mc) != 1 {
 				t.Errorf("incorrect machine code: %d bytes", len(mc))
+				return
 			}
 
 			if mc[0] != want {
@@ -160,6 +170,7 @@ func TestLDR_Generate(tt *testing.T) {
 	t := generatorHarness{tt}
 	tcs := []generateCase{
 		{oper: &LDR{DR: "R0", SR: "R5", OFFSET: 0x10}, want: 0x6150, wantErr: nil},
+		{oper: &LDR{DR: "R7", SR: "R7", OFFSET: 0xffff}, want: 0x6fff, wantErr: nil},
 		{oper: &LDR{DR: "R7", SR: "R4", SYMBOL: "LABEL"}, want: 0x6f05, wantErr: nil},
 		{oper: &LDR{DR: "R5", SR: "R1", SYMBOL: "BACK"}, want: 0x6a40, wantErr: nil},
 		{oper: &LDR{DR: "R3", SR: "R2", SYMBOL: "GONE"}, want: 0, wantErr: &SymbolError{0x3000, "GONE"}},
@@ -182,6 +193,8 @@ func TestLDR_Generate(tt *testing.T) {
 func TestLD_Generate(tt *testing.T) {
 	t := generatorHarness{tt}
 	tcs := []generateCase{
+		{oper: &LD{DR: "R0", OFFSET: 0x2f}, want: 0x202f},
+		{oper: &LD{DR: "R0", OFFSET: 0xffff}, want: 0x20ff},
 		{oper: &LD{DR: "R0", OFFSET: 0x10}, want: 0x2010, wantErr: nil},
 		{oper: &LD{DR: "R7", SYMBOL: "LABEL"}, want: 0x2e05, wantErr: nil},
 	}
@@ -192,6 +205,149 @@ func TestLD_Generate(tt *testing.T) {
 		"BACK":   0x3000,
 		"FAR":    0x2f00,
 		"YONDER": 0x4000,
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestLEA_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x2fff,
+		"THERE":     0x3080,
+		"WAYBACK":   0x2c00,
+		"OVERTHERE": 0x3200,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &LEA{DR: "R0", OFFSET: 0x003f}, want: 0xe03f},
+		{oper: &LEA{DR: "R1", OFFSET: 0x01ff}, want: 0xe3ff},
+		{oper: &LEA{DR: "R2", SYMBOL: "THERE"}, want: 0xe480},
+		{oper: &LEA{DR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xfc00}},
+		{oper: &LEA{DR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0200}},
+		{oper: &LEA{DR: "R5", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestLDI_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x31ff,
+		"THERE":     0x3080,
+		"WAYBACK":   0x2dff,
+		"OVERTHERE": 0x3200,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &LDI{SR: "R0", OFFSET: 0x10}, want: 0xa010, wantErr: nil},
+		{oper: &LDI{SR: "R0", OFFSET: 0xffff}, want: 0xa1ff, wantErr: nil},
+		{oper: &LDI{SR: "R7", SYMBOL: "LABEL"}, want: 0xafff, wantErr: nil},
+		{oper: &LDI{SR: "R2", SYMBOL: "THERE"}, want: 0xa480},
+		{oper: &LDI{SR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xfdff}},
+		{oper: &LDI{SR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0200}},
+		{oper: &LDI{SR: "R5", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestST_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x2fff,
+		"THERE":     0x3080,
+		"WAYBACK":   0x2c00,
+		"OVERTHERE": 0x3200,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &ST{SR: "R0", OFFSET: 0x1ff}, want: 0x31ff},
+		{oper: &ST{SR: "R0", OFFSET: 0x00}, want: 0x3000},
+		{oper: &ST{SR: "R0", OFFSET: 0xffff}, want: 0x31ff},
+		{oper: &ST{SR: "R0", OFFSET: 0x10}, want: 0x3010, wantErr: nil},
+		{oper: &ST{SR: "R7", SYMBOL: "LABEL"}, want: 0x3fff, wantErr: nil},
+		{oper: &ST{SR: "R2", SYMBOL: "THERE"}, want: 0x3480},
+		{oper: &ST{SR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xfc00}},
+		{oper: &ST{SR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0200}},
+		{oper: &ST{SR: "R5", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestSTI_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x2fff,
+		"THERE":     0x3080,
+		"WAYBACK":   0x2c00,
+		"OVERTHERE": 0x3200,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &STI{SR: "R0", OFFSET: 0x10}, want: 0xb010, wantErr: nil},
+		{oper: &STI{SR: "R7", SYMBOL: "LABEL"}, want: 0xbfff, wantErr: nil},
+		{oper: &STI{SR: "R2", SYMBOL: "THERE"}, want: 0xb480},
+		{oper: &STI{SR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xfc00}},
+		{oper: &STI{SR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0200}},
+		{oper: &STI{SR: "R5", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestSTR_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x2fff, // -1
+		"THERE":     0x301f, // 64
+		"BACK":      0x2fe0, // -64
+		"WAYBACK":   0x2fd0,
+		"OVERTHERE": 0x3040,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &STR{SR1: "R0", SR2: "R1", OFFSET: 0x2f}, want: 0x706f},
+		{oper: &STR{SR1: "R0", SR2: "R0", OFFSET: 0x00}, want: 0x7000},
+		{oper: &STR{SR1: "R0", SR2: "R1", OFFSET: 0xffff}, want: 0x707f},
+		{oper: &STR{SR1: "R7", SR2: "R2", SYMBOL: "LABEL"}, want: 0x7e9f},
+		{oper: &STR{SR1: "R2", SR2: "R3", SYMBOL: "THERE"}, want: 0x74df},
+		{oper: &STR{SR1: "R3", SR2: "R4", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xffd0}},
+		{oper: &STR{SR1: "R4", SR2: "R5", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0040}},
+		{oper: &STR{SR1: "R5", SR2: "R6", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestJMP_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &JMP{SR: "R0"}, want: 0xc000},
+		{oper: &JMP{SR: "R7"}, want: 0xc1c0},
+		{oper: &JMP{SR: "R2"}, want: 0xc080},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestRET_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &RET{}, want: 0xc1c0},
 	}
 
 	t.Run(pc, symbols, tcs)
@@ -212,6 +368,45 @@ func TestADD_Generate(tt *testing.T) {
 
 	pc := uint16(0x3000)
 	symbols := SymbolTable{}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestJSR_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x2fff, // -1
+		"THERE":     0x31ff, // 64
+		"BACK":      0x2800, // -64
+		"WAYBACK":   0x27ff,
+		"OVERTHERE": 0x3800,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &JSR{OFFSET: 0x00ff}, want: 0x48ff},
+		{oper: &JSR{OFFSET: 0xffff}, want: 0x4bff},
+		{oper: &JSR{SYMBOL: "LABEL"}, want: 0x4fff},
+		{oper: &JSR{SYMBOL: "THERE"}, want: 0x49ff},
+		{oper: &JSR{SYMBOL: "BACK"}, want: 0x4800},
+		{oper: &JSR{SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xf7ff}},
+		{oper: &JSR{SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0800}},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestJSRR_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &JSRR{SR: "R0"}, want: 0x4000},
+		{oper: &JSRR{SR: "R7"}, want: 0x41c0},
+		{oper: &JSRR{SR: ""}, wantErr: &RegisterError{}},
+		{oper: &JSRR{SR: "#X1000"}, wantErr: &RegisterError{Reg: "#X1000"}},
+	}
 
 	t.Run(pc, symbols, tcs)
 }
@@ -245,6 +440,44 @@ func TestNOT_Generate(tt *testing.T) {
 			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
 		}
 	}
+}
+
+func TestTRAP_Generate(tt *testing.T) {
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{
+			oper: &TRAP{LITERAL: 0x00ff},
+			want: 0xf0ff,
+		},
+		{
+			oper: &TRAP{LITERAL: 0x0025},
+			want: 0xf025,
+		},
+	}
+
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestRTI_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{
+			oper: &TRAP{LITERAL: 0x00ff},
+			want: 0xf0ff,
+		},
+		{
+			oper: &TRAP{LITERAL: 0x0025},
+			want: 0xf025,
+		},
+	}
+
+	t.Run(pc, symbols, tcs)
 }
 
 func TestSTRINGZ_Generate(tt *testing.T) {
