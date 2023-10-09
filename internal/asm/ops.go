@@ -365,6 +365,7 @@ func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	if dr == badGPR {
 		return nil, &RegisterError{"lea", lea.DR}
 	}
+
 	code := vm.NewInstruction(vm.LEA, dr<<9)
 
 	switch {
