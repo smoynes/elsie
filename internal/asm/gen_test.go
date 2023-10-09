@@ -66,6 +66,7 @@ func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCas
 
 			if len(mc) != 1 {
 				t.Errorf("incorrect machine code: %d bytes", len(mc))
+				return
 			}
 
 			if mc[0] != want {
@@ -296,6 +297,26 @@ func TestSTR_Generate(tt *testing.T) {
 		{oper: &STR{SR1: "R3", SR2: "R4", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xffd0}},
 		{oper: &STR{SR1: "R4", SR2: "R5", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0040}},
 		{oper: &STR{SR1: "R5", SR2: "R6", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestJMP_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x2fff, // -1
+		"THERE":     0x301f, // 64
+		"BACK":      0x2fe0, // -64
+		"WAYBACK":   0x2fd0,
+		"OVERTHERE": 0x3040,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &JMP{SR: "R0"}, want: 0xc000},
+		{oper: &JMP{SR: "R7"}, want: 0xc1c0},
+		{oper: &JMP{SR: "R2"}, want: 0xc080},
 	}
 
 	t.Run(pc, symbols, tcs)

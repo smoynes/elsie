@@ -509,6 +509,37 @@ func TestSTR_Parse(t *testing.T) {
 	}
 }
 
+func TestJMP_Parse(t *testing.T) {
+	tests := []parserCase{
+		{
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "JMP register",
+			opcode: "JMP", operands: []string{"SR"},
+			want: &JMP{SR: "SR"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &JMP{}
+			err := got.Parse(tt.opcode, tt.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Errorf("JMP.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("JMP.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
 func TestADD_Parse(t *testing.T) {
 	tcs := []parserCase{
 		{

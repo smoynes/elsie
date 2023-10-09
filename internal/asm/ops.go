@@ -581,6 +581,47 @@ func (str STR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{code.Encode()}, nil
 }
 
+// JMP: Unconditional branch.
+//
+//	JMP SR
+//
+//	| 1100 | 000 | SR | 00 0000 |
+//	|------+-----+-----+--------|
+//	|15  12|11  9|8  6|5       0|
+//
+// .
+type JMP struct {
+	SourceInfo
+	SR string
+}
+
+func (jmp *JMP) String() string { return fmt.Sprintf("%#v", jmp) }
+
+func (jmp *JMP) Parse(opcode string, operands []string) error {
+	if opcode != "JMP" {
+		return errors.New("jmp: opcode error")
+	} else if len(operands) != 1 {
+		return errors.New("jmp: operand error")
+	}
+	*jmp = JMP{
+		SourceInfo: jmp.SourceInfo,
+		SR:         operands[0],
+	}
+
+	return nil
+}
+
+func (jmp *JMP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	sr := registerVal(jmp.SR)
+
+	if sr == badGPR {
+		return nil, &RegisterError{"str", jmp.SR}
+	}
+	code := vm.NewInstruction(vm.JMP, sr<<6)
+
+	return []uint16{code.Encode()}, nil
+}
+
 // ADD: Arithmetic addition operator.
 //
 //	ADD DR,SR1,SR2

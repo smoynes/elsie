@@ -247,6 +247,12 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		return &LDR{SourceInfo: source}
 	case "LEA":
 		return &LEA{SourceInfo: source}
+	case "ST":
+		return &ST{SourceInfo: source}
+	case "STR":
+		return &STR{SourceInfo: source}
+	case "STI":
+		return &STI{SourceInfo: source}
 	case "TRAP":
 		return &TRAP{SourceInfo: source}
 	case p.probeOpcode:
