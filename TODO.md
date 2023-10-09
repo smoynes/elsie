@@ -4,7 +4,7 @@
   - [ ] tutorial
   - [ ] design
 - [.] ASM:
-  - [.] code generation: ~7/16
+  - [.] code generation: ~13/16
   - [.] directives
     - [ ] .END
     - [ ] .EXTERNAL

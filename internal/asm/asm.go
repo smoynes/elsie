@@ -92,7 +92,7 @@ func (s SymbolTable) Add(sym string, loc uint16) {
 func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
 	loc, ok := s[sym]
 	if !ok {
-		return 0xffff, fmt.Errorf("%s: symbol not found", sym)
+		return 0xffff, &SymbolError{Symbol: sym, Loc: pc}
 	}
 
 	delta := int16(loc - pc)
@@ -153,6 +153,14 @@ type SymbolError struct {
 
 func (se *SymbolError) Error() string {
 	return fmt.Sprintf("symbol error: %q", se.Symbol)
+}
+
+func (se *SymbolError) Is(err error) bool {
+	if _, ok := err.(*SymbolError); ok {
+		return true
+	}
+
+	return false
 }
 
 // SyntaxTable is holds the parsed code and data indexed by its location counter.

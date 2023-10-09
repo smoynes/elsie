@@ -503,12 +503,6 @@ func (op *jmp) Execute() {
 //	|------+----+----------|
 //	|15  12| 11 |10       0|
 //
-// JSRR: Jump to subroutine (register mode)
-//
-//	| 0100 |  0 | SR | 00 0000 |
-//	|------+----+----+---------|
-//	|15  12| 11 |8  6|5       0|
-//
 // .
 type jsr struct {
 	mo
@@ -530,6 +524,13 @@ func (op *jsr) Execute() {
 	op.vm.PC = ProgramCounter(int16(op.vm.PC) + int16(op.offset))
 }
 
+// JSRR: Jump to subroutine (register mode)
+//
+//	| 0100 |  0 | SR | 00 0000 |
+//	|------+----+----+---------|
+//	|15  12| 11 |8  6|5       0|
+//
+// .
 type jsrr struct {
 	mo
 	sr GPR
