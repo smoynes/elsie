@@ -33,7 +33,7 @@ type BR struct {
 	OFFSET uint16
 }
 
-func (br BR) String() string { return fmt.Sprintf("BR(%#v)", br) }
+func (br BR) String() string { return fmt.Sprintf("%#v", br) }
 
 // Parse parses all variations of the BR* instruction based on the opcode.
 func (br *BR) Parse(opcode string, opers []string) error {
@@ -116,7 +116,7 @@ type AND struct {
 	OFFSET uint16 // Otherwise.
 }
 
-func (and AND) String() string { return fmt.Sprintf("AND(%#v)", and) }
+func (and AND) String() string { return fmt.Sprintf("%#v", and) }
 
 // Parse parses an AND instruction from its opcode and operands.
 func (and *AND) Parse(oper string, opers []string) error {
@@ -200,7 +200,7 @@ type LD struct {
 	SYMBOL string
 }
 
-func (ld LD) String() string { return fmt.Sprintf("LD(%#v)", ld) }
+func (ld LD) String() string { return fmt.Sprintf("%#v", ld) }
 
 func (ld *LD) Parse(opcode string, operands []string) error {
 	var err error
@@ -265,7 +265,7 @@ type LDR struct {
 	SYMBOL string
 }
 
-func (ldr LDR) String() string { return fmt.Sprintf("LDR(%#v)", ldr) }
+func (ldr LDR) String() string { return fmt.Sprintf("%#v", ldr) }
 
 func (ldr *LDR) Parse(opcode string, operands []string) error {
 	var err error
@@ -441,6 +441,141 @@ func (st ST) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 		code.Operand(offset)
 	default:
 		code.Operand(st.OFFSET & 0x01ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
+// STI: Store Indirect.
+//
+//	STI SR,LABEL
+//	STI SR,#OFFSET9
+//
+//	| 1011 | SR  | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
+//
+// .
+type STI struct {
+	SourceInfo
+	SR     string
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (sti STI) String() string { return fmt.Sprintf("%#v", sti) }
+
+func (sti *STI) Parse(opcode string, operands []string) error {
+	var err error
+
+	if opcode != "STI" {
+		return errors.New("sti: opcode error")
+	} else if len(operands) != 2 {
+		return errors.New("sti: operand error")
+	}
+
+	*sti = STI{
+		SourceInfo: sti.SourceInfo,
+		SR:         operands[0],
+	}
+
+	sti.OFFSET, sti.SYMBOL, err = parseImmediate(operands[1], 9)
+	if err != nil {
+		return fmt.Errorf("sti: operand error: %w", err)
+	}
+
+	return nil
+}
+
+func (sti STI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	dr := registerVal(sti.SR)
+
+	if dr == badGPR {
+		return nil, &RegisterError{"sti", sti.SR}
+	}
+
+	code := vm.NewInstruction(vm.STI, dr<<9)
+
+	switch {
+	case sti.SYMBOL != "":
+		offset, err := symbols.Offset(sti.SYMBOL, pc, 9)
+		if err != nil {
+			return nil, fmt.Errorf("sti: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(sti.OFFSET & 0x01ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
+// STR: Store Relative.
+//
+//	STR SR1,SR2,LABEL
+//	STR SR1,SR2,#OFFSET6
+//
+//	| 0111 | SR1 | SR2 | OFFSET6 |
+//	|------+-----+-----+---------|
+//	|15  12|11  9|8   6|5       0|
+//
+// .
+type STR struct {
+	SourceInfo
+	SR1    string
+	SR2    string
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (str STR) String() string { return fmt.Sprintf("%#v", str) }
+
+func (str *STR) Parse(opcode string, operands []string) error {
+	var err error
+
+	if opcode != "STR" {
+		return errors.New("str: opcode error")
+	} else if len(operands) != 3 {
+		return errors.New("str: operand error")
+	}
+
+	*str = STR{
+		SourceInfo: str.SourceInfo,
+		SR1:        operands[0],
+		SR2:        operands[1],
+	}
+
+	str.OFFSET, str.SYMBOL, err = parseImmediate(operands[2], 6)
+	if err != nil {
+		return fmt.Errorf("str: operand error: %w", err)
+	}
+
+	return nil
+}
+
+func (str STR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	sr1 := registerVal(str.SR1)
+	sr2 := registerVal(str.SR2)
+
+	if sr1 == badGPR {
+		return nil, &RegisterError{"str", str.SR1}
+	} else if sr2 == badGPR {
+		return nil, &RegisterError{"str", str.SR2}
+	}
+
+	code := vm.NewInstruction(vm.STR, sr1<<9|sr2<<6)
+
+	switch {
+	case str.SYMBOL != "":
+		offset, err := symbols.Offset(str.SYMBOL, pc, 5)
+		if err != nil {
+			return nil, fmt.Errorf("str: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(str.OFFSET & 0x003f)
 	}
 
 	return []uint16{code.Encode()}, nil

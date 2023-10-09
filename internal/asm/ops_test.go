@@ -403,6 +403,112 @@ func TestST_Parse(t *testing.T) {
 	}
 }
 
+func TestSTI_Parse(t *testing.T) {
+	tests := []parserCase{
+		{
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "STI label",
+			opcode: "STI", operands: []string{"SR", "LABEL"},
+			want:    &STI{SR: "SR", OFFSET: 0, SYMBOL: "LABEL"},
+			wantErr: nil,
+		},
+		{
+			name:   "STI literal",
+			opcode: "STI", operands: []string{"SR", "#-1"},
+			want:    &STI{SR: "SR", OFFSET: 0x01ff},
+			wantErr: nil,
+		},
+		{
+			name:   "STI literal too large",
+			opcode: "STI", operands: []string{"SR", "#x0200"},
+			want:    &STI{SR: "SR", OFFSET: 0x00},
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "STI literal too negative",
+			opcode: "STI", operands: []string{"SR", "#xff00"},
+			want:    &STI{SR: "SR", OFFSET: 0x3f},
+			wantErr: &SyntaxError{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &STI{}
+			err := got.Parse(tt.opcode, tt.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+
+				t.Errorf("STI.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("STI.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSTR_Parse(t *testing.T) {
+	tests := []parserCase{
+		{
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "STR label",
+			opcode: "STR", operands: []string{"SR", "SR2", "LABEL"},
+			want:    &STR{SR1: "SR", SR2: "SR2", OFFSET: 0, SYMBOL: "LABEL"},
+			wantErr: nil,
+		},
+		{
+			name:   "STR literal",
+			opcode: "STR", operands: []string{"SR", "SR2", "#-1"},
+			want:    &STR{SR1: "SR", SR2: "SR2", OFFSET: 0x03f},
+			wantErr: nil,
+		},
+		{
+			name:   "STR literal too large",
+			opcode: "STR", operands: []string{"SR", "SR2", "#x0200"},
+			want:    &STR{SR1: "SR", SR2: "SR2", OFFSET: 0x00},
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "STR literal too negative",
+			opcode: "STR", operands: []string{"SR", "SR2", "#xff00"},
+			want:    &STR{SR1: "SR", SR2: "SR2", OFFSET: 0x3f},
+			wantErr: &SyntaxError{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &STR{}
+			err := got.Parse(tt.opcode, tt.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+
+				t.Errorf("STR.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("STR.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestADD_Parse(t *testing.T) {
 	tcs := []parserCase{
 		{
