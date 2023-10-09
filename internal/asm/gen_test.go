@@ -28,10 +28,8 @@ func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCas
 	for i := range tcs {
 		oper, want, expErr := tcs[i].oper, tcs[i].want, tcs[i].wantErr
 
-		t.Log(oper)
-
 		if mc, err := oper.Generate(symbols, pc); expErr == nil && err != nil {
-			t.Errorf("Code: %#v == error  ==> %s", oper, err)
+			t.Errorf("unexpected error: %#v %s", oper, err)
 		} else if expErr != nil {
 			switch wantErr := expErr.(type) { //nolint:errorlint
 			case *RegisterError:
@@ -44,11 +42,20 @@ func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCas
 				}
 			case *OffsetError:
 				if !errors.As(err, &wantErr) {
-					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, wantErr)
+					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, err)
 				}
 				if wantErr.Offset != expErr.(*OffsetError).Offset { //nolint:errorlint
-					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, wantErr)
+					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, err)
 				}
+			case *SymbolError:
+				if !errors.As(err, &wantErr) {
+					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, err)
+				}
+				if wantErr.Symbol != expErr.(*SymbolError).Symbol { //nolint:errorlint
+					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, err)
+				}
+			default:
+				t.Errorf("expected error: want: %#v, got: %#v", expErr, err)
 			}
 		} else {
 			t.Logf("Code: %#v == generated ==> %0#4x", oper, mc)
@@ -192,6 +199,28 @@ func TestLD_Generate(tt *testing.T) {
 		"BACK":   0x3000,
 		"FAR":    0x2f00,
 		"YONDER": 0x4000,
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
+func TestLEA_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x2fff,
+		"THERE":     0x3080,
+		"WAYBACK":   0x2c00,
+		"OVERTHERE": 0x3200,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &LEA{DR: "R0", OFFSET: 0x003f}, want: 0xe03f},
+		{oper: &LEA{DR: "R1", OFFSET: 0x01ff}, want: 0xe3ff},
+		{oper: &LEA{DR: "R2", SYMBOL: "THERE"}, want: 0xe480},
+		{oper: &LEA{DR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xfc00}},
+		{oper: &LEA{DR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0200}},
+		{oper: &LEA{DR: "R5", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
 	}
 
 	t.Run(pc, symbols, tcs)

@@ -297,6 +297,59 @@ func TestLDR_Parse(t *testing.T) {
 	}
 }
 
+func TestLEA_Parse(t *testing.T) {
+	tests := []parserCase{
+		{
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "LEA label",
+			opcode: "LEA", operands: []string{"DR", "LABEL"},
+			want:    &LEA{DR: "DR", OFFSET: 0, SYMBOL: "LABEL"},
+			wantErr: nil,
+		},
+		{
+			name:   "LEA literal",
+			opcode: "LEA", operands: []string{"DR", "#-1"},
+			want:    &LEA{DR: "DR", OFFSET: 0x01ff},
+			wantErr: nil,
+		},
+		{
+			name:   "LEA literal too large",
+			opcode: "LEA", operands: []string{"DR", "SR", "#x40"},
+			want:    &LEA{DR: "DR", OFFSET: 0x00},
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "LEA literal too negative",
+			opcode: "LEA", operands: []string{"DR", "SR", "#-64"},
+			want:    &LEA{DR: "DR", OFFSET: 0x3f},
+			wantErr: &SyntaxError{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &LEA{}
+			err := got.Parse(tt.opcode, tt.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+
+				t.Errorf("LEA.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("LEA.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestADD_Parse(t *testing.T) {
 	tcs := []parserCase{
 		{

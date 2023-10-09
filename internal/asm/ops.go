@@ -318,6 +318,70 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{code.Encode()}, nil
 }
 
+// LEA: Load effective address.
+//
+//	LDR DR,LABEL
+//	LDR DR,#LITERAL
+//
+//	| 1110 | DR | OFFSET9 |
+//	|------+----+---------|
+//	|15  12|11 9|8       0|
+//
+// .
+type LEA struct {
+	SourceInfo
+	DR     string
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (lea LEA) String() string { return fmt.Sprintf("%#v", lea) }
+
+func (lea *LEA) Parse(opcode string, operands []string) error {
+	var err error
+
+	if opcode != "LEA" {
+		return errors.New("lea: opcode error")
+	} else if len(operands) != 2 {
+		return errors.New("lea: operand error")
+	}
+
+	*lea = LEA{
+		SourceInfo: lea.SourceInfo,
+		DR:         operands[0],
+	}
+
+	lea.OFFSET, lea.SYMBOL, err = parseImmediate(operands[1], 9)
+	if err != nil {
+		return fmt.Errorf("lea: operand error: %w", err)
+	}
+
+	return nil
+}
+
+func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	dr := registerVal(lea.DR)
+
+	if dr == badGPR {
+		return nil, &RegisterError{"lea", lea.DR}
+	}
+	code := vm.NewInstruction(vm.LEA, dr<<9)
+
+	switch {
+	case lea.SYMBOL != "":
+		offset, err := symbols.Offset(lea.SYMBOL, pc, 9)
+		if err != nil {
+			return nil, fmt.Errorf("lea: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(lea.OFFSET & 0x01ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
 // ADD: Arithmetic addition operator.
 //
 //	ADD DR,SR1,SR2
