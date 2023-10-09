@@ -651,7 +651,7 @@ func (str STR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	JMP SR
 //
 //	| 1100 | 000 | SR | 00 0000 |
-//	|------+-----+-----+--------|
+//	|------+-----+----+---------|
 //	|15  12|11  9|8  6|5       0|
 //
 // .
@@ -685,6 +685,41 @@ func (jmp *JMP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	}
 
 	code := vm.NewInstruction(vm.JMP, sr<<6)
+
+	return []uint16{code.Encode()}, nil
+}
+
+// RET: Return from subroutine.
+//
+//	RET
+//
+//	| 1100 | 000 | 111 | 00 0000 |
+//	|------+-----+-----+---------|
+//	|15  12|11  9|8   6|5       0|
+//
+// .
+type RET struct {
+	SourceInfo
+}
+
+func (ret *RET) String() string { return fmt.Sprintf("%#v", ret) }
+
+func (ret *RET) Parse(opcode string, operands []string) error {
+	if opcode != "RET" {
+		return errors.New("ret: opcode error")
+	} else if len(operands) > 0 {
+		return errors.New("ret: operand error")
+	}
+
+	*ret = RET{
+		SourceInfo: ret.SourceInfo,
+	}
+
+	return nil
+}
+
+func (ret *RET) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	code := vm.NewInstruction(vm.RET, uint16(vm.RETP)<<6)
 
 	return []uint16{code.Encode()}, nil
 }

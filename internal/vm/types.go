@@ -154,7 +154,7 @@ type Opcode uint16
 
 // Opcode constants.
 const (
-	BR Opcode = iota
+	BR = Opcode(iota)
 	ADD
 	LD
 	ST
@@ -210,7 +210,7 @@ type GPR uint8
 
 // General purpose registers.
 const (
-	R0 GPR = iota
+	R0 = GPR(iota)
 	R1
 	R2
 	R3
@@ -223,13 +223,13 @@ const (
 	NumGPR
 
 	// Current stack is in R6.
-	SP GPR = R6
+	SP = GPR(R6)
 
 	// Subroutine return address is in R7.
-	RETP GPR = R7
+	RETP = GPR(R7)
 
 	// BadGPR is a sentinel value for an invalid register.
-	BadGPR GPR = 0xff
+	BadGPR = GPR(0xff)
 )
 
 // ControlRegister is the master control register.

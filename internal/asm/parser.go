@@ -167,10 +167,20 @@ func (p *Parser) parseLine(line string) error {
 
 	if matched := instructionPattern.FindStringSubmatch(remain); len(matched) > 2 {
 		operator := matched[1]
-		operands := strings.Split(matched[2], ",")
 
-		for i := range operands {
-			operands[i] = strings.TrimSpace(operands[i])
+		// Split, trim, and clean operands.
+		operands := make([]string, 0, 3)
+		matched[2] = strings.TrimSpace(matched[2])
+		split := strings.Split(matched[2], ",")
+
+		for i := range split {
+			split[i] = strings.TrimSpace(split[i])
+
+			if split[i] == "" {
+				continue
+			}
+
+			operands = append(operands, split[i])
 		}
 
 		if err := p.parseInstruction(operator, operands); err != nil {
@@ -255,6 +265,10 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		return &STR{SourceInfo: source}
 	case "STI":
 		return &STI{SourceInfo: source}
+	case "JMP":
+		return &JMP{SourceInfo: source}
+	case "RET":
+		return &RET{SourceInfo: source}
 	case "TRAP":
 		return &TRAP{SourceInfo: source}
 	case p.probeOpcode:

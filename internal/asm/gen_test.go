@@ -345,6 +345,23 @@ func TestJMP_Generate(tt *testing.T) {
 	t.Run(pc, symbols, tcs)
 }
 
+func TestRET_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x2fff, // -1
+		"THERE":     0x301f, // 64
+		"BACK":      0x2fe0, // -64
+		"WAYBACK":   0x2fd0,
+		"OVERTHERE": 0x3040,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &RET{}, want: 0xc1c0},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
 func TestADD_Generate(tt *testing.T) {
 	t := generatorHarness{tt}
 	tcs := []generateCase{
