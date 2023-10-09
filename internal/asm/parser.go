@@ -243,6 +243,8 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		return &NOT{SourceInfo: source}
 	case "LD":
 		return &LD{SourceInfo: source}
+	case "LDI":
+		return &LDI{SourceInfo: source}
 	case "LDR":
 		return &LDR{SourceInfo: source}
 	case "LEA":

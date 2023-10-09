@@ -382,6 +382,71 @@ func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{code.Encode()}, nil
 }
 
+// LDI: Load indirect
+//
+//	LDI SR,LABEL
+//	LDI SR,#OFFSET9
+//
+//	| 1010 | SR  | OFFSET9 |
+//	|------+-----+---------|
+//	|15  12|11  9|8       0|
+//
+// .
+type LDI struct {
+	SourceInfo
+	SR     string
+	SYMBOL string
+	OFFSET uint16
+}
+
+func (ldi LDI) String() string { return fmt.Sprintf("%#v", ldi) }
+
+func (ldi *LDI) Parse(opcode string, operands []string) error {
+	var err error
+
+	if opcode != "LDI" {
+		return errors.New("ldi: opcode error")
+	} else if len(operands) != 2 {
+		return errors.New("ldi: operand error")
+	}
+
+	*ldi = LDI{
+		SourceInfo: ldi.SourceInfo,
+		SR:         operands[0],
+	}
+
+	ldi.OFFSET, ldi.SYMBOL, err = parseImmediate(operands[1], 9)
+	if err != nil {
+		return fmt.Errorf("ldi: operand error: %w", err)
+	}
+
+	return nil
+}
+
+func (ldi LDI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+	sr := registerVal(ldi.SR)
+
+	if sr == badGPR {
+		return nil, &RegisterError{"ldi", ldi.SR}
+	}
+
+	code := vm.NewInstruction(vm.LDI, sr<<9)
+
+	switch {
+	case ldi.SYMBOL != "":
+		offset, err := symbols.Offset(ldi.SYMBOL, pc, 9)
+		if err != nil {
+			return nil, fmt.Errorf("ldi: %w", err)
+		}
+
+		code.Operand(offset)
+	default:
+		code.Operand(ldi.OFFSET & 0x01ff)
+	}
+
+	return []uint16{code.Encode()}, nil
+}
+
 // ST: Store word in memory.
 //
 //	ST SR,LABEL
@@ -603,6 +668,7 @@ func (jmp *JMP) Parse(opcode string, operands []string) error {
 	} else if len(operands) != 1 {
 		return errors.New("jmp: operand error")
 	}
+
 	*jmp = JMP{
 		SourceInfo: jmp.SourceInfo,
 		SR:         operands[0],
@@ -617,6 +683,7 @@ func (jmp *JMP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	if sr == badGPR {
 		return nil, &RegisterError{"str", jmp.SR}
 	}
+
 	code := vm.NewInstruction(vm.JMP, sr<<6)
 
 	return []uint16{code.Encode()}, nil

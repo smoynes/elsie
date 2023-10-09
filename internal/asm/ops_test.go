@@ -350,6 +350,59 @@ func TestLEA_Parse(t *testing.T) {
 	}
 }
 
+func TestLDI_Parse(t *testing.T) {
+	tests := []parserCase{
+		{
+			name:   "bad oper",
+			opcode: "OP", operands: []string{"IDENT"},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "LDI label",
+			opcode: "LDI", operands: []string{"SR", "LABEL"},
+			want:    &LDI{SR: "SR", OFFSET: 0, SYMBOL: "LABEL"},
+			wantErr: nil,
+		},
+		{
+			name:   "LDI literal",
+			opcode: "LDI", operands: []string{"SR", "#-1"},
+			want:    &LDI{SR: "SR", OFFSET: 0x01ff},
+			wantErr: nil,
+		},
+		{
+			name:   "LDI literal too large",
+			opcode: "LDI", operands: []string{"SR", "#x0200"},
+			want:    &LDI{SR: "SR", OFFSET: 0x00},
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "LDI literal too negative",
+			opcode: "LDI", operands: []string{"SR", "#xff00"},
+			want:    &LDI{SR: "SR", OFFSET: 0x3f},
+			wantErr: &SyntaxError{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &LDI{}
+			err := got.Parse(tt.opcode, tt.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+
+				t.Errorf("LDI.Parse() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("LDI.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestST_Parse(t *testing.T) {
 	tests := []parserCase{
 		{
@@ -540,6 +593,7 @@ func TestJMP_Parse(t *testing.T) {
 		})
 	}
 }
+
 func TestADD_Parse(t *testing.T) {
 	tcs := []parserCase{
 		{

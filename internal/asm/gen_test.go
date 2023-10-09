@@ -230,6 +230,29 @@ func TestLEA_Generate(tt *testing.T) {
 	t.Run(pc, symbols, tcs)
 }
 
+func TestLDI_Generate(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x31ff,
+		"THERE":     0x3080,
+		"WAYBACK":   0x2dff,
+		"OVERTHERE": 0x3200,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &LDI{SR: "R0", OFFSET: 0x10}, want: 0xa010, wantErr: nil},
+		{oper: &LDI{SR: "R0", OFFSET: 0xffff}, want: 0xa1ff, wantErr: nil},
+		{oper: &LDI{SR: "R7", SYMBOL: "LABEL"}, want: 0xafff, wantErr: nil},
+		{oper: &LDI{SR: "R2", SYMBOL: "THERE"}, want: 0xa480},
+		{oper: &LDI{SR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xfdff}},
+		{oper: &LDI{SR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0200}},
+		{oper: &LDI{SR: "R5", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
+	}
+
+	t.Run(pc, symbols, tcs)
+}
+
 func TestST_Generate(tt *testing.T) {
 	pc := uint16(0x3000)
 	symbols := SymbolTable{
