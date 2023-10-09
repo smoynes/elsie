@@ -49,19 +49,29 @@ func _() {
 	_ = x[R6-6]
 	_ = x[R7-7]
 	_ = x[NumGPR-8]
-	_ = x[RETP-7]
 	_ = x[SP-6]
+	_ = x[RETP-7]
+	_ = x[BadGPR-255]
 }
 
-const _GPR_name = "R0R1R2R3R4R5R6R7NumGPR"
+const (
+	_GPR_name_0 = "R0R1R2R3R4R5R6R7NumGPR"
+	_GPR_name_1 = "BadGPR"
+)
 
-var _GPR_index = [...]uint8{0, 2, 4, 6, 8, 10, 12, 14, 16, 22}
+var (
+	_GPR_index_0 = [...]uint8{0, 2, 4, 6, 8, 10, 12, 14, 16, 22}
+)
 
 func (i GPR) String() string {
-	if i >= GPR(len(_GPR_index)-1) {
+	switch {
+	case i <= 8:
+		return _GPR_name_0[_GPR_index_0[i]:_GPR_index_0[i+1]]
+	case i == 255:
+		return _GPR_name_1
+	default:
 		return "GPR(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _GPR_name[_GPR_index[i]:_GPR_index[i+1]]
 }
 func _() {
 	// An "invalid array index" compiler error signifies that the constant values have changed.
