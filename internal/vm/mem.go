@@ -58,14 +58,20 @@ func NewMemory(psr *ProcessorStatus) Memory {
 // Fetch loads the data register from the address in the address register.
 func (mem *Memory) Fetch() error {
 	psr := mem.Devices.PSR()
+
+	memErr := &MemoryError{
+		Addr: Word(mem.MAR),
+	}
+
 	if psr&StatusPrivilege == StatusUser && mem.privileged() {
 		mem.MDR = Register(psr)
-		return fmt.Errorf("%w: fetch: %w", ErrMemory, ErrAccessControl)
+
+		return fmt.Errorf("%w: fetch: %w", memErr, ErrAccessControl)
 	}
 
 	err := mem.load(Word(mem.MAR), &mem.MDR)
 	if err != nil {
-		return fmt.Errorf("%w: fetch: %w", ErrMemory, err)
+		return fmt.Errorf("%w: fetch: %w", memErr, err)
 	}
 
 	return nil
@@ -120,6 +126,25 @@ func (mem *Memory) privileged() bool {
 	return (Word(mem.MAR) < UserSpaceAddr ||
 		Word(mem.MAR) == MCRAddr ||
 		Word(mem.MDR) == PSRAddr)
+}
+
+// MemeoryErrors are returned to provide the address if a wrapped ErrMemory.
+type MemoryError struct {
+	Addr Word
+}
+
+func (me *MemoryError) Error() string {
+	return fmt.Sprintf("%s: %s", ErrMemory, me.Addr)
+}
+
+func (me *MemoryError) Is(err error) bool {
+	if err == ErrMemory {
+		return true
+	} else if _, ok := err.(*MemoryError); ok {
+		return true
+	} else {
+		return false
+	}
 }
 
 var (
