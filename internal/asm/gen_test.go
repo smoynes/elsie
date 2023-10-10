@@ -99,7 +99,6 @@ func TestGenerator(tt *testing.T) {
 
 	gen := NewGenerator(symbols, syntax)
 	count, err := gen.WriteTo(&buf)
-
 	if err != nil {
 		t.Error(err)
 	}

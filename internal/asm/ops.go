@@ -678,8 +678,7 @@ func (jmp *JMP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	|15  12|11  9|8   6|5       0|
 //
 // .
-type RET struct {
-}
+type RET struct{}
 
 func (ret *RET) String() string { return fmt.Sprintf("%#v", ret) }
 
@@ -828,8 +827,7 @@ func (trap TRAP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	|15  12|11             0|
 //
 // .
-type RTI struct {
-}
+type RTI struct{}
 
 func (rti RTI) String() string { return fmt.Sprintf("%#v", rti) }
 
