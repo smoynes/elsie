@@ -1,0 +1,15 @@
+ Resources
+===========
+
+The authors of these resources are true heroes.
+
+- A really fantastic web-based LC-3 simulator and assembler:
+  https://wchargin.com/lc3web/
+
+- A complete LC-3 development and learning toolset:
+  https://github.com/TricksterGuy/complx-tools
+
+- Lecture notes on the ISA:
+  https://www.cs.utexas.edu/users/fussell/courses/cs310h/lectures/Lecture_10-310h.pdf
+
+- Post-apocalyptic programming: https://zserge.com/posts/post-apocalyptic-programming/

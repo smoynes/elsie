@@ -142,5 +142,5 @@ This work is dedicated to the MCM/70[^3] and its pioneering designers.
 [^1]: https://www.mheducation.com/highered/product/introduction-computing-systems-bits-gates-c-c-beyond-patt-patel/M9781260150537.html
 [^2]: Leading to the creation of another dynamically-typed, interpreted language -- it is inevitable.
 [^3]: https://en.wikipedia.org/wiki/MCM/70
-[^4]: You may find references to some other tools and some useful resources in
-    [./REFERENCES.txt](`REFERENCES.txt`)
+[^4]: You can find references to some other tools and some useful resources in
+  [./RESOURCES.txt](`RESOURCES.txt`)
