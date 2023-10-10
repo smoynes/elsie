@@ -89,6 +89,7 @@ func TestGenerator(tt *testing.T) {
 	var buf bytes.Buffer
 
 	syntax := make(SyntaxTable, 0)
+
 	syntax.Add(&ORIG{LITERAL: 0x3000})
 	syntax.Add(&NOT{DR: "R0", SR: "R7"})
 	syntax.Add(&AND{DR: "R3", SR1: "R4", SR2: "R6"})
@@ -97,7 +98,6 @@ func TestGenerator(tt *testing.T) {
 	symbols.Add("LABEL", 0x2ff0)
 
 	gen := NewGenerator(symbols, syntax)
-
 	count, err := gen.WriteTo(&buf)
 	if err != nil {
 		t.Error(err)

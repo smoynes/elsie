@@ -48,32 +48,37 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 		return 0, nil
 	}
 
-	// Write the object-code header: the origin offset. The .ORIG directive should be the first
-	// operation in the syntax table.
-	if orig := origin(gen.syntax[0]); orig == nil {
-		return 0, errors.New("gen: .ORIG directive must be the first operation")
-	} else {
+	// Write the origin offset as the leader of the object file. The .ORIG directive should be the
+	// first operation in the syntax table. However, operations may be wrapped, so we unwrap to the
+	// base case, first.
+	if orig, ok := unwrap(gen.syntax[0]).(*ORIG); ok {
 		gen.pc = orig.LITERAL
+		gen.log.Debug("Wrote object header", "ORIG", fmt.Sprintf("%0#4x", orig.LITERAL))
+	} else {
+		return 0, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
 	}
 
 	for i, code := range gen.syntax {
 		if code == nil {
 			continue
-		} else if origin(code) != nil && i != 0 {
-			err = errors.New("gen: .ORIG directive may only be the first operation")
+		} else if _, ok := (unwrap(code)).(*ORIG); ok && i != 0 {
+			err = errors.New(".ORIG directive may only be the first operation")
 			break
 		}
 
 		encoded, err = code.Generate(gen.symbols, gen.pc)
 
 		if err != nil {
-			src := code.Source()
-			err = &SyntaxError{
-				File: src.Filename,
-				Loc:  gen.pc,
-				Pos:  src.Pos,
-				Line: src.Line,
-				Err:  err,
+			// If code generation caused an error, we try to get the source of the operation and
+			// covert annotate the error with the source code annotation.
+			if src, ok := code.(*SourceInfo); ok {
+				err = &SyntaxError{
+					File: src.Filename,
+					Loc:  gen.pc,
+					Pos:  src.Pos,
+					Line: src.Line,
+					Err:  err,
+				}
 			}
 
 			break
@@ -94,10 +99,13 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 	return count, nil
 }
 
-func origin(op Operation) *ORIG {
-	if op, ok := op.(*ORIG); ok {
-		return op
+// unwrap returns the base operation from possibly wrapped operation.
+func unwrap(oper Operation) Operation {
+	for {
+		if wrap, ok := oper.(interface{ Unwrap() Operation }); ok {
+			oper = wrap.Unwrap()
+		} else {
+			return oper
+		}
 	}
-
-	return nil
 }

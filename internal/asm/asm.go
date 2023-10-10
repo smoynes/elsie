@@ -190,17 +190,22 @@ type Operation interface {
 	// Generate encodes an operation as machine code. Using the values from Parse, the operation is
 	// converted to one (or more) words.
 	Generate(symbols SymbolTable, pc uint16) ([]uint16, error)
-
-	// Source returns information about the source code location of an operation.
-	Source() SourceInfo
 }
 
-// SourceInfo holds information on the source of an operation.
+// SourceInfo wraps an operation to annotate it with parser metadata.
 type SourceInfo struct {
 	Filename string
 	Pos      uint16
 	Line     string
+
+	Operation
 }
 
-// Source returns a copy of the source information.
-func (s SourceInfo) Source() SourceInfo { return s }
+// Unwrap returns the operation which the source info wraps.
+func (si *SourceInfo) Unwrap() Operation {
+	if si.Operation == nil {
+		return nil
+	}
+
+	return si.Operation
+}
