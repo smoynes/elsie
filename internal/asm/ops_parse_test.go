@@ -16,6 +16,8 @@ type parserCase struct {
 }
 
 func TestAND_Parse(t *testing.T) {
+	t.Parallel()
+
 	// I still not sure I like this style of table tests.
 	tests := []struct {
 		name     string
@@ -102,9 +104,12 @@ func TestAND_Parse(t *testing.T) {
 		},
 	}
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := &AND{}
+		tt := tt
 
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := &AND{}
 			err := got.Parse(tt.opcode, tt.operands)
 
 			if (err != nil) != tt.wantErr {
@@ -120,6 +125,8 @@ func TestAND_Parse(t *testing.T) {
 }
 
 func TestBR_Parse(t *testing.T) {
+	t.Parallel()
+
 	type args struct {
 		oper  string
 		opers []string
@@ -194,7 +201,10 @@ func TestBR_Parse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
+
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := &BR{}
 
 			err := got.Parse(tt.args.oper, tt.args.opers)
@@ -210,6 +220,8 @@ func TestBR_Parse(t *testing.T) {
 }
 
 func TestLD_Parse(t *testing.T) {
+	t.Parallel()
+
 	tests := []parserCase{
 		{
 			name:   "bad oper",
@@ -226,7 +238,11 @@ func TestLD_Parse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
+
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := &LD{}
 			err := got.Parse(tt.opcode, tt.operands)
 
@@ -245,6 +261,8 @@ func TestLD_Parse(t *testing.T) {
 }
 
 func TestLDR_Parse(t *testing.T) {
+	t.Parallel()
+
 	tests := []parserCase{
 		{
 			name:   "bad oper",
@@ -279,7 +297,11 @@ func TestLDR_Parse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
+
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := &LDR{}
 			err := got.Parse(tt.opcode, tt.operands)
 
@@ -298,6 +320,8 @@ func TestLDR_Parse(t *testing.T) {
 }
 
 func TestLEA_Parse(t *testing.T) {
+	t.Parallel()
+
 	tests := []parserCase{
 		{
 			name:   "bad oper",
@@ -332,7 +356,11 @@ func TestLEA_Parse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
+
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := &LEA{}
 			err := got.Parse(tt.opcode, tt.operands)
 
@@ -351,6 +379,8 @@ func TestLEA_Parse(t *testing.T) {
 }
 
 func TestLDI_Parse(t *testing.T) {
+	t.Parallel()
+
 	tests := []parserCase{
 		{
 			name:   "bad oper",
@@ -385,7 +415,11 @@ func TestLDI_Parse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
+
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := &LDI{}
 			err := got.Parse(tt.opcode, tt.operands)
 
@@ -404,6 +438,8 @@ func TestLDI_Parse(t *testing.T) {
 }
 
 func TestST_Parse(t *testing.T) {
+	t.Parallel()
+
 	tests := []parserCase{
 		{
 			name:   "bad oper",
@@ -438,7 +474,11 @@ func TestST_Parse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
+
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := &ST{}
 			err := got.Parse(tt.opcode, tt.operands)
 
@@ -457,6 +497,8 @@ func TestST_Parse(t *testing.T) {
 }
 
 func TestSTI_Parse(t *testing.T) {
+	t.Parallel()
+
 	tests := []parserCase{
 		{
 			name:   "bad oper",
@@ -491,7 +533,11 @@ func TestSTI_Parse(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		tt := tt
+
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			got := &STI{}
 			err := got.Parse(tt.opcode, tt.operands)
 
@@ -761,6 +807,49 @@ func TestTRAP_Parse(t *testing.T) {
 			opcode: "TRAP", operands: []string{"x100"},
 			want:    &TRAP{LITERAL: 0x00ff},
 			wantErr: &SyntaxError{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := &TRAP{}
+			err := got.Parse(tt.opcode, tt.operands)
+
+			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
+				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
+				return
+			}
+
+			if tt.wantErr != nil && errors.Is(err, tt.wantErr) {
+				t.Fatalf("expected err: %#v, got: %#v", tt.wantErr, err)
+			}
+
+			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NOT.Parse() = %#v, want %#v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestHALT_Parse(t *testing.T) {
+	tests := []parserCase{
+		{
+			name:   "bad oper",
+			opcode: "OP", operands: []string{""},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "too many operands",
+			opcode: "HALT", operands: []string{"x25"},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "HALT",
+			opcode: "HALT", operands: []string{},
+			want:    &TRAP{LITERAL: 0x0025},
+			wantErr: nil,
 		},
 	}
 

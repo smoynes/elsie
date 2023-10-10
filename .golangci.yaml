@@ -13,10 +13,10 @@ linters:
         - nilerr
         - gci
         - errname
+        - gofmt
 
     presets:
         - bugs
-        - format
         - module
         - performance
         - unused

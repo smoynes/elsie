@@ -65,6 +65,10 @@ func TestAssembler_Gold(tt *testing.T) {
 			input:    t.inputStream("parser6.asm"),
 			expected: t.expectOutput("parser6.out"),
 		},
+		{
+			input:    t.inputStream("parser7.asm"),
+			expected: t.expectOutput("parser7.out"),
+		},
 	}
 
 	for _, tc := range tcs {
@@ -98,6 +102,14 @@ func TestAssembler_Gold(tt *testing.T) {
 
 		if bytes.Compare(expect, out.Bytes()) != 0 {
 			t.Error("bytes not equal")
+
+			b := out.Bytes()
+
+			for i := 0; i <= len(b); i++ {
+				if b[i] != expect[i] {
+					t.Errorf("Bytes not equal: index: %0#4x: %0#2x != %0#2x", i, b[i], expect[i])
+				}
+			}
 		}
 	}
 }

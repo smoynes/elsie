@@ -1,0 +1,18 @@
+;;; https://spacetech.github.io/LC3Simulator/
+.ORIG x3000
+LD R2, NUM
+AND R3, R3, #0
+AND R5, R5, #0
+LOOP
+ADD R4, R2, #-2
+BRz DONE
+ADD R3, R3, R5
+ADD R5, R5, #1
+ADD R2, R2, #-1
+ST R2, ARRAY
+BRp LOOP
+DONE HALT
+NUM .FILL 10
+ARRAY .BLKW 3
+NUM2 .FILL 16
+.END

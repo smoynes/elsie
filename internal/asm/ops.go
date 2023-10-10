@@ -795,9 +795,15 @@ type TRAP struct {
 func (trap TRAP) String() string { return fmt.Sprintf("%#v", trap) }
 
 func (trap *TRAP) Parse(opcode string, operands []string) error {
-	if opcode != "TRAP" {
+	switch {
+	case opcode == "HALT" && len(operands) == 0:
+		*trap = TRAP{LITERAL: 0x25}
+		return nil
+	case opcode == "HALT" && len(operands) != 0:
+		return errors.New("trap: operand error")
+	case opcode != "TRAP":
 		return errors.New("trap: operator error")
-	} else if len(operands) != 1 {
+	case len(operands) != 1:
 		return errors.New("trap: operand error")
 	}
 
@@ -1029,7 +1035,12 @@ func (blkw *BLKW) Parse(opcode string, operands []string) error {
 }
 
 func (blkw *BLKW) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
-	return []uint16{0x2361}, nil // TODO: un-init memory ?
+	code := make([]uint16, blkw.ALLOC)
+	for i := uint16(0); i < blkw.ALLOC; i++ {
+		code[i] = 0x2361
+	}
+
+	return code, nil
 }
 
 // .ORIG: Origin directive. Sets the location counter to the value.

@@ -155,6 +155,7 @@ BRz   #x0                      ; 0x1018
 
   TRAP x25
   RTI
+  HALT
 eof:
   .END
 `)
@@ -195,10 +196,10 @@ func TestParser(tt *testing.T) {
 	assertSymbol(t, symbols, "D1G1T1", 0x1014)
 
 	// You should expect to update this value every time the test source changes.
-	assertSymbol(t, symbols, "EOF", 0x102c)
+	assertSymbol(t, symbols, "EOF", 0x102d)
 
 	if len(symbols) != 15 {
-		t.Errorf("unexpected symbols: want: %d, got: %d", 11, len(symbols))
+		t.Errorf("unexpected symbols: want: %d, got: %d", 15, len(symbols))
 		t.Log("Symbol table:")
 
 		for k := range symbols {
@@ -219,22 +220,24 @@ func TestParser(tt *testing.T) {
 
 // Test the parser using source code from ./testdata.
 func TestParser_Fixtures(tt *testing.T) {
+	tt.Parallel()
+
 	tests := []string{
-		//"parser2.asm", TODO: .STRINGZ
+		"parser2.asm",
 		"parser3.asm",
 		"parser4.asm",
 		"parser5.asm",
 		"parser6.asm",
+		"parser7.asm",
 	}
 
 	for _, fn := range tests {
 		fn := fn
 
 		tt.Run(fn, func(tt *testing.T) {
-			var (
-				t  = parserHarness{tt}
-				fs = t.inputFixture(fn)
-			)
+			tt.Parallel()
+			t := parserHarness{tt}
+			fs := t.inputFixture(fn)
 
 			parser := t.ParseStream(fs)
 
@@ -248,18 +251,19 @@ func TestParser_Fixtures(tt *testing.T) {
 }
 
 func TestParser_Errors(tt *testing.T) {
-	t := parserHarness{tt}
+	tt.Parallel()
 
+	t := parserHarness{tt}
 	parser := t.ParseStream(t.inputError())
 
 	err := parser.Err()
-
 	if err == nil {
 		t.Error("expected error")
 	}
 }
 
 func TestParser_FILL(tt *testing.T) {
+	tt.Parallel()
 	t := parserHarness{tt}
 	in := t.inputString(`
 .ORIG x1234
