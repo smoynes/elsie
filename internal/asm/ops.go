@@ -27,7 +27,6 @@ import (
 //	|------+-----+---------|
 //	|15  12|11  9|8       0|
 type BR struct {
-	SourceInfo
 	NZP    uint8
 	SYMBOL string
 	OFFSET uint16
@@ -68,10 +67,9 @@ func (br *BR) Parse(opcode string, opers []string) error {
 	}
 
 	*br = BR{
-		SourceInfo: br.SourceInfo,
-		NZP:        uint8(nzp),
-		SYMBOL:     sym,
-		OFFSET:     off,
+		NZP:    uint8(nzp),
+		SYMBOL: sym,
+		OFFSET: off,
 	}
 
 	return nil
@@ -108,7 +106,6 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	|------+----+-----+---+----------|
 //	|15  12|11 9|8   6| 5 |4        0|
 type AND struct {
-	SourceInfo
 	DR     string
 	SR1    string
 	SR2    string // Register mode.
@@ -125,9 +122,8 @@ func (and *AND) Parse(oper string, opers []string) error {
 	}
 
 	*and = AND{
-		SourceInfo: and.SourceInfo,
-		DR:         parseRegister(opers[0]),
-		SR1:        parseRegister(opers[1]),
+		DR:  parseRegister(opers[0]),
+		SR1: parseRegister(opers[1]),
 	}
 
 	if sr2 := parseRegister(opers[2]); sr2 != "" {
@@ -194,7 +190,6 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	|------+----+---------|
 //	|15  12|11 9|8       0|
 type LD struct {
-	SourceInfo
 	DR     string
 	OFFSET uint16
 	SYMBOL string
@@ -212,8 +207,7 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 	}
 
 	*ld = LD{
-		SourceInfo: ld.SourceInfo,
-		DR:         operands[0],
+		DR: operands[0],
 	}
 
 	ld.OFFSET, ld.SYMBOL, err = parseImmediate(operands[1], 9)
@@ -258,7 +252,6 @@ func (ld LD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type LDR struct {
-	SourceInfo
 	DR     string
 	SR     string
 	OFFSET uint16
@@ -277,9 +270,8 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 	}
 
 	*ldr = LDR{
-		SourceInfo: ldr.SourceInfo,
-		DR:         operands[0],
-		SR:         operands[1],
+		DR: operands[0],
+		SR: operands[1],
 	}
 
 	ldr.OFFSET, ldr.SYMBOL, err = parseImmediate(operands[2], 6)
@@ -328,7 +320,6 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type LEA struct {
-	SourceInfo
 	DR     string
 	SYMBOL string
 	OFFSET uint16
@@ -346,8 +337,7 @@ func (lea *LEA) Parse(opcode string, operands []string) error {
 	}
 
 	*lea = LEA{
-		SourceInfo: lea.SourceInfo,
-		DR:         operands[0],
+		DR: operands[0],
 	}
 
 	lea.OFFSET, lea.SYMBOL, err = parseImmediate(operands[1], 9)
@@ -393,7 +383,6 @@ func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type LDI struct {
-	SourceInfo
 	SR     string
 	SYMBOL string
 	OFFSET uint16
@@ -411,8 +400,7 @@ func (ldi *LDI) Parse(opcode string, operands []string) error {
 	}
 
 	*ldi = LDI{
-		SourceInfo: ldi.SourceInfo,
-		SR:         operands[0],
+		SR: operands[0],
 	}
 
 	ldi.OFFSET, ldi.SYMBOL, err = parseImmediate(operands[1], 9)
@@ -457,7 +445,6 @@ func (ldi LDI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	|15  12|11  9|8       0|
 
 type ST struct {
-	SourceInfo
 	SR     string
 	SYMBOL string
 	OFFSET uint16
@@ -475,8 +462,7 @@ func (st *ST) Parse(opcode string, operands []string) error {
 	}
 
 	*st = ST{
-		SourceInfo: st.SourceInfo,
-		SR:         operands[0],
+		SR: operands[0],
 	}
 
 	st.OFFSET, st.SYMBOL, err = parseImmediate(operands[1], 9)
@@ -522,7 +508,6 @@ func (st ST) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type STI struct {
-	SourceInfo
 	SR     string
 	SYMBOL string
 	OFFSET uint16
@@ -540,8 +525,7 @@ func (sti *STI) Parse(opcode string, operands []string) error {
 	}
 
 	*sti = STI{
-		SourceInfo: sti.SourceInfo,
-		SR:         operands[0],
+		SR: operands[0],
 	}
 
 	sti.OFFSET, sti.SYMBOL, err = parseImmediate(operands[1], 9)
@@ -587,7 +571,6 @@ func (sti STI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type STR struct {
-	SourceInfo
 	SR1    string
 	SR2    string
 	SYMBOL string
@@ -606,9 +589,8 @@ func (str *STR) Parse(opcode string, operands []string) error {
 	}
 
 	*str = STR{
-		SourceInfo: str.SourceInfo,
-		SR1:        operands[0],
-		SR2:        operands[1],
+		SR1: operands[0],
+		SR2: operands[1],
 	}
 
 	str.OFFSET, str.SYMBOL, err = parseImmediate(operands[2], 6)
@@ -656,7 +638,6 @@ func (str STR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type JMP struct {
-	SourceInfo
 	SR string
 }
 
@@ -670,8 +651,7 @@ func (jmp *JMP) Parse(opcode string, operands []string) error {
 	}
 
 	*jmp = JMP{
-		SourceInfo: jmp.SourceInfo,
-		SR:         operands[0],
+		SR: operands[0],
 	}
 
 	return nil
@@ -699,7 +679,6 @@ func (jmp *JMP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type RET struct {
-	SourceInfo
 }
 
 func (ret *RET) String() string { return fmt.Sprintf("%#v", ret) }
@@ -711,9 +690,7 @@ func (ret *RET) Parse(opcode string, operands []string) error {
 		return errors.New("ret: operand error")
 	}
 
-	*ret = RET{
-		SourceInfo: ret.SourceInfo,
-	}
+	*ret = RET{}
 
 	return nil
 }
@@ -739,11 +716,10 @@ func (ret *RET) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type ADD struct {
-	SourceInfo // TODO: This might be cleaner as a decorator instead of embedded.
-	DR         string
-	SR1        string
-	SR2        string // Not empty when register mode.
-	LITERAL    uint16 // Literal value otherwise, immediate mode.
+	DR      string
+	SR1     string
+	SR2     string // Not empty when register mode.
+	LITERAL uint16 // Literal value otherwise, immediate mode.
 }
 
 func (add ADD) String() string { return fmt.Sprintf("%#v", add) }
@@ -759,9 +735,8 @@ func (add *ADD) Parse(opcode string, operands []string) error {
 	sr1 := parseRegister(operands[1])
 
 	*add = ADD{
-		SourceInfo: add.SourceInfo,
-		DR:         dr,
-		SR1:        sr1,
+		DR:  dr,
+		SR1: sr1,
 	}
 
 	if sr2 := parseRegister(operands[2]); sr2 != "" {
@@ -815,7 +790,6 @@ func (add ADD) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type TRAP struct {
-	SourceInfo
 	LITERAL uint16
 }
 
@@ -834,8 +808,7 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 	}
 
 	*trap = TRAP{
-		SourceInfo: trap.SourceInfo,
-		LITERAL:    lit,
+		LITERAL: lit,
 	}
 
 	return nil
@@ -856,7 +829,6 @@ func (trap TRAP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type RTI struct {
-	SourceInfo
 }
 
 func (rti RTI) String() string { return fmt.Sprintf("%#v", rti) }
@@ -886,7 +858,6 @@ func (rti RTI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type NOT struct {
-	SourceInfo
 	DR string
 	SR string
 }
@@ -904,9 +875,8 @@ func (not *NOT) Parse(opcode string, operands []string) error {
 	sr := parseRegister(operands[1])
 
 	*not = NOT{
-		SourceInfo: not.SourceInfo,
-		DR:         dr,
-		SR:         sr,
+		DR: dr,
+		SR: sr,
 	}
 
 	return nil
@@ -942,7 +912,6 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type JSR struct {
-	SourceInfo
 	SYMBOL string
 	OFFSET uint16
 }
@@ -962,9 +931,8 @@ func (jsr *JSR) Parse(opcode string, operands []string) error {
 	}
 
 	*jsr = JSR{
-		SourceInfo: jsr.SourceInfo,
-		OFFSET:     off,
-		SYMBOL:     sym,
+		OFFSET: off,
+		SYMBOL: sym,
 	}
 
 	return nil
@@ -999,7 +967,6 @@ func (jsr *JSR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type JSRR struct {
-	SourceInfo
 	SR string
 }
 
@@ -1013,8 +980,7 @@ func (jsrr *JSRR) Parse(opcode string, operands []string) error {
 	}
 
 	*jsrr = JSRR{
-		SourceInfo: jsrr.SourceInfo,
-		SR:         operands[0],
+		SR: operands[0],
 	}
 
 	return nil
@@ -1036,7 +1002,6 @@ func (jsrr *JSRR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	.FILL x1234
 //	.FILL 0
 type FILL struct {
-	SourceInfo
 	LITERAL uint16 // Literal constant.
 }
 
@@ -1055,7 +1020,6 @@ func (fill *FILL) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 //	.BLKW 1
 type BLKW struct {
-	SourceInfo
 	ALLOC uint16 // Number of words allocated.
 }
 
@@ -1075,8 +1039,17 @@ func (blkw *BLKW) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	.ORIG x1234
 //	.ORIG 0
 type ORIG struct {
-	SourceInfo
 	LITERAL uint16 // Literal constant.
+}
+
+func (orig *ORIG) Is(target Operation) bool {
+	if _, ok := target.(*ORIG); ok {
+		return true
+	} else if target, ok := target.(interface{ Is(Operation) bool }); ok {
+		return target.Is(orig)
+	}
+
+	return false
 }
 
 func (orig *ORIG) Parse(opcode string, operands []string) error {
@@ -1114,7 +1087,6 @@ func (orig *ORIG) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 //	HELLO .STRINGZ "Hello, world!"
 type STRINGZ struct {
-	SourceInfo
 	LITERAL string // Literal constant.
 }
 

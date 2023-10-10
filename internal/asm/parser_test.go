@@ -279,6 +279,12 @@ func TestParser_FILL(tt *testing.T) {
 
 	code := syntax[1]
 
+	if source, ok := code.(*SourceInfo); ok {
+		code = source.Operation
+	} else {
+		t.Error("Source is not wrapped")
+	}
+
 	if fill, ok := code.(*FILL); !ok || fill.LITERAL != 0xdada {
 		t.Errorf("data: 0x1234 %#v != %0#4x", code, 0xdada)
 	}
@@ -305,6 +311,12 @@ func TestParser_STRINGZ(tt *testing.T) {
 	}
 
 	code := syntax[1]
+
+	if source, ok := code.(*SourceInfo); ok {
+		code = source.Operation
+	} else {
+		t.Error("code is not wrapped")
+	}
 
 	if fill, ok := code.(*STRINGZ); !ok || fill.LITERAL != want {
 		t.Errorf("data: %#v != %0#4x", code, want)

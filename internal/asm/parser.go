@@ -227,56 +227,63 @@ func (p *Parser) parseInstruction(opcode string, operands []string) error {
 		return fmt.Errorf("parse: %s: %w", opcode, err)
 	}
 
-	p.syntax.Add(oper)
+	p.AddSyntax(oper)
 	p.loc++
 
 	return nil
 }
 
+// AddSyntax adds an operation to the syntax table. The operation is wrapped with source metadata in
+// SourceInfo.
+func (p *Parser) AddSyntax(oper Operation) {
+	op := &SourceInfo{
+		Operation: oper,
+		Pos:       p.pos,
+		Line:      p.line,
+		Filename:  p.filename,
+	}
+
+	p.syntax.Add(op)
+}
+
 // parseOperator returns the operation for the given opcode or an error if there is no such
 // operation.
 func (p *Parser) parseOperator(opcode string) Operation {
-	source := SourceInfo{
-		Filename: p.filename,
-		Pos:      p.pos,
-		Line:     p.line,
-	}
-
 	switch strings.ToUpper(opcode) {
 	case "ADD":
-		return &ADD{SourceInfo: source}
+		return &ADD{}
 	case "AND":
-		return &AND{SourceInfo: source}
+		return &AND{}
 	case "BR", "BRNZP", "BRN", "BRZ", "BRP", "BRZN", "BRNP", "BRZP":
-		return &BR{SourceInfo: source}
+		return &BR{}
 	case "JMP":
-		return &JMP{SourceInfo: source}
+		return &JMP{}
 	case "RET":
-		return &RET{SourceInfo: source}
+		return &RET{}
 	case "JSR":
-		return &JSR{SourceInfo: source}
+		return &JSR{}
 	case "JSRR":
-		return &JSRR{SourceInfo: source}
+		return &JSRR{}
 	case "NOT":
-		return &NOT{SourceInfo: source}
+		return &NOT{}
 	case "LD":
-		return &LD{SourceInfo: source}
+		return &LD{}
 	case "LDI":
-		return &LDI{SourceInfo: source}
+		return &LDI{}
 	case "LDR":
-		return &LDR{SourceInfo: source}
+		return &LDR{}
 	case "LEA":
-		return &LEA{SourceInfo: source}
+		return &LEA{}
 	case "ST":
-		return &ST{SourceInfo: source}
+		return &ST{}
 	case "STR":
-		return &STR{SourceInfo: source}
+		return &STR{}
 	case "STI":
-		return &STI{SourceInfo: source}
+		return &STI{}
 	case "TRAP":
-		return &TRAP{SourceInfo: source}
+		return &TRAP{}
 	case "RTI":
-		return &RTI{SourceInfo: source}
+		return &RTI{}
 	case p.probeOpcode:
 		return p.probeInstr
 	default:
@@ -300,52 +307,46 @@ func (p *Parser) isReservedKeyword(word string) bool {
 func (p *Parser) parseDirective(ident string, arg string) error {
 	var err error
 
-	source := SourceInfo{
-		Filename: p.filename,
-		Pos:      p.pos,
-		Line:     p.line,
-	}
-
 	switch ident {
 	case ".ORIG":
-		orig := ORIG{SourceInfo: source}
+		orig := ORIG{}
 
 		err = orig.Parse(ident, []string{arg})
 		if err != nil {
 			break
 		}
 
-		p.syntax.Add(&orig)
+		p.AddSyntax(&orig)
 		p.loc = orig.LITERAL
 	case ".BLKW":
-		blkw := BLKW{SourceInfo: source}
+		blkw := BLKW{}
 
 		err = blkw.Parse(ident, []string{arg})
 		if err != nil {
 			break
 		}
 
-		p.syntax.Add(&blkw)
+		p.AddSyntax(&blkw)
 		p.loc += blkw.ALLOC
 	case ".FILL", ".DW":
-		fill := FILL{SourceInfo: source}
+		fill := FILL{}
 
 		err = fill.Parse(ident, []string{arg})
 		if err != nil {
 			break
 		}
 
-		p.syntax.Add(&fill)
+		p.AddSyntax(&fill)
 		p.loc++
 	case ".STRINGZ":
-		strz := STRINGZ{SourceInfo: source}
+		strz := STRINGZ{}
 
 		err = strz.ParseString(ident, arg)
 		if err != nil {
 			break
 		}
 
-		p.syntax.Add(&strz)
+		p.AddSyntax(&strz)
 		p.loc += uint16(len(strz.LITERAL) + 1)
 	case ".END":
 		// TODO: add to syntax table
