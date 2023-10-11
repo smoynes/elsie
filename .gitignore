@@ -1,0 +1,10 @@
+# Default object file output
+a.o
+
+# Backups
+*.bak
+*.gho
+*.ori
+*.orig
+*.tmp
+*~
