@@ -335,6 +335,62 @@ program. To translate the source to an object file containing machine code, run:
 $ elsie asm countdown.asm
 ```
 
+Well, that isn't very satisfying. No output means success, in this case.
+
+```console
+$ elsie help asm
+Usage:
+
+        elsie asm [-o file.out] file.asm
+
+Assemble source into object code.
+
+Options:
+  -debug
+    	enable debug logging
+  -o filename
+    	output filename (default "a.o")
+
+```
+
+```console
+$ elsie asm -debug countdown.asm
+ TIMESTAMP : 2023-10-11T11:51:30-04:00
+     LEVEL : DEBUG
+    SOURCE : asm.go:66
+  FUNCTION : cmd.(*assembler).Run
+   MESSAGE : Parsed source
+   SYMBOLS : 4
+      SIZE : 10
+       ERR : <nil>
+
+ TIMESTAMP : 2023-10-11T11:51:30-04:00
+     LEVEL : DEBUG
+    SOURCE : asm.go:88
+  FUNCTION : cmd.(*assembler).Run
+   MESSAGE : Writing object
+      FILE : a.o
+
+ TIMESTAMP : 2023-10-11T11:51:30-04:00
+     LEVEL : DEBUG
+    SOURCE : gen.go:56
+  FUNCTION : asm.(*Generator).WriteTo
+   MESSAGE : Wrote object header
+      ORIG : 0x3000
+
+ TIMESTAMP : 2023-10-11T11:51:30-04:00
+     LEVEL : DEBUG
+    SOURCE : asm.go:103
+  FUNCTION : cmd.(*assembler).Run
+   MESSAGE : Compiled object
+       OUT : a.o
+      SIZE : 20
+   SYMBOLS : 4
+    SYNTAX : 10
+```
+
+Ah ha!
+
 ### Footnotes ###
 
 [^1]: In practice, most machines were rented, I guess. In any case, the ability
