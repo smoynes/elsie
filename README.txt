@@ -11,7 +11,7 @@ The project includes:
  - a virtual machine, including CPU and I/O devices;
  - an assembler, for producing machine code from LCASM assembly language;
  - a lot of unnecessary words from your author; and
- - maybe, more to come...
+ - maybe, more to come…
 
 As a technical project, ELSIE is not useful: it is more like a story, a
 performance. As such, it is much more than mere software.
@@ -127,7 +127,7 @@ This work is dedicated to the MCM/70[^3] and its pioneering designers.
 ------------------
 
 [^1]: https://www.mheducation.com/highered/product/introduction-computing-systems-bits-gates-c-c-beyond-patt-patel/M9781260150537.html
-[^2]: Leading to the creation of another dynamically-typed, interpreted language -- it is inevitable.
+[^2]: Leading to the creation of another dynamically typed, interpreted language. It is inevitable.
 [^3]: https://en.wikipedia.org/wiki/MCM/70
 [^4]: You can find references to some other tools and some useful resources in
       RESOURCES.txt
