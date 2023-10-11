@@ -335,7 +335,7 @@ program. To translate the source to an object file containing machine code, run:
 $ elsie asm countdown.asm
 ```
 
-Well, that isn't very satisfying. No output means success, in this case.
+Well, that isn't very satisfying. No output means success in this case.
 
 ```console
 $ elsie help asm
@@ -391,6 +391,12 @@ $ elsie asm -debug countdown.asm
 
 Ah ha!
 
+## Running a program ##
+
+## Writing a program ##
+
+## Watch this space ##
+
 ### Footnotes ###
 
 [^1]: In practice, most machines were rented, I guess. In any case, the ability
@@ -398,4 +404,3 @@ to write one's own programs for one's own machine is, perhaps, one of the
 essential catalysts of change in the Twentieth-century post-war period, _IMHO_.
 
 <!-- -*- coding: utf-8-auto -*- -->
-
