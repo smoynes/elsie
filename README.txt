@@ -130,7 +130,7 @@ This work is dedicated to the MCM/70[^3] and its pioneering designers.
 [^2]: Leading to the creation of another dynamically-typed, interpreted language -- it is inevitable.
 [^3]: https://en.wikipedia.org/wiki/MCM/70
 [^4]: You can find references to some other tools and some useful resources in
-  [./RESOURCES.txt](`RESOURCES.txt`)
+      RESOURCES.txt
 
 -----------------
 
