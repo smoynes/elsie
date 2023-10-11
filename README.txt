@@ -11,9 +11,9 @@ The project includes:
  - a virtual machine, including CPU and I/O devices;
  - an assembler, for producing machine code from LCASM assembly language;
  - a lot of unnecessary words from your author; and
- - hopefully, more to come.
+ - maybe, more to come...
 
-As a technical project, ELSIE is not very useful: it is more like a story, a
+As a technical project, ELSIE is not useful: it is more like a story, a
 performance. As such, it is much more than mere software.
 
     Background
@@ -114,17 +114,17 @@ You are welcome to reach out if:
 You can start a [discussion](https://github.com/smoynes/elsie/discussions) on
 this project or you're welcome to contact me directly through my GitHub profile.
 
-Please feel free to browse the code or follow the project if you enjoy the
-absurdist theatrics of a curious software engineer. As ever, I simply seek to
-understand the essence of computing and to embody _Shokunin Kishitsu_ (職人気質),
-the artisan's spirit.
+Please browse the code or follow the project if you enjoy the absurdist
+theatrics of a curious software engineer. As ever, I simply seek to understand
+the essence of computing and to embody _Shokunin Kishitsu_ (職人気質), the
+artisan's spirit.
 
     Dedication
 ------------------
 This work is dedicated to the MCM/70[^3] and its pioneering designers.
 
     Footnotes
------------------
+------------------
 
 [^1]: https://www.mheducation.com/highered/product/introduction-computing-systems-bits-gates-c-c-beyond-patt-patel/M9781260150537.html
 [^2]: Leading to the creation of another dynamically-typed, interpreted language -- it is inevitable.
@@ -132,7 +132,7 @@ This work is dedicated to the MCM/70[^3] and its pioneering designers.
 [^4]: You can find references to some other tools and some useful resources in
       RESOURCES.txt
 
------------------
+------------------
 
 ELSIE © 2023 by Scott Moynes is licensed under CC BY-SA 4.0.
 See LICENCE.txt for terms. Send your lawyers here:
