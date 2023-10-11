@@ -70,15 +70,19 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 		},
 	}
 
-	loader.Load(machine, haltHandler)
-	var program vm.Register
+	_, err := loader.Load(machine, haltHandler)
+	if err != nil {
+		logger.Error(err.Error())
+		return 2
+	}
 
-	// TRAP HALT handler
-	program = vm.Register(0x1000)
-	machine.Mem.MAR = vm.Register(0x0025)
-	machine.Mem.MDR = program
+	haltVector := vm.ObjectCode{
+		Orig: vm.TrapTable + vm.TrapHALT,
+		Code: []vm.Instruction{0x1000},
+	}
 
-	if err := machine.Mem.Store(); err != nil {
+	_, err = loader.Load(machine, haltVector)
+	if err != nil {
 		logger.Error(err.Error())
 		return 2
 	}
