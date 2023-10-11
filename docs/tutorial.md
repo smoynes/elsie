@@ -57,10 +57,8 @@ You should see a bunch of debug output spammed to your terminal. Do not be
 alarmed. You should see, towards the end of the output a message that the `Demo
 completed`. That is what success looks like.
 
-```
-...
-
-TIMESTAMP : 2023-10-10T23:00:50-04:00
+```console
+ TIMESTAMP : 2023-10-10T23:00:50-04:00
      LEVEL : INFO
     SOURCE : exec.go:39
   FUNCTION : vm.(*LC3).Run
@@ -96,7 +94,8 @@ TIMESTAMP : 2023-10-10T23:00:50-04:00
 
 <Details>
 <summary>Full output…</summary>
-<code>
+
+```
  TIMESTAMP : 2023-10-11T10:25:48-04:00
      LEVEL : INFO
     SOURCE : demo.go:57
@@ -127,7 +126,7 @@ TIMESTAMP : 2023-10-10T23:00:50-04:00
   FUNCTION : vm.(*LC3).Run
    MESSAGE : START
      STATE :
-   !BADKEY :
+        VM :
           PC : 0x0300
           IR : 0x0000 (OP: BR)
          PSR : 0x0007 (N:true Z:true P:true PR:0 PL:0)
@@ -163,7 +162,7 @@ TIMESTAMP : 2023-10-10T23:00:50-04:00
   FUNCTION : vm.(*LC3).Run
    MESSAGE : EXEC
      STATE :
-   !BADKEY :
+        VM :
           PC : 0x1000
           IR : 0xf025 (OP: TRAP)
          PSR : 0x0007 (N:true Z:true P:true PR:0 PL:0)
@@ -190,7 +189,7 @@ TIMESTAMP : 2023-10-10T23:00:50-04:00
   FUNCTION : vm.(*LC3).Run
    MESSAGE : EXEC
      STATE :
-   !BADKEY :
+        VM :
           PC : 0x1001
           IR : 0x5020 (OP: AND)
          PSR : 0x0002 (N:false Z:true P:false PR:0 PL:0)
@@ -217,7 +216,7 @@ TIMESTAMP : 2023-10-10T23:00:50-04:00
   FUNCTION : vm.(*LC3).Run
    MESSAGE : EXEC
      STATE :
-   !BADKEY :
+        VM :
           PC : 0x1002
           IR : 0xe201 (OP: LEA)
          PSR : 0x0002 (N:false Z:true P:false PR:0 PL:0)
@@ -244,7 +243,7 @@ TIMESTAMP : 2023-10-10T23:00:50-04:00
   FUNCTION : vm.(*LC3).Run
    MESSAGE : EXEC
      STATE :
-   !BADKEY :
+        VM :
           PC : 0x1003
           IR : 0x7040 (OP: STR)
          PSR : 0x0002 (N:false Z:true P:false PR:0 PL:0)
@@ -271,7 +270,7 @@ TIMESTAMP : 2023-10-10T23:00:50-04:00
   FUNCTION : vm.(*LC3).Run
    MESSAGE : HALTED (HCF)
      STATE :
-   !BADKEY :
+        VM :
           PC : 0x1003
           IR : 0x7040 (OP: STR)
          PSR : 0x0002 (N:false Z:true P:false PR:0 PL:0)
@@ -297,6 +296,8 @@ TIMESTAMP : 2023-10-10T23:00:50-04:00
     SOURCE : demo.go:132
   FUNCTION : cmd.demo.Run
    MESSAGE : Demo completed
+```
+
 </code>
 </details>
 
