@@ -3,6 +3,14 @@
 
 The authors of these resources are true heroes.
 
+- Student resources for second edition. There are solution sets and appendixes
+  that are useful, even if for an old edition with a few significant
+  differences:
+  https://highered.mheducation.com/sites/0072467509/
+
+- Publisher's simulator updated for the third edition:
+  https://github.com/chiragsakhuja/lc3tools
+
 - A really fantastic web-based LC-3 simulator and assembler:
   https://wchargin.com/lc3web/
 
@@ -12,4 +20,5 @@ The authors of these resources are true heroes.
 - Lecture notes on the ISA:
   https://www.cs.utexas.edu/users/fussell/courses/cs310h/lectures/Lecture_10-310h.pdf
 
-- Post-apocalyptic programming: https://zserge.com/posts/post-apocalyptic-programming/
+- Post-apocalyptic programming:
+  https://zserge.com/posts/post-apocalyptic-programming/
