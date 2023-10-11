@@ -127,13 +127,13 @@ TIMESTAMP : 2023-10-10T23:00:50-04:00
    MESSAGE : START
      STATE :
         VM :
-          PC : 0x0300
+          PC : 0x3000
           IR : 0x0000 (OP: BR)
          PSR : 0x0007 (N:true Z:true P:true PR:0 PL:0)
          USP : 0xfe00
          SSP : 0x3000
          MCR : 0x8000 (RUN)
-         MAR : 0x0300
+         MAR : 0x3000
          MDR : 0xf025
        INT :
          PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}

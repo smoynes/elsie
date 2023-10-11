@@ -129,9 +129,8 @@ func TestInstructions(tt *testing.T) {
 				cpu.IR, BR, op)
 		}
 
-		if cpu.PC != 0x0300+0x0008 {
-			t.Errorf("PC want: %0#x, got: %s",
-				0x3000+0x0008, cpu.PC)
+		if cpu.PC != 0x3000+0x0008 {
+			t.Errorf("PC want: %0#x, got: %s", 0x3008, cpu.PC)
 		}
 
 		if cpu.PSR != StatusZero {

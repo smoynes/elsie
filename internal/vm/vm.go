@@ -41,7 +41,7 @@ func New(opts ...OptionFn) *LC3 {
 
 	// Set CPU registers to known values.
 	vm := LC3{
-		PC:  0x0300,
+		PC:  0x3000,
 		IR:  0x0000,
 		PSR: status,
 		USP: Register(IOPageAddr),    // User stack grows down from the top of user space.
