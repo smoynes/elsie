@@ -12,14 +12,8 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  build-stable:
     runs-on: ubuntu-latest
-
-    strategy:
-        matrix:
-            go-version:
-                - 'stable'
-                - '~1.21.0'
 
     steps:
       - uses: actions/checkout@v4
@@ -27,7 +21,24 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: ${{ matrix.go-version }}
+          go-version: stable
+
+      - name: Install test runner
+        run: go install gotest.tools/gotestsum@latest
+
+      - name: Test
+        run: gotestsum -f github-actions ./...
+
+  build-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+            go-version-file: go.mod
 
       - name: Install test runner
         run: go install gotest.tools/gotestsum@latest
