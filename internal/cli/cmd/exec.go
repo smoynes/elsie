@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 
 	"github.com/smoynes/elsie/internal/cli"
@@ -18,8 +19,8 @@ func Executor() cli.Command {
 }
 
 type executor struct {
-	debug bool
-	log   *log.Logger
+	logLevel slog.Level
+	log      *log.Logger
 }
 
 func (executor) Description() string {
@@ -30,15 +31,16 @@ func (executor) Usage(out io.Writer) error {
 	var err error
 	_, err = fmt.Fprintln(out, `exec program.bin
 
-Runs executable program.bin in emulator.`)
+Runs an executable in the emulator.`)
 
 	return err
 }
 
 func (ex *executor) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("exec", flag.ExitOnError)
-	fs.BoolVar(&ex.debug, "debug", false, "enable debug logging")
-
+	fs.Func("loglevel", "set log `level`", func(s string) error {
+		return ex.logLevel.UnmarshalText([]byte(s))
+	})
 	return fs
 }
 
@@ -46,9 +48,7 @@ func (ex *executor) FlagSet() *cli.FlagSet {
 func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer,
 	logger *log.Logger,
 ) int {
-	if ex.debug {
-		log.LogLevel.Set(log.Debug)
-	}
+	log.LogLevel.Set(ex.logLevel)
 
 	code, err := ex.loadCode(args[0])
 	if err != nil {
