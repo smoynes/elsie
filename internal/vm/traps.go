@@ -4,10 +4,10 @@ package vm
 
 // initializeTrapHandlers loads default trap handlers.
 func (vm *LC3) initializeTrapHandlers() {
-	var (
-		err    error
-		loader = NewLoader()
-	)
+	var err error
+
+	loader := NewLoader()
+
 	vm.log.Debug("Loading trap handlers", "traps", []Word{TrapHALT})
 
 	count, err := loader.Load(vm, trapHaltHandler)

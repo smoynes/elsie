@@ -13,9 +13,7 @@ import (
 )
 
 func Executor() cli.Command {
-	exec := &executor{
-		log: log.DefaultLogger(),
-	}
+	exec := &executor{log: log.DefaultLogger()}
 	return exec
 }
 
@@ -32,14 +30,14 @@ func (executor) Usage(out io.Writer) error {
 	var err error
 	_, err = fmt.Fprintln(out, `exec program.bin
 
-Run program.`)
+Runs executable program.bin in emulator.`)
 
 	return err
 }
 
-func (a *executor) FlagSet() *cli.FlagSet {
+func (ex *executor) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("exec", flag.ExitOnError)
-	fs.BoolVar(&a.debug, "debug", false, "enable debug logging")
+	fs.BoolVar(&ex.debug, "debug", false, "enable debug logging")
 
 	return fs
 }
@@ -48,7 +46,6 @@ func (a *executor) FlagSet() *cli.FlagSet {
 func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer,
 	logger *log.Logger,
 ) int {
-
 	if ex.debug {
 		log.LogLevel.Set(log.Debug)
 	}
