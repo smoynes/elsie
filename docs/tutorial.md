@@ -336,7 +336,7 @@ program. To translate the source to an object file containing machine code, run:
 $ elsie asm countdown.asm
 ```
 
-Well, that isn't very satisfying. No output means success in this case.
+Well, that isn't satisfying, but no output means success in this case.
 
 ```console
 $ elsie help asm
@@ -496,7 +496,7 @@ terrible square dance, are our countdown loop.
 
 <details><summary>Full output…</summary>
 
-If you are very curious, take note of the value of R1 throughout the execution
+If you are curious, take note of the value of R1 throughout the execution
 of the program:
 
 ```
