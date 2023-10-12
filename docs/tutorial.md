@@ -393,6 +393,11 @@ Ah ha!
 
 ## Running a program ##
 
+```console
+$ console run countdown.bin
+
+```
+
 ## Writing a program ##
 
 ## Watch this space ##

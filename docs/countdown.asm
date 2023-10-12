@@ -3,7 +3,7 @@
 
     .ORIG   x3000               ; Start at the beginning of user-space memory.
     ST      R1,SAVER1           ; Set aside the R1 for the counter value.
-    LDR     R1,R0,#0            ; Load the counter value from the pointer.
+    LD      R1,COUNT            ; Load the counter value from the pointer.
 
     ;;
     ;; Main program loop
