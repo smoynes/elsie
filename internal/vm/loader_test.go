@@ -50,6 +50,8 @@ func TestLoader(tt *testing.T) {
 
 		tt.Run(tc.name, func(tt *testing.T) {
 			t := loaderHarness{tt}
+			t.Parallel()
+
 			loader := NewLoader()
 			machine := New(WithLogger(t.Logger()))
 

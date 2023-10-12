@@ -93,7 +93,12 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 		Orig: 0x3000,
 		Code: []vm.Instruction{vm.NewInstruction(vm.TRAP, uint16(vm.TrapHALT))},
 	}
-	loader.Load(machine, code)
+
+	_, err = loader.Load(machine, code)
+	if err != nil {
+		logger.Error(err.Error())
+		return 2
+	}
 
 	logger.Info("Starting machine")
 
