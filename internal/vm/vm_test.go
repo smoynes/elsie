@@ -501,9 +501,12 @@ func TestInstructions(tt *testing.T) {
 		)
 
 		cpu.PC = 0x0400
+		cpu.REG[R0] = 0xff00
+
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1110_000_1_00000000)
 		_ = cpu.Mem.store(Word(0x0301), 0xdead)
-		cpu.REG[R0] = 0xff00
+
+		initialStatus := cpu.PSR
 
 		err := cpu.Step()
 		if err != nil {
@@ -519,9 +522,8 @@ func TestInstructions(tt *testing.T) {
 				Register(0xdead), cpu.REG[R0])
 		}
 
-		if !cpu.PSR.Zero() {
-			t.Errorf("COND incorrect, want: %s, got: %s",
-				ConditionZero, cpu.PSR.Cond())
+		if initialStatus != cpu.PSR {
+			t.Errorf("condition codes should not chance, want: %s, got: %s", initialStatus, cpu.PSR)
 		}
 	})
 
@@ -533,8 +535,11 @@ func TestInstructions(tt *testing.T) {
 
 		cpu.PC = 0x0400
 		cpu.REG[R7] = 0xcafe
+
 		_ = cpu.Mem.store(Word(cpu.PC), 0b0011_111_0_1000_0000)
 		_ = cpu.Mem.store(Word(0x0481), 0x0f00)
+
+		initialStatus := cpu.PSR
 
 		err := cpu.Step()
 		if err != nil {
@@ -562,9 +567,8 @@ func TestInstructions(tt *testing.T) {
 				Register(0xcafe), cpu.REG[R7])
 		}
 
-		if !cpu.PSR.Zero() {
-			t.Errorf("cond incorrect, want: %s, got: %s",
-				StatusZero, cpu.PSR)
+		if initialStatus != cpu.PSR {
+			t.Errorf("condition codes should not change, want: %s, got: %s", initialStatus, cpu.PSR)
 		}
 	})
 
@@ -576,9 +580,12 @@ func TestInstructions(tt *testing.T) {
 
 		cpu.PC = 0x0400
 		cpu.REG[RETP] = 0xcafe
+
 		_ = cpu.Mem.store(Word(cpu.PC), 0b1011_111_0_0000_0001)
 		_ = cpu.Mem.store(Word(cpu.PC)+2, 0x0f00)
 		_ = cpu.Mem.store(Word(0x0f00), 0x0fff)
+
+		initialPSR := cpu.PSR
 
 		err := cpu.Step()
 		if err != nil {
@@ -589,21 +596,21 @@ func TestInstructions(tt *testing.T) {
 			t.Errorf("IR: %s, want: %0#4b, got: %0#4b",
 				cpu.IR, STI, op)
 		}
+
 		var val Register
 		err = cpu.Mem.load(Word(0x0f00), &val)
+
 		if err != nil {
 			t.Error(err)
 		}
-		t.Logf("mem: %s", val)
 
 		if val != 0xcafe {
-			t.Errorf("Mem[%s] want: %s, got: %s",
-				Word(0x0f00), Word(0xcafe), val)
+			t.Errorf("Mem[%s] want: %s, got: %s", Word(0x0f00), Word(0xcafe), val)
 		}
 
-		if !cpu.PSR.Zero() {
-			t.Errorf("cond incorrect, want: %s, got: %s",
-				StatusZero, cpu.PSR)
+		// Condition codes should not change
+		if initialPSR != cpu.PSR {
+			t.Errorf("cond incorrect, want: %s, got: %s", initialPSR, cpu.PSR)
 		}
 	})
 
