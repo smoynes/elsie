@@ -9,11 +9,16 @@ import (
 	"github.com/smoynes/elsie/internal/log"
 )
 
-// Memory represents a memory controller that translates logical addresses to registers in the
-// machine.
+// Memory represents a controller that translates logical addresses to registers, memory or devices
+// in the machine. The microarchitecture's data path uses two control registers: the address
+// register (MAR) and a data register. Together, these register mediate most access to memory and
+// simplifies access control.
 type Memory struct {
-	MAR Register // Memory address register.
-	MDR Register // Memory data register.
+	// Memory address register.
+	MAR Register
+
+	// Memory data register.
+	MDR Register
 
 	// Physical memory in a virtual machine for an imaginary CPU.
 	cell PhysicalMemory

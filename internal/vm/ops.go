@@ -13,7 +13,6 @@ type mo struct { // no, mo is NOT a monad. /( ._.)\
 
 func (op *mo) Err() error     { return op.err }
 func (op *mo) Fail(err error) { op.err = err }
-func (op *mo) String() string { return fmt.Sprintf("ins: %s", op.vm.IR.Opcode()) }
 
 // BR: Conditional branch
 //
@@ -167,6 +166,10 @@ func (op *add) Decode(vm *LC3) {
 	}
 }
 
+func (op *add) String() string {
+	return fmt.Sprintf("ADD{dr:%s,sr1:%s,sr2:%s}", op.dr.String(), op.sr1.String(), op.sr2.String())
+}
+
 func (op *add) Execute() {
 	op.vm.REG[op.dr] = Register(int16(op.vm.REG[op.sr1]) + int16(op.vm.REG[op.sr2]))
 	op.vm.PSR.Set(op.vm.REG[op.dr])
@@ -177,6 +180,10 @@ type addImm struct {
 	dr  GPR
 	sr  GPR
 	lit Word
+}
+
+func (op addImm) String() string {
+	return fmt.Sprintf("ADD{dr:%s,sr:%s,lit:%s}", op.dr.String(), op.sr.String(), op.lit.String())
 }
 
 var _ executable = &addImm{}
@@ -206,6 +213,10 @@ type ld struct {
 	mo
 	dr     GPR
 	offset Word
+}
+
+func (op *ld) String() string {
+	return fmt.Sprintf("LD{dr:%s,offset:%s}", op.dr.String(), op.offset.String())
 }
 
 var (
@@ -246,6 +257,10 @@ type ldi struct {
 	offset Word
 }
 
+func (op ldi) String() string {
+	return fmt.Sprintf("LDI{dr:%s,offset:%s}", op.dr.String(), op.offset.String())
+}
+
 var (
 	_ addressable = &ldi{}
 	_ fetchable   = &ldi{}
@@ -278,10 +293,6 @@ func (op *ldi) Execute() {
 	op.vm.PSR.Set(op.vm.Mem.MDR)
 }
 
-func (op *ldi) String() string {
-	return fmt.Sprintf("OP: LDI (%s+%s)", op.dr, op.offset)
-}
-
 // LDR: Load Relative
 //
 //	| 0110 | DR | BASE | OFFSET6 |
@@ -292,6 +303,11 @@ type ldr struct {
 	dr     GPR
 	base   GPR
 	offset Word
+}
+
+func (op ldr) String() string {
+	return fmt.Sprintf("LDR{dr:%s,base:%s,offset:%s}",
+		op.dr.String(), op.base.String(), op.offset.String())
 }
 
 var (
@@ -331,6 +347,10 @@ type lea struct {
 	offset Word
 }
 
+func (op lea) String() string {
+	return fmt.Sprintf("LEA{dr:%s,offset:%s}", op.dr.String(), op.offset.String())
+}
+
 var _ fetchable = &lea{}
 
 func (op *lea) Decode(vm *LC3) {
@@ -358,6 +378,10 @@ type st struct {
 	mo
 	sr     GPR
 	offset Word
+}
+
+func (op st) String() string {
+	return fmt.Sprintf("ST{sr:%s,offset:%s}", op.sr.String(), op.offset.String())
 }
 
 var (
@@ -392,6 +416,10 @@ type sti struct {
 	mo
 	sr     GPR
 	offset Word
+}
+
+func (op sti) String() string {
+	return fmt.Sprintf("STI{sr:%s,offset:%s}", op.sr.String(), op.offset.String())
 }
 
 var (
@@ -483,6 +511,10 @@ type jmp struct {
 	sr GPR
 }
 
+func (op jmp) String() string {
+	return fmt.Sprintf("JMP{sr:%s}", op.sr.String())
+}
+
 var _ executable = &jmp{}
 
 func (op *jmp) Decode(vm *LC3) {
@@ -507,6 +539,10 @@ func (op *jmp) Execute() {
 type jsr struct {
 	mo
 	offset Word
+}
+
+func (op jsr) String() string {
+	return fmt.Sprintf("JSR{offset:%s}", op.offset.String())
 }
 
 var _ executable = &jsr{}
@@ -534,6 +570,10 @@ func (op *jsr) Execute() {
 type jsrr struct {
 	mo
 	sr GPR
+}
+
+func (op jsrr) String() string {
+	return fmt.Sprintf("JSRR{sr:%s}", op.sr.String())
 }
 
 var _ executable = &jsrr{}
@@ -622,7 +662,9 @@ func (te *trapError) Handle(cpu *LC3) error {
 // .
 type rti struct{ mo }
 
-var _ executable = &rti{}
+func (op rti) String() string {
+	return fmt.Sprintf("RTI{}")
+}
 
 func (op *rti) Decode(vm *LC3) {
 	op.vm = vm
@@ -699,6 +741,10 @@ func (pe *pmv) Handle(cpu *LC3) error {
 //
 // .
 type resv struct{ mo }
+
+func (op resv) String() string {
+	return fmt.Sprintf("RESV{}")
+}
 
 var _ executable = &resv{}
 
