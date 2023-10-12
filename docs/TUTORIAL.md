@@ -317,7 +317,7 @@ doing any more.
 You, my dear reader, have already accomplished so much. If you have reached this
 point in our tutorian journey, you have:
 
-  - downloaded source code to ELSIE (and, incidentally, the code one which it
+  - downloaded source code to ELSIE (and, incidentally, the code on which it
     depends);
   - compiled the code to create a virtual computer;
   - had the machine execute a hard-coded program.
