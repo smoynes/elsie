@@ -27,7 +27,7 @@ type testHarness struct {
 func (t *testHarness) Make() *LC3 {
 	opts := []OptionFn{
 		WithLogger(t.logger),
-		WithSystemPrivileges(),
+		WithSystemContext(),
 	}
 	vm := New(opts...)
 

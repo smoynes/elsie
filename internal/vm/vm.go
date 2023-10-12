@@ -68,7 +68,7 @@ func New(opts ...OptionFn) *LC3 {
 
 	// Run early init.
 	for _, fn := range opts {
-		fn(&vm)
+		fn(&vm, false)
 	}
 
 	err := vm.Mem.Devices.Map(devices)
@@ -89,7 +89,7 @@ func New(opts ...OptionFn) *LC3 {
 
 	// Run late init...
 	for _, fn := range opts {
-		fn(&vm)
+		fn(&vm, true)
 	}
 
 	return &vm
@@ -286,12 +286,22 @@ func (rf RegisterFile) LogValue() log.Value {
 	)
 }
 
-// An OptionFn is modifies the machine during late initialization. That is, the
-// function is called after all resources are initialized but before any are used.
-type OptionFn func(*LC3)
+// An OptionFn is modifies the machine during initialization. The function is called twice:
+type OptionFn func(maching *LC3, late bool)
 
-func WithSystemPrivileges() OptionFn {
-	return func(vm *LC3) {
+// WithSystemContext initializes the machine to use system context.
+func WithSystemContext() OptionFn {
+	return func(vm *LC3, late bool) {
 		vm.PSR &^= (StatusPrivilege & StatusUser)
+		vm.REG[SP] = vm.SSP
+	}
+}
+
+// WithTrapHandlers initializes the system's default trap handlers.
+func WithTrapHandlers() OptionFn {
+	return func(vm *LC3, late bool) {
+		if !late {
+			vm.initializeTrapHandlers()
+		}
 	}
 }

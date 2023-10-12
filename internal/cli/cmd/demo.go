@@ -57,8 +57,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	logger.Info("Initializing machine")
 	machine := vm.New(vm.WithLogger(logger))
 
-	logger.Info("Loading trap handlers")
-
+	logger.Info("Loading trap handler")
 	loader := vm.NewLoader()
 	haltHandler := vm.ObjectCode{
 		Orig: 0x1000,
