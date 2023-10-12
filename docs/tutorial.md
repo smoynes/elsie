@@ -54,8 +54,8 @@ $ elsie demo
 ```
 
 You should see a bunch of debug output spammed to your terminal. Do not be
-alarmed. You should see, towards the end of the output a message that the `Demo
-completed`. That is what success looks like.
+alarmed. You should see towards the end of the output a message that the `Demo
+completed`. That is what success looks like:
 
 ```console
  TIMESTAMP : 2023-10-10T23:00:50-04:00
@@ -95,7 +95,8 @@ TIMESTAMP : 2023-10-10T23:00:50-04:00
 <Details>
 <summary>Full output…</summary>
 
-```
+```console
+$ elsie demo
  TIMESTAMP : 2023-10-11T10:25:48-04:00
      LEVEL : INFO
     SOURCE : demo.go:57
@@ -350,7 +351,6 @@ Options:
     	enable debug logging
   -o filename
     	output filename (default "a.o")
-
 ```
 
 ```console
@@ -389,23 +389,1217 @@ $ elsie asm -debug countdown.asm
     SYNTAX : 10
 ```
 
-Ah ha!
+Ah ha -- we can now see that the assembler has successfully compiled source to
+object code.
 
 ## Running a program ##
 
-```console
-$ console run countdown.bin
+Before running the countdown program, let's take a look at the source code to
+get an idea what it is going to do.
 
 ```
+;;; countdown.asm : a program for a tutorial that counts down to blast off
+;;; Inputs: R0 is the address of counter.
+
+    .ORIG   x3000               ; Start at the beginning of user-space memory.
+    ST      R1,SAVER1           ; Set aside the R1 for the counter value.
+    LD      R1,COUNT            ; Load the counter value from the pointer.
+
+    ;;
+    ;; Main program loop
+    ;;
+LOOP:
+    BRz     EXIT                ; If counter is zero, exit program.
+    ADD     R1,R1,#-1           ; Decrement counter.
+    BRnzp   LOOP                ; Loop
+
+    ;;
+    ;;  Exit program.
+    ;;
+EXIT:
+    LD      R1,SAVER1
+    HALT
+
+    ;;
+    ;; Program data
+    ;;
+COUNT:                          ;
+    .FILL   10
+
+SAVER1 .DW x0000
+    .END
+```
+
+If you have never looked at assembly code, do not be intimidated: what it lacks
+in grace and expressiveness it makes up with cold, hard directness. On the one
+hand one must communicate to the computer what to do in excruciating detail
+without familiar abstractions. On the other, it is all laid bare and nothing is
+hidden.
+
+Maybe with the comments and some familiar names in the source you can make a
+guess what this program does. It counts down from 10 and then stops. That's it.
+
+You can now try running the program. There is quite a lot of output, arguably
+too much, so let is just focus on a single value: the `PC` or _program counter_.
+This value points to the next instruction the CPU will execute. Examine its
+the value as the program executes:
+
+```console
+$ elsie exec countdown.bin 2>&1 | grep 'PC : '
+          PC : 0x3000
+          PC : 0x3001
+          PC : 0x3002
+          PC : 0x3003
+          PC : 0x3004
+          PC : 0x3002
+          PC : 0x3003
+          PC : 0x3004
+          PC : 0x3002
+          PC : 0x3003
+          PC : 0x3004
+          PC : 0x3002
+          PC : 0x3003
+          PC : 0x3004
+          PC : 0x3002
+          PC : 0x3003
+          PC : 0x3004
+          PC : 0x3002
+          PC : 0x3003
+          PC : 0x3004
+          PC : 0x3002
+          PC : 0x3003
+          PC : 0x3004
+          PC : 0x3002
+          PC : 0x3003
+          PC : 0x3004
+          PC : 0x3002
+          PC : 0x3003
+          PC : 0x3004
+          PC : 0x3002
+          PC : 0x3003
+          PC : 0x3004
+          PC : 0x3002
+          PC : 0x3005
+          PC : 0x3006
+          PC : 0x1000
+          PC : 0x1001
+          PC : 0x1002
+          PC : 0x1003
+          PC : 0x1003
+```
+
+The attentive reader will notice that it starts at address `0x3000`, proceeds
+take the values `0x3002`, `0x3003`, and `0x3004` in sequence, repeatedly.
+Finally, it moves to `0x3005` and `0x3006` before a big jump backwards to
+`0x1000` and proceeding to `0x1003`. This little routine, like the steps in a
+terrible square dance, are our countdown loop.
+
+<details><summary>Full output…</summary>
+
+If you are very curious, take note of the value of R1 throughout the execution
+of the program:
+
+```
+$ elsie exec -loglevel info exec
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:17
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : START
+     STATE :
+   !BADKEY :
+          PC : 0x3000
+          IR : 0x0000 (OP: BR)
+         PSR : 0x0300 (N:false Z:false P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0xffff
+         MDR : 0x0ff0
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0000
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3001
+          IR : 0x3207 (OP: ST)
+         PSR : 0x0300 (N:false Z:false P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3008
+         MDR : 0x0000
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0000
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x2205 (OP: LD)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3007
+         MDR : 0x000a
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x000a
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3003
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x000a
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3004
+          IR : 0x127f (OP: ADD)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3003
+         MDR : 0x127f
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0009
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x0ffd (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3004
+         MDR : 0x0ffd
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0009
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3003
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0009
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3004
+          IR : 0x127f (OP: ADD)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3003
+         MDR : 0x127f
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0008
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x0ffd (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3004
+         MDR : 0x0ffd
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0008
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3003
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0008
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3004
+          IR : 0x127f (OP: ADD)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3003
+         MDR : 0x127f
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0007
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x0ffd (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3004
+         MDR : 0x0ffd
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0007
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3003
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0007
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3004
+          IR : 0x127f (OP: ADD)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3003
+         MDR : 0x127f
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0006
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x0ffd (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3004
+         MDR : 0x0ffd
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0006
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3003
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0006
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3004
+          IR : 0x127f (OP: ADD)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3003
+         MDR : 0x127f
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0005
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x0ffd (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3004
+         MDR : 0x0ffd
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0005
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3003
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0005
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3004
+          IR : 0x127f (OP: ADD)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3003
+         MDR : 0x127f
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0004
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x0ffd (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3004
+         MDR : 0x0ffd
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0004
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3003
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0004
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3004
+          IR : 0x127f (OP: ADD)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3003
+         MDR : 0x127f
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0003
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x0ffd (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3004
+         MDR : 0x0ffd
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0003
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3003
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0003
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3004
+          IR : 0x127f (OP: ADD)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3003
+         MDR : 0x127f
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0002
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:11-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x0ffd (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3004
+         MDR : 0x0ffd
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0002
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3003
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0002
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3004
+          IR : 0x127f (OP: ADD)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3003
+         MDR : 0x127f
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0001
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x0ffd (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3004
+         MDR : 0x0ffd
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0001
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3003
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0301 (N:false Z:false P:true PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0001
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3004
+          IR : 0x127f (OP: ADD)
+         PSR : 0x0302 (N:false Z:true P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3003
+         MDR : 0x127f
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0000
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3002
+          IR : 0x0ffd (OP: BR)
+         PSR : 0x0302 (N:false Z:true P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3004
+         MDR : 0x0ffd
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0000
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3005
+          IR : 0x0402 (OP: BR)
+         PSR : 0x0302 (N:false Z:true P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3002
+         MDR : 0x0402
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0000
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x3006
+          IR : 0x2202 (OP: LD)
+         PSR : 0x0302 (N:false Z:true P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3008
+         MDR : 0x0000
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0000
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:105
+  FUNCTION : vm.(*LC3).Step
+   MESSAGE : instruction raised interrupt
+        OP : TRAP: 0x25
+       INT : INT: TRAP (0x0000:0x0025)
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x1000
+          IR : 0xf025 (OP: TRAP)
+         PSR : 0x0302 (N:false Z:true P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x0025
+         MDR : 0x1000
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0xffff
+          R1 : 0x0000
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfdfe
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x1001
+          IR : 0x5020 (OP: AND)
+         PSR : 0x0302 (N:false Z:true P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x1000
+         MDR : 0x5020
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0x0000
+          R1 : 0x0000
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfdfe
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x1002
+          IR : 0xe201 (OP: LEA)
+         PSR : 0x0302 (N:false Z:true P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x1003
+         MDR : 0xfffe
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0x0000
+          R1 : 0xfffe
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfdfe
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:31
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+   !BADKEY :
+          PC : 0x1003
+          IR : 0x7040 (OP: STR)
+         PSR : 0x0302 (N:false Z:true P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x0000 (STOP)
+         MAR : 0xfffe
+         MDR : 0x0000
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0x0000
+          R1 : 0xfffe
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfdfe
+          R7 : 0x00f0
+
+ TIMESTAMP : 2023-10-12T10:12:12-04:00
+     LEVEL : INFO
+    SOURCE : exec.go:39
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : HALTED (HCF)
+     STATE :
+   !BADKEY :
+          PC : 0x1003
+          IR : 0x7040 (OP: STR)
+         PSR : 0x0302 (N:false Z:true P:false PR:0 PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x0000 (STOP)
+         MAR : 0xfffe
+         MDR : 0x0000
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2368)}
+       REG :
+          R0 : 0x0000
+          R1 : 0xfffe
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfdfe
+          R7 : 0x00f0
+```
+
+</details>
 
 ## Writing a program ##
 
-## Watch this space ##
+_Watch this space.__
 
 ### Footnotes ###
 
 [^1]: In practice, most machines were rented, I guess. In any case, the ability
 to write one's own programs for one's own machine is, perhaps, one of the
-essential catalysts of change in the Twentieth-century post-war period, _IMHO_.
+essential catalysts of change in the Twentieth-Century post-war period, _IMHO_.
 
 <!-- -*- coding: utf-8-auto -*- -->
