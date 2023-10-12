@@ -41,6 +41,7 @@ func (ex *executor) FlagSet() *cli.FlagSet {
 	fs.Func("loglevel", "set log `level`", func(s string) error {
 		return ex.logLevel.UnmarshalText([]byte(s))
 	})
+
 	return fs
 }
 

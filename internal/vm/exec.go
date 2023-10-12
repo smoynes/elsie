@@ -102,7 +102,7 @@ func (vm *LC3) Step() error {
 	} else if errors.Is(err, &interrupt{}) {
 		handler := err.(interruptableError) //nolint:errorlint
 
-		vm.log.Info("instruction raised interrupt", "OP", op, "INT", err)
+		vm.log.Debug("instruction raised interrupt", "OP", op, "INT", err)
 
 		if err := handler.Handle(vm); err != nil {
 			vm.log.Error("interrupt service routine error", "ERR", err)
