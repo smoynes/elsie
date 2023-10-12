@@ -24,39 +24,21 @@ type LC3 struct {
 	log *log.Logger // A record of where we've been.
 }
 
-// New initializes a virtual machine state.
+// New creates and initializes a virtual machine. The initial state may be affected passing a
+// sequence of OptionFn. Each function is called in sequence **twice**:
+//
+//   - early, before drivers are initialized and devices are mapped; and
+//   - late, after device configuration.
+//
+// Notably, early init executes with system privileges and stack; late init runs after privileges
+// are dropped.
+//
+// # Bugs
+//
+// This is a weird design.
 func New(opts ...OptionFn) *LC3 {
-	// Initialize processor status...
-	var status ProcessorStatus
-
-	// Start with system privileges so we can access privileged memory and
-	// configure devices. Privileges are dropped after late initialization.
-	status |= (StatusPrivilege & StatusSystem)
-
-	// Don't rush things, low priority.
-	status |= (StatusPriority & StatusLow)
-
-	// All condition codes are set.
-	status |= StatusCondition
-
-	// Set CPU registers to known values.
-	vm := LC3{
-		PC:  0x0300,
-		IR:  0x0000,
-		PSR: status,
-		USP: Register(IOPageAddr),    // User stack grows down from the top of user space.
-		SSP: Register(UserSpaceAddr), // Similarly, system stack starts where user space ends.
-		MCR: ControlRegister(0x8000), // Set the RUN flag. 🤾
-		INT: Interrupt{},
-	}
-
-	// Initialize general purpose registers to a pleasing pattern.
-	copy(vm.REG[:], []Register{
-		0xffff, 0x0000,
-		0xfff0, 0xf000,
-		0xff00, 0x0f00,
-		vm.USP, 0x00f0, // ... except the user stack.
-	})
+	vm := LC3{}
+	vm.initializeRegisters()
 
 	// Configure memory.
 	vm.Mem = NewMemory(&vm.PSR)
@@ -86,7 +68,7 @@ func New(opts ...OptionFn) *LC3 {
 
 	// Run early init.
 	for _, fn := range opts {
-		fn(&vm)
+		fn(&vm, false)
 	}
 
 	err := vm.Mem.Devices.Map(devices)
@@ -100,12 +82,14 @@ func New(opts ...OptionFn) *LC3 {
 	kbd.Init(&vm, nil)                                // Keyboard needs no configuration.
 	displayDriver.Init(&vm, []Word{DSRAddr, DDRAddr}) // Configure the display's address range.
 
-	// Drop privileges and execute as user.
+	// Drop privileges and switch to user execution context.
 	vm.PSR &^= (StatusPrivilege & StatusUser)
+	vm.PSR |= (StatusPriority & StatusNormal) // Debatable.
+	vm.REG[SP] = vm.USP
 
 	// Run late init...
 	for _, fn := range opts {
-		fn(&vm)
+		fn(&vm, true)
 	}
 
 	return &vm
@@ -116,6 +100,35 @@ func (vm *LC3) String() string {
 		"MAR: %s MDR: %s",
 		vm.PC.String(), vm.IR.String(), vm.PSR.String(), vm.USP.String(), vm.SSP.String(),
 		vm.MCR.String(), vm.Mem.MAR.String(), vm.Mem.MDR.String())
+}
+
+// initializeRegisters sets the initial values of the virtual machine.
+func (vm *LC3) initializeRegisters() {
+	// Start with system privileges so we can access privileged memory and configure devices; in
+	// particular, access is permitted to the system memory space. Privileges are dropped after late
+	// initialization.
+	vm.PSR = (StatusPrivilege & StatusSystem)
+
+	// Don't rush things, low priority.
+	vm.PSR |= (StatusPriority & StatusLow)
+
+	// No condition codes are set, initially, though this is undefined.
+	vm.PSR |= StatusCondition & ^(StatusNegative | StatusZero | StatusPositive)
+
+	vm.PC = ProgramCounter(UserSpaceAddr) // First instruction is at the bottom of user space.
+	vm.USP = Register(IOPageAddr)         // User stack grows down from the top of user space.
+	vm.SSP = Register(UserSpaceAddr)      // System stack starts where user space begins, grows down.
+	vm.MCR = ControlRegister(0x8000)      // Set the RUN flag. 🤾
+
+	// Initialize general purpose registers to a pleasing pattern... except for the stack pointer.
+	// Here, REG[SP] is set to SSP, but as for the privilege level, the stack is reset to the user
+	// context.
+	copy(vm.REG[:], []Register{
+		0xffff, 0x0000,
+		0xfff0, 0xf000,
+		0xff00, 0x0f00,
+		vm.SSP, 0x00f0,
+	})
 }
 
 // PushStack pushes a word onto the current stack.
@@ -273,12 +286,22 @@ func (rf RegisterFile) LogValue() log.Value {
 	)
 }
 
-// An OptionFn is modifies the machine during late initialization. That is, the
-// function is called after all resources are initialized but before any are used.
-type OptionFn func(*LC3)
+// An OptionFn is modifies the machine during initialization. The function is called twice:
+type OptionFn func(maching *LC3, late bool)
 
-func WithSystemPrivileges() OptionFn {
-	return func(vm *LC3) {
+// WithSystemContext initializes the machine to use system context.
+func WithSystemContext() OptionFn {
+	return func(vm *LC3, late bool) {
 		vm.PSR &^= (StatusPrivilege & StatusUser)
+		vm.REG[SP] = vm.SSP
+	}
+}
+
+// WithTrapHandlers initializes the system's default trap handlers.
+func WithTrapHandlers() OptionFn {
+	return func(vm *LC3, late bool) {
+		if !late {
+			vm.initializeTrapHandlers()
+		}
 	}
 }

@@ -22,8 +22,8 @@ type Command interface {
 	// Usage prints detailed command documentation.
 	Usage(out io.Writer) error
 
-	// Run executes the command with arguments. Command output should be written to |out|. It
-	// returns an exit code. TODO: Should be an enum, instead of an exit code.
+	// Run executes the command with arguments. Command output should be written to |out| and logs to
+	// logger.
 	Run(ctx context.Context, args []string, out io.Writer, logger *log.Logger) int
 }
 
@@ -62,8 +62,8 @@ func (cli *Commander) Execute(args []string) int {
 		}
 	}
 
-	// We found our command to run (or the help command). Now, we slice off the first argument, the
-	// program name, and parse the command's flags.
+	// We found our command to run. Now, we slice off the first argument, the program name, and
+	// parse the command's flags.
 	fs := found.FlagSet()
 	args = args[1:]
 

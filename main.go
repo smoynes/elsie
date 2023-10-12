@@ -10,8 +10,9 @@ import (
 )
 
 var commands = []cli.Command{
-	cmd.Demo(),
+	cmd.Executor(),
 	cmd.Assembler(),
+	cmd.Demo(),
 }
 
 // Entry point.

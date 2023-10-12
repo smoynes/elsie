@@ -57,67 +57,45 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	logger.Info("Initializing machine")
 	machine := vm.New(vm.WithLogger(logger))
 
-	logger.Info("Loading trap handlers")
+	logger.Info("Loading trap handler")
 
-	var program vm.Register
+	loader := vm.NewLoader()
+	haltHandler := vm.ObjectCode{
+		Orig: 0x1000,
+		Code: []vm.Instruction{
+			/* 0x1000 */ vm.NewInstruction(vm.AND, 0x0020), // AND R0,R0,0  ; Clear R0.
+			/* 0x1001 */ vm.NewInstruction(vm.LEA, 0x0201), // LEA R1,[MCR] ; Load MCR addr into R1.
+			/* 0x1002 */ vm.NewInstruction(vm.STR, 0x0040), // STR R0,R1,#0 ; Write R0 to MCR addr.
+			/* 0x1003 */ vm.Instruction(0xfffe), // ; MCR addr
+		},
+	}
 
-	// TRAP HALT handler
-	program = vm.Register(0x1000)
-	machine.Mem.MAR = vm.Register(0x0025)
-	machine.Mem.MDR = program
-
-	if err := machine.Mem.Store(); err != nil {
+	_, err := loader.Load(machine, haltHandler)
+	if err != nil {
 		logger.Error(err.Error())
 		return 2
 	}
 
-	// AND R0,R0,0 ; clear R0
-	program = vm.Register(vm.Word(vm.AND)<<12 | 0x0020)
-	machine.Mem.MAR = vm.Register(0x1000)
-	machine.Mem.MDR = program
-
-	if err := machine.Mem.Store(); err != nil {
-		logger.Error(err.Error())
-		return 2
+	haltVector := vm.ObjectCode{
+		Orig: vm.TrapTable + vm.TrapHALT,
+		Code: []vm.Instruction{0x1000},
 	}
 
-	// LEA R1,[MCR] ; load MCR addr into R1
-	program = vm.Register(vm.Word(vm.LEA)<<12 | 0x0201)
-	machine.Mem.MAR = vm.Register(0x1001)
-	machine.Mem.MDR = program
-
-	if err := machine.Mem.Store(); err != nil {
-		logger.Error(err.Error())
-		return 2
-	}
-
-	// STR R0,R1,0
-	program = vm.Register(vm.Word(vm.STR)<<12 | 0x0040)
-	machine.Mem.MAR = vm.Register(0x1002)
-	machine.Mem.MDR = program
-
-	if err := machine.Mem.Store(); err != nil {
-		logger.Error(err.Error())
-		return 2
-	}
-
-	// Store MCR addr
-	machine.Mem.MAR = vm.Register(0x1003)
-	machine.Mem.MDR = vm.Register(0xfffe)
-
-	if err := machine.Mem.Store(); err != nil {
+	_, err = loader.Load(machine, haltVector)
+	if err != nil {
 		logger.Error(err.Error())
 		return 2
 	}
 
 	logger.Info("Loading program")
 
-	// TRAP HALT
-	program = vm.Register(vm.Word(vm.TRAP)<<12 | vm.TrapHALT)
-	machine.Mem.MAR = vm.Register(machine.PC)
-	machine.Mem.MDR = program
+	code := vm.ObjectCode{
+		Orig: 0x3000,
+		Code: []vm.Instruction{vm.NewInstruction(vm.TRAP, uint16(vm.TrapHALT))},
+	}
 
-	if err := machine.Mem.Store(); err != nil {
+	_, err = loader.Load(machine, code)
+	if err != nil {
 		logger.Error(err.Error())
 		return 2
 	}
