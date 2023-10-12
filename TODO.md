@@ -5,14 +5,20 @@
   - directives remaining:
     - [ ] .END
     - [ ] .EXTERNAL
-- [ ] LOAD: object loader
+- [ ] LOAD: polish loader
+- BIOS:
+  - [ ] TRAP x21
+  - [ ] TRAP x23
+  - [ ] TRAP x25
+  - [ ] system loader
+- [ ] EXEC: keyboards
 - DOCS:
-  - [ ] tutorial
+  - [.] tutorial
   - [ ] design
 - [ ] MONITOR: trap, exception, and interrupt routines
 - [ ] LINK: code linker
 - [ ] DUMP: hex encoder
-- [ ] CLI: sub commands for vm, tools, terminal, shell
+- [ ] CLI: sub commands for tools, terminal, repl
 - [ ] LOG: program output to STDOUT, logging output to STDERR (unless in
       demo)
 - [ ] TERM: finish the terminal I/O
@@ -25,7 +31,8 @@
 ## DID ##
 
 - ASM:
-  - [x] code generation
+ - [x] LOAD: object loader, really basic
+ - [x] code generation
   - [x] completed directives:
     - [x] .STRINGZ: strangz
     - [x] .BLKW: block words
