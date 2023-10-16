@@ -13,14 +13,12 @@ import (
 )
 
 // Parser reads source code and produces a symbol table, a syntax table and a collection of errors,
-// if any. The user calls |Parse| one or more times and then asks the Parser for the accumulated
+// if any. The user calls Parse one (or more) times and then asks the Parser for the accumulated
 // results. Some simple syntax checking is done during parsing, but it is not complete. The second
 // pass does most of semantic analysis in addition to code generation.
 //
 //	p := NewParser(logger)
 //	_ = p.Parse(os.Open("file1.asm"))
-//	_ = p.Parse(os.Open("file2.asm"))
-//	_ = p.Parse(os.Open("file3.asm"))
 //
 //	err := err.Err()
 //	println(errors.Is(err, SyntaxError{})) // true
@@ -218,7 +216,7 @@ var (
 func (p *Parser) parseInstruction(opcode string, operands []string) error {
 	oper := p.parseOperator(opcode)
 	if oper == nil {
-		return errors.New("parse: operator error")
+		return ErrOpcode
 	}
 
 	err := oper.Parse(opcode, operands)

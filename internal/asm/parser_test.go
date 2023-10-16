@@ -20,12 +20,13 @@ func init() {
 	log.LogLevel.Set(log.Debug)
 }
 
-// parserHarness holds the test state and provides helpers.
-type parserHarness struct {
+// ParserHarness holds the test state and provides helpers.
+type ParserHarness struct {
 	*testing.T
+	parser *Parser
 }
 
-func (h *parserHarness) logger() *log.Logger {
+func (h *ParserHarness) logger() *log.Logger {
 	buf := bufio.NewWriter(os.Stderr)
 
 	h.T.Cleanup(func() { buf.Flush() })
@@ -38,27 +39,27 @@ func (h *parserHarness) logger() *log.Logger {
 // Parser is a factory method for a parser under test. It creates a new parser and does an initial
 // read on the input stream and returns the parser. The caller should assert against Parser.Err,
 // etc.
-func (h *parserHarness) ParseStream(in io.Reader) *Parser {
+func (h *ParserHarness) ParseStream(in io.Reader) *Parser {
 	h.T.Helper()
 
-	parser := NewParser(h.logger())
+	h.parser = NewParser(h.logger())
 
-	if parser == nil {
+	if h.parser == nil {
 		h.T.Fatal("parser: nil")
-		return parser
+		return h.parser
 	}
 
-	parser.Probe("TEST", &fakeInstruction{})
-	parser.Parse(in)
+	h.parser.Probe("TEST", &fakeInstruction{})
+	h.parser.Parse(in)
 
-	return parser
+	return h.parser
 }
 
-func (h parserHarness) inputString(in string) io.Reader {
+func (h ParserHarness) inputString(in string) io.Reader {
 	return strings.NewReader(in)
 }
 
-func (h parserHarness) inputFixture(in string) io.ReadCloser {
+func (h ParserHarness) inputFixture(in string) io.ReadCloser {
 	reader, err := os.Open(path.Join("testdata", in))
 	if err != nil {
 		h.Errorf("fixture: %s", err)
@@ -69,7 +70,7 @@ func (h parserHarness) inputFixture(in string) io.ReadCloser {
 
 var ErrReader = errors.New("reader error")
 
-func (parserHarness) inputError() io.Reader {
+func (ParserHarness) inputError() io.Reader {
 	return iotest.ErrReader(ErrReader)
 }
 
@@ -167,7 +168,7 @@ eof:
 // A rough integration test for the parser. It is quite brittle and, yet, has proven valuable during
 // design and development.
 func TestParser(tt *testing.T) {
-	t := parserHarness{tt}
+	t := ParserHarness{T: tt}
 
 	in := t.inputString(ValidSyntax)
 	parser := t.ParseStream(in)
@@ -241,7 +242,7 @@ func TestParser_Fixtures(tt *testing.T) {
 
 		tt.Run(fn, func(tt *testing.T) {
 			tt.Parallel()
-			t := parserHarness{tt}
+			t := ParserHarness{T: tt}
 			fs := t.inputFixture(fn)
 
 			parser := t.ParseStream(fs)
@@ -255,15 +256,15 @@ func TestParser_Fixtures(tt *testing.T) {
 	}
 }
 
+type errorCase struct {
+	name string
+	in   io.Reader
+	want error
+}
+
 func TestParser_Errors(tt *testing.T) {
 	tt.Parallel()
-	t := parserHarness{tt}
-
-	type errorCase struct {
-		name string
-		in   io.Reader
-		want error
-	}
+	t := ParserHarness{T: tt}
 
 	tcs := []errorCase{
 		{
@@ -277,6 +278,11 @@ func TestParser_Errors(tt *testing.T) {
 			want: ErrReader,
 		},
 		{
+			name: "unexpected eof",
+			in:   iotest.ErrReader(io.ErrUnexpectedEOF),
+			want: io.ErrUnexpectedEOF,
+		},
+		{
 			name: "total nonsense",
 			in:   strings.NewReader(`result ← 2 3 5 + 1 4 6`),
 			want: ErrReader,
@@ -287,43 +293,76 @@ func TestParser_Errors(tt *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(tt *testing.T) {
-			t := parserHarness{tt}
+			t := ParserHarness{T: tt}
 
 			parser := t.ParseStream(tc.in)
-			parser.Parse(bytes.NewReader([]byte(";;; empty file")))
-
 			err := parser.Err()
 
-			if err == nil {
-				t.Error("expected error")
-			}
-
-			t.Log(err.Error())
-
-			if tc.want != nil {
-				if err == tc.want {
-					t.Errorf("expected wrapped error: err: %#v, want: %#v", err, tc.want)
-				}
-
-				if !errors.Is(err, tc.want) {
-					t.Errorf("err: %v, want: %v", err, tc.want)
-				}
-
-				if errors.Unwrap(err) != tc.want {
-					t.Errorf("err: %v, want: %v", err, tc.want)
-				}
+			if err != nil {
+				ParserError(err, tc, t)
+			} else {
+				GenerateErrors(tc, t)
 			}
 		})
 	}
 }
 
+func GenerateErrors(tc errorCase, t ParserHarness) {
+	t.Helper()
+
+	sym := t.parser.Symbols()
+	syn := t.parser.Syntax()
+	gen := NewGenerator(sym, syn)
+
+	_, err := gen.WriteTo(bytes.NewBuffer(make([]byte, 0, 8192)))
+
+	if err != nil {
+		t.Log(err.Error())
+	}
+
+	if err == tc.want {
+		t.Errorf("expected wrapped error: err: %#v, want: %#v", err, tc.want)
+	}
+
+	if tc.want != nil && err == nil {
+		t.Errorf("expected error, got: %#v, want: %v", err, tc.want)
+	}
+
+	if !errors.Is(err, tc.want) {
+		t.Errorf("expected: %v, want: %v", err, tc.want)
+	}
+
+	if errors.Unwrap(err) != tc.want {
+		t.Errorf("err: %v, want: %v", err, tc.want)
+	}
+}
+
+func ParserError(err error, tc errorCase, t ParserHarness) {
+	t.Helper()
+
+	t.Log(err.Error())
+
+	if err == tc.want {
+		t.Errorf("expected wrapped error: err: %#v, want: %#v", err, tc.want)
+	}
+
+	if !errors.Is(err, tc.want) {
+		t.Errorf("err: %v, want: %v", err, tc.want)
+	}
+
+	if errors.Unwrap(err) != tc.want {
+		t.Errorf("err: %v, want: %v", err, tc.want)
+	}
+}
+
 func TestParser_FILL(tt *testing.T) {
 	tt.Parallel()
-	t := parserHarness{tt}
+	t := ParserHarness{T: tt}
 	in := t.inputString(`
 .ORIG x1234
 .FILL xdada
 `)
+
 	parser := t.ParseStream(in)
 
 	if err := parser.Err(); err != nil {
@@ -350,7 +389,7 @@ func TestParser_FILL(tt *testing.T) {
 }
 
 func TestParser_STRINGZ(tt *testing.T) {
-	t := parserHarness{tt}
+	t := ParserHarness{T: tt}
 
 	want := "Hello, there!"
 	in := t.inputString(`
@@ -382,7 +421,7 @@ func TestParser_STRINGZ(tt *testing.T) {
 	}
 }
 
-func assertSymbol(t parserHarness, symbols SymbolTable, label string, want uint16) {
+func assertSymbol(t ParserHarness, symbols SymbolTable, label string, want uint16) {
 	t.Helper()
 
 	if got, ok := symbols[label]; !ok {
