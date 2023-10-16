@@ -336,6 +336,12 @@ func TestLEA_Parse(t *testing.T) {
 			wantErr: nil,
 		},
 		{
+			name:   "LEA label mixed case",
+			opcode: "LEA", operands: []string{"DR", "LaBel"},
+			want:    &LEA{DR: "DR", OFFSET: 0, SYMBOL: "LABEL"},
+			wantErr: nil,
+		},
+		{
 			name:   "LEA literal",
 			opcode: "LEA", operands: []string{"DR", "#-1"},
 			want:    &LEA{DR: "DR", OFFSET: 0x01ff},

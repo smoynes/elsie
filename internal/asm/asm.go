@@ -90,6 +90,8 @@ func (s SymbolTable) Add(sym string, loc uint16) {
 
 // Offset computes a n-bit PC-relative offset.
 func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
+	sym = strings.ToUpper(sym)
+
 	loc, ok := s[sym]
 	if !ok {
 		return 0xffff, &SymbolError{Symbol: sym, Loc: pc}
@@ -122,7 +124,7 @@ func (pe *SyntaxError) Error() string {
 	} else if pe.Err == nil && pe.Line != "" {
 		return fmt.Sprintf("syntax error: line: %q", pe.Line)
 	} else {
-		return fmt.Sprintf("syntax error: %s: line: %0#4X %q", pe.Err, pe.Pos, pe.Line)
+		return fmt.Sprintf("syntax error: %s: line: %0#4x %q", pe.Err, pe.Pos, pe.Line)
 	}
 }
 

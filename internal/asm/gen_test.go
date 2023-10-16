@@ -539,3 +539,27 @@ func TestSTRINGZ_Generate(tt *testing.T) {
 		}
 	}
 }
+
+func Test_CaseInsensitiveLabels(tt *testing.T) {
+	pc := uint16(0x3000)
+	symbols := SymbolTable{
+		"LABEL":     0x2fff, // -1
+		"THERE":     0x31ff, // 64
+		"BACK":      0x2800, // -64
+		"WAYBACK":   0x27ff,
+		"OVERTHERE": 0x3800,
+	}
+
+	t := generatorHarness{tt}
+	tcs := []generateCase{
+		{oper: &JSR{OFFSET: 0x00ff}, want: 0x48ff},
+		{oper: &JSR{OFFSET: 0xffff}, want: 0x4bff},
+		{oper: &JSR{SYMBOL: "label"}, want: 0x4fff},
+		{oper: &JSR{SYMBOL: "there"}, want: 0x49ff},
+		{oper: &JSR{SYMBOL: "back"}, want: 0x4800},
+		{oper: &JSR{SYMBOL: "wayback"}, wantErr: &OffsetError{0xf7ff}},
+		{oper: &JSR{SYMBOL: "overthere"}, wantErr: &OffsetError{0x0800}},
+	}
+
+	t.Run(pc, symbols, tcs)
+}

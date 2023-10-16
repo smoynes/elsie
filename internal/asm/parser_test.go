@@ -229,6 +229,7 @@ func TestParser_Fixtures(tt *testing.T) {
 		"parser5.asm",
 		"parser6.asm",
 		"parser7.asm",
+		"parser8.asm",
 	}
 
 	for _, fn := range tests {
