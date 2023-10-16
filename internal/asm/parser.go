@@ -381,33 +381,36 @@ func parseRegister(oper string) string {
 // parseImmediate returns a constant literal value or a symbolic reference from an operand. The
 // value is taken as n bits long. Literals can take the forms:
 //
-//	#123
-//	#-1
-//	#x123
-//	#o123
-//	#b0101
+//   - #123
+//   - #-1
+//   - #x123
+//   - #o123
+//   - #b0101
 //
-// References may be in the forms:
+// Symbolic references may be in the forms:
 //
-//	LABEL
-//	[LABEL]
-func parseImmediate(oper string, n uint8) (uint16, string, error) {
-	if len(oper) > 1 && oper[0] == '#' { // Immediate-mode prefix.
-		val, err := parseLiteral(oper[1:], n)
-		return val, "", err
-	} else if len(oper) > 2 && oper[0] == '[' && oper[len(oper)-1] == ']' { // [LABEL]
-		return 0, oper[1 : len(oper)-2], nil
-	} else if len(oper) > 1 {
-		val, err := parseLiteral(oper, n)
+//   - LABEL
+//   - [LABEL]
+func parseImmediate(oper string, n uint8) (lit uint16, sym string, err error) {
+	switch {
+	case len(oper) > 1 && oper[0] == '#': // #IMMn
+		lit, err = parseLiteral(oper[1:], n)
+	case len(oper) > 2 && oper[0] == '[' && oper[len(oper)-1] == ']': // [LABEL]
+		sym = oper[1 : len(oper)-2]
+	case len(oper) > 1:
+		lit, err = parseLiteral(oper, n)
 		if err != nil {
-			return 0, oper, nil //nolint:nilerr
+			lit = 0
+			sym = oper
+			err = nil
 		}
-
-		return val, oper, nil
-
-	} else { // oh no
+	default: // oh no
 		return 0xffff, "", errors.New("operand error")
 	}
+
+	sym = strings.ToUpper(sym)
+
+	return
 }
 
 // parseLiteral converts an operand as literal text to an n-bit integer value. If the literal cannot
