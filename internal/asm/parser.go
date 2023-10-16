@@ -93,10 +93,6 @@ func (p *Parser) Parse(in io.Reader) {
 	}
 
 	lines := bufio.NewScanner(in)
-	if err := lines.Err(); err != nil {
-		p.fatal = err
-		return
-	}
 
 	if file, ok := in.(interface{ Name() string }); ok {
 		p.filename = file.Name()
