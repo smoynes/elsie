@@ -23,6 +23,7 @@
 package asm
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -108,6 +109,14 @@ func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
 }
 
 const badSymbol uint16 = 0xffff
+
+var (
+	// ErrOpcode causes a SyntaxError if an opcode is invalid or incorrect.
+	ErrOpcode = errors.New("opcode error")
+
+	// ErrOperand causes a SyntaxError if the operands of an opcode are invalid or incorrect.
+	ErrOperand = errors.New("operand error")
+)
 
 // SyntaxError is a wrapped error returned when the parser encounters a syntax error.
 type SyntaxError struct {
