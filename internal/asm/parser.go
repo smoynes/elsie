@@ -104,7 +104,7 @@ func (p *Parser) Parse(in io.Reader) {
 		scanned := lines.Scan()
 
 		if err := lines.Err(); err != nil {
-			p.fatal = err
+			p.fatal = fmt.Errorf("parse: %w", err)
 			break
 		}
 
@@ -118,7 +118,7 @@ func (p *Parser) Parse(in io.Reader) {
 		if err := p.parseLine(p.line); err != nil {
 			// Assume descendant accumulated syntax errors and that any errors returned are
 			// therefore fatal.
-			p.fatal = err
+			p.fatal = fmt.Errorf("parse: %w", err)
 			return
 		}
 	}
