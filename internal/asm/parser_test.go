@@ -36,7 +36,7 @@ func (h *parserHarness) logger() *log.Logger {
 // Parser is a factory method for a parser under test. It creates a new parser and does an initial
 // read on the input stream and returns the parser. The caller should assert against Parser.Err,
 // etc.
-func (h *parserHarness) ParseStream(in io.ReadCloser) *Parser {
+func (h *parserHarness) ParseStream(in io.Reader) *Parser {
 	h.T.Helper()
 
 	parser := NewParser(h.logger())
@@ -52,8 +52,8 @@ func (h *parserHarness) ParseStream(in io.ReadCloser) *Parser {
 	return parser
 }
 
-func (h parserHarness) inputString(in string) io.ReadCloser {
-	return io.NopCloser(strings.NewReader(in))
+func (h parserHarness) inputString(in string) io.Reader {
+	return strings.NewReader(in)
 }
 
 func (h parserHarness) inputFixture(in string) io.ReadCloser {
@@ -65,8 +65,10 @@ func (h parserHarness) inputFixture(in string) io.ReadCloser {
 	return reader
 }
 
-func (parserHarness) inputError() io.ReadCloser {
-	return io.NopCloser(iotest.ErrReader(os.ErrInvalid))
+var ErrReader = errors.New("reader error")
+
+func (parserHarness) inputError() io.Reader {
+	return iotest.ErrReader(ErrReader)
 }
 
 type fakeInstruction struct{}

@@ -83,11 +83,14 @@ func (p *Parser) Probe(opcode string, ins Operation) {
 	p.probeInstr = ins
 }
 
-// Parse parses an input stream. The parser takes ownership of the stream and will close it.
-func (p *Parser) Parse(in io.ReadCloser) {
-	defer func() {
-		_ = in.Close()
-	}()
+// Parse parses an input stream. If the stream implements, io.Closer, the parser takes ownership of
+// the stream and will close it.
+func (p *Parser) Parse(in io.Reader) {
+	if closer, ok := in.(io.Closer); ok {
+		defer func() {
+			_ = closer.Close()
+		}()
+	}
 
 	lines := bufio.NewScanner(in)
 	if err := lines.Err(); err != nil {
