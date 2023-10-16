@@ -2,6 +2,8 @@ package asm_test
 
 import (
 	"bufio"
+	"bytes"
+	"errors"
 	"io"
 	"log/slog"
 	"os"
@@ -255,13 +257,63 @@ func TestParser_Fixtures(tt *testing.T) {
 
 func TestParser_Errors(tt *testing.T) {
 	tt.Parallel()
-
 	t := parserHarness{tt}
-	parser := t.ParseStream(t.inputError())
 
-	err := parser.Err()
-	if err == nil {
-		t.Error("expected error")
+	type errorCase struct {
+		name string
+		in   io.Reader
+		want error
+	}
+
+	tcs := []errorCase{
+		{
+			name: "reader error",
+			in:   t.inputError(),
+			want: ErrReader,
+		},
+		{
+			name: "data read error",
+			in:   iotest.DataErrReader(t.inputError()),
+			want: ErrReader,
+		},
+		{
+			name: "total nonsense",
+			in:   strings.NewReader(`result ← 2 3 5 + 1 4 6`),
+			want: ErrReader,
+		},
+	}
+
+	for _, tc := range tcs {
+		tc := tc
+
+		t.Run(tc.name, func(tt *testing.T) {
+			t := parserHarness{tt}
+
+			parser := t.ParseStream(tc.in)
+			parser.Parse(bytes.NewReader([]byte(";;; empty file")))
+
+			err := parser.Err()
+
+			if err == nil {
+				t.Error("expected error")
+			}
+
+			t.Log(err.Error())
+
+			if tc.want != nil {
+				if err == tc.want {
+					t.Errorf("expected wrapped error: err: %#v, want: %#v", err, tc.want)
+				}
+
+				if !errors.Is(err, tc.want) {
+					t.Errorf("err: %v, want: %v", err, tc.want)
+				}
+
+				if errors.Unwrap(err) != tc.want {
+					t.Errorf("err: %v, want: %v", err, tc.want)
+				}
+			}
+		})
 	}
 }
 
