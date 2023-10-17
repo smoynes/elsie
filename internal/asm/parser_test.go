@@ -1,3 +1,4 @@
+//nolint:errorlint
 package asm_test
 
 import (
@@ -285,7 +286,13 @@ func TestParser_Errors(tt *testing.T) {
 		{
 			name: "total nonsense",
 			in:   strings.NewReader(`result ← 2 3 5 + 1 4 6`),
-			want: ErrReader,
+			want: &SyntaxError{
+				Loc:  0,
+				Pos:  1,
+				File: "",
+				Line: `result ← 2 3 5 + 1 4 6`,
+				Err:  nil,
+			},
 		},
 	}
 
@@ -294,6 +301,7 @@ func TestParser_Errors(tt *testing.T) {
 
 		t.Run(tc.name, func(tt *testing.T) {
 			t := ParserHarness{T: tt}
+			t.Parallel()
 
 			parser := t.ParseStream(tc.in)
 			err := parser.Err()
@@ -332,14 +340,16 @@ func GenerateErrors(tc errorCase, t ParserHarness) {
 		t.Errorf("expected: %v, want: %v", err, tc.want)
 	}
 
-	if errors.Unwrap(err) != tc.want {
-		t.Errorf("err: %v, want: %v", err, tc.want)
+	if _, ok := tc.want.(*SyntaxError); ok {
+		var got *SyntaxError
+
+		if !errors.As(err, &got) {
+			t.Errorf("errors.As: err: %v, want: %v", err, tc.want)
+		}
 	}
 }
 
 func ParserError(err error, tc errorCase, t ParserHarness) {
-	t.Helper()
-
 	t.Log(err.Error())
 
 	if err == tc.want {
@@ -347,11 +357,23 @@ func ParserError(err error, tc errorCase, t ParserHarness) {
 	}
 
 	if !errors.Is(err, tc.want) {
-		t.Errorf("err: %v, want: %v", err, tc.want)
+		t.Errorf("errors.Is: err: %#v, want: %#v", err, tc.want)
+
+		if wErr, ok := err.(interface{ Unwrap() []error }); ok {
+			for _, err := range wErr.Unwrap() {
+				t.Errorf("errors.Unwrap: err: %#v", err)
+			}
+		} else {
+			t.Errorf("errors.Unwrap: err: %#v", errors.Unwrap(err))
+		}
 	}
 
-	if errors.Unwrap(err) != tc.want {
-		t.Errorf("err: %v, want: %v", err, tc.want)
+	if _, ok := tc.want.(*SyntaxError); ok {
+		var got *SyntaxError
+
+		if !errors.As(err, &got) {
+			t.Errorf("errors.As: err: %v, want: %v", err, tc.want)
+		}
 	}
 }
 

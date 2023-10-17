@@ -118,22 +118,36 @@ var (
 	ErrOperand = errors.New("operand error")
 )
 
-// SyntaxError is a wrapped error returned when the parser encounters a syntax error.
+// SyntaxError is a wrapped error returned when the assembler encounters a syntax error. If fields
+// are not known, they hold the zero value. For example, the filename is an empty string when the
+// source code is not a file.
 type SyntaxError struct {
 	File string // Source file name.
 	Loc  uint16 // Location counter.
-	Pos  uint16 // Line counter, zero value if now known.
-	Line string // Source code line, zero value if not known.
+	Pos  uint16 // Line counter.
+	Line string // Source code line.
 	Err  error  // Error cause.
 }
 
-func (pe *SyntaxError) Error() string {
-	if pe.Err == nil && pe.Line == "" {
-		return fmt.Sprintf("syntax error: loc: %0#4x", pe.Loc)
-	} else if pe.Err == nil && pe.Line != "" {
-		return fmt.Sprintf("syntax error: line: %q", pe.Line)
+func (se *SyntaxError) Error() string {
+	if se.Err == nil && se.Line == "" {
+		return fmt.Sprintf("syntax error: loc: %0#4x", se.Loc)
+	} else if se.Err == nil && se.Line != "" {
+		return fmt.Sprintf("syntax error: line: %q", se.Line)
 	} else {
-		return fmt.Sprintf("syntax error: %s: line: %0#4x %q", pe.Err, pe.Pos, pe.Line)
+		return fmt.Sprintf("syntax error: %s: line: %0#4x %q", se.Err, se.Pos, se.Line)
+	}
+}
+
+// Is checks if any SyntaxError's error-tree matches a target error.
+func (se *SyntaxError) Is(target error) bool {
+	if se.Err != nil {
+		return errors.Is(target, se.Err)
+	} else if err, ok := target.(*SyntaxError); !ok {
+		return false
+	} else {
+		return se.Line == err.Line && se.Pos == err.Pos &&
+			(se.File != "(unknown)" && se.File == err.File)
 	}
 }
 

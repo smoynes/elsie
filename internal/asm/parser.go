@@ -160,6 +160,8 @@ func (p *Parser) parseLine(line string) error {
 			p.fatal = err
 			return err
 		}
+
+		return nil
 	}
 
 	if matched := instructionPattern.FindStringSubmatch(remain); len(matched) > 2 {
@@ -181,8 +183,14 @@ func (p *Parser) parseLine(line string) error {
 		}
 
 		if err := p.parseInstruction(operator, operands); err != nil {
-			p.errs = append(p.errs, &SyntaxError{Loc: p.loc, Pos: p.pos, Line: p.line, Err: err})
+			p.addSyntaxError(err)
 		}
+
+		return nil
+	}
+
+	if len(remain) > 0 {
+		p.addSyntaxError(nil)
 	}
 
 	return nil
@@ -454,4 +462,15 @@ func parseLiteral(operand string, n uint8) (uint16, error) {
 	val16 := uint16(val64) & uint16(bitmask)
 
 	return val16, nil
+}
+
+// addSyntaxError appends a new SyntaxError wrapping err.
+func (p *Parser) addSyntaxError(err error) {
+	err = &SyntaxError{
+		Loc:  p.loc,
+		Pos:  p.pos,
+		Line: p.line,
+		Err:  err,
+	}
+	p.errs = append(p.errs, err)
 }
