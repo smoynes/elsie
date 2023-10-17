@@ -95,7 +95,7 @@ func (p *Parser) Parse(in io.Reader) {
 	if file, ok := in.(interface{ Name() string }); ok {
 		p.filename = file.Name()
 	} else {
-		p.filename = "(unknown)"
+		p.filename = ""
 	}
 
 	for {
