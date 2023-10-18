@@ -13,6 +13,9 @@ import (
 	"github.com/smoynes/elsie/internal/log"
 )
 
+// Assembler is the command that translates LCASM source code into executable object code.
+//
+//	elsie asm -o a.o FILE.asm
 func Assembler() cli.Command {
 	return new(assembler)
 }

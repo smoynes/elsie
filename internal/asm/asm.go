@@ -1,25 +1,37 @@
-// Package asm implements a simple assembler for the machine.
-//
-// The assembler generates LC-3 machine code from LCASM assembly language, an unnecessary dialect
-// that extends the Pratt and Patel's with a few developer-friendly niceties.
-//
-//	LABEL   AND R3,R3,R2
-//	        AND R1,R1,#-1
-//	        BRp LABEL
-//
-//	       .ORIG x3010 ; comment
-//	IDENT  .FILL xff00
-//		   .END
-//
-//	LABEL:
-//			AND R0, R0, R2
-//
-// See |Grammar| for a more thorough description of syntax -- semantics are left as an exercise for
-// the reader.
-//
-// # Bugs
-//
-// There are ambiguities in the grammar and the code could be a whole lot simpler.
+/*
+Package asm implements a simple assembler for the machine.
+
+The assembler generates LC-3 machine code from LCASM assembly language, an unnecessary dialect
+that extends the Patt and Patel's with a few developer-friendly niceties.
+
+	LABEL   AND R3,R3,R2
+	        AND R1,R1,#-1
+	        BRp LABEL
+
+	       .ORIG x3010 ; comment
+	IDENT  .FILL xff00
+		   .END
+
+	LABEL:
+			AND R0, R0, R2
+
+See |Grammar| for a more thorough description of syntax -- semantics are left as an exercise for
+the reader.
+
+Typically, one uses the "elsie asm" command to assemble source code:
+
+	go run github.com/smoynes/elsie asm -o program PROGRAM.asm
+
+See github.com/smoynes/internal/cli/cmd.Assembler for details using the command-line interface.
+
+This package also provides APIs to parse source, create syntax and symbol tables, generate machine
+code and even extend the language. See Parser and Generator for more.
+
+# Bugs
+
+There are ambiguities in the language grammar and the code could be a whole lot simpler. It is
+debatable if ANTLR4 would be better.
+*/
 package asm
 
 import (
