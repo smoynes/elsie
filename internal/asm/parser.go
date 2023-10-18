@@ -229,7 +229,7 @@ func (p *Parser) parseInstruction(opcode string, operands []string) error {
 
 	err := oper.Parse(opcode, operands)
 	if err != nil {
-		return fmt.Errorf("parse: %s: %w", opcode, err)
+		return fmt.Errorf("%s: %w", opcode, err)
 	}
 
 	p.AddSyntax(oper)
