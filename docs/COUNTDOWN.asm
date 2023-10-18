@@ -1,4 +1,4 @@
-;;; countdown.asm : a program for a tutorial that counts down to blast off
+;;; COUNTDOWN.asm : a program for a tutorial that counts down to blast off
 ;;; Inputs: R0 is the address of counter.
 
     .ORIG   x3000               ; Start at the beginning of user-space memory.

@@ -26,8 +26,32 @@ jobs:
       - name: Install test runner
         run: go install gotest.tools/gotestsum@latest
 
-      - name: Test
-        run: gotestsum -f github-actions ./...
+      - name: Tests
+        run: |
+            gotestsum -f github-actions ./...
+
+  coverage:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: stable
+
+      - name: Coverage
+        run: |
+            go test \
+              -coverprofile cover.out \
+              -covermode    count \
+              -coverpkg     ./... \
+              -shuffle      on \
+              ./...
+
+      - name: Report
+        run: go tool cover -func=cover.out
 
   build-release:
     runs-on: ubuntu-latest
