@@ -8,3 +8,4 @@ a.o
 *.orig
 *.tmp
 *~
+/cover.out
