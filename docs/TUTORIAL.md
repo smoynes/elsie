@@ -333,7 +333,7 @@ create machine code from source. In this directory you will find an assembly
 program. To translate the source to an object file containing machine code, run:
 
 ```console
-$ elsie asm countdown.asm
+$ elsie asm COUNTDOWN.asm
 ```
 
 Well, that isn't satisfying, but no output means success in this case.
@@ -354,7 +354,7 @@ Options:
 ```
 
 ```console
-$ elsie asm -debug countdown.asm
+$ elsie asm -debug COUNTDOWN.asm
  TIMESTAMP : 2023-10-11T11:51:30-04:00
      LEVEL : DEBUG
     SOURCE : asm.go:66
@@ -398,7 +398,7 @@ Before running the countdown program, let's take a look at the source code to
 get an idea what it is going to do.
 
 ```
-;;; countdown.asm : a program for a tutorial that counts down to blast off
+;;; COUNTDOWN.asm : a program for a tutorial that counts down to blast off
 ;;; Inputs: R0 is the address of counter.
 
     .ORIG   x3000               ; Start at the beginning of user-space memory.
