@@ -263,7 +263,7 @@ type errorCase struct {
 	want error
 }
 
-func TestParser_Errors(tt *testing.T) {
+func TestAssembler_Errors(tt *testing.T) {
 	tt.Parallel()
 	t := ParserHarness{T: tt}
 
@@ -292,6 +292,39 @@ func TestParser_Errors(tt *testing.T) {
 				File: "",
 				Line: `result ← 2 3 5 + 1 4 6`,
 				Err:  nil,
+			},
+		},
+		{
+			name: "invalid opcode",
+			in:   strings.NewReader(`XOR R1,R2`),
+			want: &SyntaxError{
+				Loc:  0,
+				Pos:  1,
+				File: "",
+				Line: `XOR R1,R2`,
+				Err:  ErrOpcode,
+			},
+		},
+		{
+			name: "invalid operand count",
+			in:   strings.NewReader(`AND R1`),
+			want: &SyntaxError{
+				Loc:  0,
+				Pos:  1,
+				File: "",
+				Line: `AND R1`,
+				Err:  ErrOperand,
+			},
+		},
+		{
+			name: "immediate too large",
+			in:   strings.NewReader(`BR #x7000`),
+			want: &SyntaxError{
+				Loc:  0,
+				Pos:  1,
+				File: "",
+				Line: `AND R1`,
+				Err:  ErrLiteral,
 			},
 		},
 	}
@@ -350,14 +383,15 @@ func GenerateErrors(tc errorCase, t ParserHarness) {
 }
 
 func ParserError(err error, tc errorCase, t ParserHarness) {
-	t.Log(err.Error())
+	t.Logf("err: %v", err)
 
 	if err == tc.want {
 		t.Errorf("expected wrapped error: err: %#v, want: %#v", err, tc.want)
 	}
 
 	if !errors.Is(err, tc.want) {
-		t.Errorf("errors.Is: err: %#v, want: %#v", err, tc.want)
+		t.Errorf("errors.Is: err: %#[1]v", err)
+		t.Errorf("want: %#v", tc.want)
 
 		if wErr, ok := err.(interface{ Unwrap() []error }); ok {
 			for _, err := range wErr.Unwrap() {

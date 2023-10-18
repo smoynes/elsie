@@ -107,6 +107,7 @@ func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
 	}
 
 	bottom := ^(-1 << n)
+
 	return uint16(delta) & uint16(bottom), nil
 }
 
@@ -118,6 +119,9 @@ var (
 
 	// ErrOperand causes a SyntaxError if an opcode's operands are invalid or incorrect.
 	ErrOperand = errors.New("operand error")
+
+	// ErrLiteral causes a SyntaxError if the literal operand is invalid.
+	ErrLiteral = errors.New("literal error")
 )
 
 // SyntaxError is a wrapped error returned when the assembler encounters a syntax error. If fields
@@ -141,15 +145,17 @@ func (se *SyntaxError) Error() string {
 	}
 }
 
-// Is checks if any SyntaxError's error-tree matches a target error.
+// Is checks if SyntaxError's error-tree matches a target error.
 func (se *SyntaxError) Is(target error) bool {
-	if se.Err != nil {
-		return errors.Is(target, se.Err)
-	} else if err, ok := target.(*SyntaxError); !ok {
-		return false
+	if errors.Is(se.Err, target) {
+		return true
+	} else if err, ok := target.(*SyntaxError); ok && errors.Is(err, err.Err) {
+		return true
 	} else {
-		return se.Line == err.Line && se.Pos == err.Pos &&
-			(se.File != "(unknown)" && se.File == err.File)
+		return se.Pos == err.Pos &&
+			se.Line == err.Line &&
+			se.Loc == err.Loc &&
+			se.File == err.File
 	}
 }
 
@@ -161,6 +167,17 @@ type OffsetRangeError struct {
 
 func (oe *OffsetRangeError) Error() string {
 	return fmt.Sprintf("offset error: %0#4x", oe.Offset)
+}
+
+// LiteralRangeError is a wrapped error returned when an offset value exceeds its range.
+type LiteralRangeError struct {
+	Literal string
+	Range   uint8
+}
+
+func (le *LiteralRangeError) Error() string {
+	return fmt.Sprintf("literal range error: %q (%0#4x, %0#4x)",
+		le.Literal, -uint16(1<<(le.Range)), 1<<(le.Range-1))
 }
 
 // RegisterError is a wrapped error returned when an instruction names an invalid register.

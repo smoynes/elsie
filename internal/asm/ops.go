@@ -63,7 +63,7 @@ func (br *BR) Parse(opcode string, opers []string) error {
 
 	off, sym, err := parseImmediate(opers[0], 9)
 	if err != nil {
-		return fmt.Errorf("br: operand error: %w", err)
+		return err
 	}
 
 	*br = BR{

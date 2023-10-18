@@ -429,7 +429,7 @@ func parseImmediate(oper string, n uint8) (lit uint16, sym string, err error) {
 // - -1
 func parseLiteral(operand string, n uint8) (uint16, error) {
 	if len(operand) == 0 {
-		return 0xffff, fmt.Errorf("literal error: %s", operand)
+		return 0xffff, ErrLiteral
 	}
 
 	prefix := operand[0]
@@ -445,18 +445,24 @@ func parseLiteral(operand string, n uint8) (uint16, error) {
 	}
 
 	// The parsed value must not exceed n bits, i.e. its range is [0, 2ⁿ). Using strconv.Uint16
-	// seems like the thing to do. However, it does not accept negative literals, e.g.
-	// ADD R1,R1,#-1. So, we use n+1 here, giving us the range [-2ⁿ, 2ⁿ], and checking for overflow
-	// and converting to unsigned.
+	// seems like the thing to do. However, it does not accept negative decimal literals, e.g. ADD
+	// R1,R1,#-1, which we would like to handle. So, we use a signed integer with n+1 bits, giving
+	// us the range [-2ⁿ, 2ⁿ], and checking for overflow and converting to unsigned.
 	val64, err := strconv.ParseInt(literal, 0, int(n)+1)
 	if err != nil {
-		return 0xffff, fmt.Errorf("literal error: %s %d", operand, val64)
+		return 0xffff, &LiteralRangeError{
+			Literal: literal,
+			Range:   n,
+		}
 	}
 
 	var bitmask int64 = 1<<n - 1
 
-	if val64 < -bitmask || val64 > bitmask { // 0 <= val64 < 2ⁿ
-		return 0xffff, fmt.Errorf("literal error: max: %x %s %x", 1<<n, operand, val64)
+	if val64 < -bitmask || val64 > bitmask {
+		return 0xffff, &LiteralRangeError{
+			Literal: literal,
+			Range:   n,
+		}
 	}
 
 	val16 := uint16(val64) & uint16(bitmask)

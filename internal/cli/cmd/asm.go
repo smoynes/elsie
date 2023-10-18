@@ -57,7 +57,8 @@ func (a *assembler) Run(ctx context.Context, args []string, stdout io.Writer, lo
 
 		f, err := os.Open(fn)
 		if err != nil {
-			logger.Error("Parse error: %s: %s", fn, err)
+			logger.Error("Parse error", "err", err)
+			return 1
 		}
 
 		parser.Parse(f)
