@@ -134,7 +134,7 @@ func (and *AND) Parse(oper string, opers []string) error {
 
 	off, sym, err := parseImmediate(opers[2], 5)
 	if err != nil {
-		return fmt.Errorf("and: operand error: %w", err)
+		return err
 	}
 
 	and.OFFSET = off
@@ -201,7 +201,7 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 	var err error
 
 	if strings.ToUpper(opcode) != "LD" {
-		return errors.New("ld: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 2 {
 		return ErrOperand
 	}
@@ -212,7 +212,7 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 
 	ld.OFFSET, ld.SYMBOL, err = parseImmediate(operands[1], 9)
 	if err != nil {
-		return fmt.Errorf("ld: operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -264,7 +264,7 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 	var err error
 
 	if opcode != "LDR" {
-		return errors.New("ldr: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 3 {
 		return ErrOperand
 	}
@@ -276,7 +276,7 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 
 	ldr.OFFSET, ldr.SYMBOL, err = parseImmediate(operands[2], 6)
 	if err != nil {
-		return fmt.Errorf("ldr: operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -342,7 +342,7 @@ func (lea *LEA) Parse(opcode string, operands []string) error {
 
 	lea.OFFSET, lea.SYMBOL, err = parseImmediate(operands[1], 9)
 	if err != nil {
-		return fmt.Errorf("operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -405,7 +405,7 @@ func (ldi *LDI) Parse(opcode string, operands []string) error {
 
 	ldi.OFFSET, ldi.SYMBOL, err = parseImmediate(operands[1], 9)
 	if err != nil {
-		return fmt.Errorf("operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -456,7 +456,7 @@ func (st *ST) Parse(opcode string, operands []string) error {
 	var err error
 
 	if opcode != "ST" {
-		return errors.New("st: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 2 {
 		return ErrOperand
 	}
@@ -530,7 +530,7 @@ func (sti *STI) Parse(opcode string, operands []string) error {
 
 	sti.OFFSET, sti.SYMBOL, err = parseImmediate(operands[1], 9)
 	if err != nil {
-		return fmt.Errorf("operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -595,7 +595,7 @@ func (str *STR) Parse(opcode string, operands []string) error {
 
 	str.OFFSET, str.SYMBOL, err = parseImmediate(operands[2], 6)
 	if err != nil {
-		return fmt.Errorf("operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -743,7 +743,7 @@ func (add *ADD) Parse(opcode string, operands []string) error {
 	} else {
 		off, _, err := parseImmediate(operands[2], 5)
 		if err != nil {
-			return fmt.Errorf("operand error: %w", err)
+			return err
 		}
 
 		add.LITERAL = off & 0x1f
@@ -809,7 +809,7 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 
 	lit, err := parseLiteral(operands[0], 8)
 	if err != nil {
-		return fmt.Errorf("trap: operand error: %w", err)
+		return err
 	}
 
 	*trap = TRAP{
@@ -913,8 +913,6 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	| 0100 |  1 | OFFSET11 |
 //	|------+----+----------|
 //	|15  12| 11 |10       0|
-//
-// .
 type JSR struct {
 	SYMBOL string
 	OFFSET uint16
@@ -931,7 +929,7 @@ func (jsr *JSR) Parse(opcode string, operands []string) error {
 
 	off, sym, err := parseImmediate(operands[0], 11)
 	if err != nil {
-		return fmt.Errorf("operand error: %w", err)
+		return err
 	}
 
 	*jsr = JSR{
@@ -1062,8 +1060,11 @@ func (orig *ORIG) Is(target Operation) bool {
 }
 
 func (orig *ORIG) Parse(opcode string, operands []string) error {
+	if opcode != ".ORIG" {
+		return ErrOpcode
+	}
 	if len(operands) != 1 {
-		return errors.New("argument error")
+		return ErrOperand
 	}
 
 	arg := operands[0]
@@ -1076,6 +1077,7 @@ func (orig *ORIG) Parse(opcode string, operands []string) error {
 	val, err := strconv.ParseUint(arg, 0, 16)
 
 	if numError := (&strconv.NumError{}); errors.As(err, &numError) {
+		// TODO: err types
 		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
 	} else if val > math.MaxUint16 {
 		return errors.New("argument error")
