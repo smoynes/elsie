@@ -39,7 +39,7 @@ func (br *BR) Parse(opcode string, opers []string) error {
 	var nzp uint16
 
 	if len(opers) != 1 {
-		return errors.New("br: invalid operands")
+		return ErrOperand
 	}
 
 	switch strings.ToUpper(opcode) {
@@ -63,7 +63,7 @@ func (br *BR) Parse(opcode string, opers []string) error {
 
 	off, sym, err := parseImmediate(opers[0], 9)
 	if err != nil {
-		return fmt.Errorf("br: operand error: %w", err)
+		return err
 	}
 
 	*br = BR{
@@ -118,7 +118,7 @@ func (and AND) String() string { return fmt.Sprintf("%#v", and) }
 // Parse parses an AND instruction from its opcode and operands.
 func (and *AND) Parse(oper string, opers []string) error {
 	if len(opers) != 3 {
-		return errors.New("and: operands")
+		return ErrOperand
 	}
 
 	*and = AND{
@@ -134,7 +134,7 @@ func (and *AND) Parse(oper string, opers []string) error {
 
 	off, sym, err := parseImmediate(opers[2], 5)
 	if err != nil {
-		return fmt.Errorf("and: operand error: %w", err)
+		return err
 	}
 
 	and.OFFSET = off
@@ -201,9 +201,9 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 	var err error
 
 	if strings.ToUpper(opcode) != "LD" {
-		return errors.New("ld: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 2 {
-		return errors.New("ld: operand error")
+		return ErrOperand
 	}
 
 	*ld = LD{
@@ -212,7 +212,7 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 
 	ld.OFFSET, ld.SYMBOL, err = parseImmediate(operands[1], 9)
 	if err != nil {
-		return fmt.Errorf("ld: operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -264,9 +264,9 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 	var err error
 
 	if opcode != "LDR" {
-		return errors.New("ldr: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 3 {
-		return errors.New("ldr: operand error")
+		return ErrOperand
 	}
 
 	*ldr = LDR{
@@ -276,7 +276,7 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 
 	ldr.OFFSET, ldr.SYMBOL, err = parseImmediate(operands[2], 6)
 	if err != nil {
-		return fmt.Errorf("ldr: operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -331,9 +331,9 @@ func (lea *LEA) Parse(opcode string, operands []string) error {
 	var err error
 
 	if opcode != "LEA" {
-		return errors.New("lea: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 2 {
-		return errors.New("lea: operand error")
+		return ErrOperand
 	}
 
 	*lea = LEA{
@@ -342,7 +342,7 @@ func (lea *LEA) Parse(opcode string, operands []string) error {
 
 	lea.OFFSET, lea.SYMBOL, err = parseImmediate(operands[1], 9)
 	if err != nil {
-		return fmt.Errorf("lea: operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -361,7 +361,7 @@ func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	case lea.SYMBOL != "":
 		offset, err := symbols.Offset(lea.SYMBOL, pc, 9)
 		if err != nil {
-			return nil, fmt.Errorf("lea: %w", err)
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		code.Operand(offset)
@@ -394,9 +394,9 @@ func (ldi *LDI) Parse(opcode string, operands []string) error {
 	var err error
 
 	if opcode != "LDI" {
-		return errors.New("ldi: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 2 {
-		return errors.New("ldi: operand error")
+		return ErrOperand
 	}
 
 	*ldi = LDI{
@@ -405,7 +405,7 @@ func (ldi *LDI) Parse(opcode string, operands []string) error {
 
 	ldi.OFFSET, ldi.SYMBOL, err = parseImmediate(operands[1], 9)
 	if err != nil {
-		return fmt.Errorf("ldi: operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -424,7 +424,7 @@ func (ldi LDI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	case ldi.SYMBOL != "":
 		offset, err := symbols.Offset(ldi.SYMBOL, pc, 9)
 		if err != nil {
-			return nil, fmt.Errorf("ldi: %w", err)
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		code.Operand(offset)
@@ -456,9 +456,9 @@ func (st *ST) Parse(opcode string, operands []string) error {
 	var err error
 
 	if opcode != "ST" {
-		return errors.New("st: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 2 {
-		return errors.New("st: operand error")
+		return ErrOperand
 	}
 
 	*st = ST{
@@ -519,9 +519,9 @@ func (sti *STI) Parse(opcode string, operands []string) error {
 	var err error
 
 	if opcode != "STI" {
-		return errors.New("sti: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 2 {
-		return errors.New("sti: operand error")
+		return ErrOperand
 	}
 
 	*sti = STI{
@@ -530,7 +530,7 @@ func (sti *STI) Parse(opcode string, operands []string) error {
 
 	sti.OFFSET, sti.SYMBOL, err = parseImmediate(operands[1], 9)
 	if err != nil {
-		return fmt.Errorf("sti: operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -549,7 +549,7 @@ func (sti STI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	case sti.SYMBOL != "":
 		offset, err := symbols.Offset(sti.SYMBOL, pc, 9)
 		if err != nil {
-			return nil, fmt.Errorf("sti: %w", err)
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		code.Operand(offset)
@@ -583,9 +583,9 @@ func (str *STR) Parse(opcode string, operands []string) error {
 	var err error
 
 	if opcode != "STR" {
-		return errors.New("str: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 3 {
-		return errors.New("str: operand error")
+		return ErrOperand
 	}
 
 	*str = STR{
@@ -595,7 +595,7 @@ func (str *STR) Parse(opcode string, operands []string) error {
 
 	str.OFFSET, str.SYMBOL, err = parseImmediate(operands[2], 6)
 	if err != nil {
-		return fmt.Errorf("str: operand error: %w", err)
+		return err
 	}
 
 	return nil
@@ -617,7 +617,7 @@ func (str STR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	case str.SYMBOL != "":
 		offset, err := symbols.Offset(str.SYMBOL, pc, 5)
 		if err != nil {
-			return nil, fmt.Errorf("str: %w", err)
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		code.Operand(offset)
@@ -645,9 +645,9 @@ func (jmp *JMP) String() string { return fmt.Sprintf("%#v", jmp) }
 
 func (jmp *JMP) Parse(opcode string, operands []string) error {
 	if opcode != "JMP" {
-		return errors.New("jmp: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 1 {
-		return errors.New("jmp: operand error")
+		return ErrOperand
 	}
 
 	*jmp = JMP{
@@ -684,9 +684,9 @@ func (ret *RET) String() string { return fmt.Sprintf("%#v", ret) }
 
 func (ret *RET) Parse(opcode string, operands []string) error {
 	if opcode != "RET" {
-		return errors.New("ret: opcode error")
+		return ErrOpcode
 	} else if len(operands) > 0 {
-		return errors.New("ret: operand error")
+		return ErrOperand
 	}
 
 	*ret = RET{}
@@ -725,9 +725,9 @@ func (add ADD) String() string { return fmt.Sprintf("%#v", add) }
 
 func (add *ADD) Parse(opcode string, operands []string) error {
 	if opcode != "ADD" {
-		return errors.New("add: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 3 {
-		return errors.New("add: operand error")
+		return ErrOperand
 	}
 
 	dr := parseRegister(operands[0])
@@ -743,7 +743,7 @@ func (add *ADD) Parse(opcode string, operands []string) error {
 	} else {
 		off, _, err := parseImmediate(operands[2], 5)
 		if err != nil {
-			return fmt.Errorf("add: operand error: %w", err)
+			return err
 		}
 
 		add.LITERAL = off & 0x1f
@@ -800,16 +800,16 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 		*trap = TRAP{LITERAL: 0x25}
 		return nil
 	case opcode == "HALT" && len(operands) != 0:
-		return errors.New("trap: operand error")
+		return ErrOperand
 	case opcode != "TRAP":
 		return errors.New("trap: operator error")
 	case len(operands) != 1:
-		return errors.New("trap: operand error")
+		return ErrOperand
 	}
 
 	lit, err := parseLiteral(operands[0], 8)
 	if err != nil {
-		return fmt.Errorf("trap: operand error: %w", err)
+		return err
 	}
 
 	*trap = TRAP{
@@ -839,9 +839,9 @@ func (rti RTI) String() string { return fmt.Sprintf("%#v", rti) }
 
 func (rti *RTI) Parse(opcode string, operands []string) error {
 	if opcode != "RTI" {
-		return errors.New("rti: operator error")
+		return errors.New("operator error")
 	} else if len(operands) != 0 {
-		return errors.New("rti: operand error")
+		return ErrOperand
 	}
 
 	return nil
@@ -870,9 +870,9 @@ func (not NOT) String() string { return fmt.Sprintf("%#v", not) }
 
 func (not *NOT) Parse(opcode string, operands []string) error {
 	if opcode != "NOT" {
-		return errors.New("not: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 2 {
-		return errors.New("not: operand error")
+		return ErrOperand
 	}
 
 	dr := parseRegister(operands[0])
@@ -888,7 +888,7 @@ func (not *NOT) Parse(opcode string, operands []string) error {
 
 func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	if not.DR == "" || not.SR == "" {
-		return nil, fmt.Errorf("gen: not: bad operand")
+		return nil, fmt.Errorf("not: bad operand")
 	}
 
 	dr := registerVal(not.DR)
@@ -913,8 +913,6 @@ func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	| 0100 |  1 | OFFSET11 |
 //	|------+----+----------|
 //	|15  12| 11 |10       0|
-//
-// .
 type JSR struct {
 	SYMBOL string
 	OFFSET uint16
@@ -924,14 +922,14 @@ func (jsr *JSR) String() string { return fmt.Sprintf("%#v", jsr) }
 
 func (jsr *JSR) Parse(opcode string, operands []string) error {
 	if opcode != "JSR" {
-		return errors.New("jsr: opcode error")
+		return ErrOpcode
 	} else if len(operands) != 1 {
-		return errors.New("jsr: operand error")
+		return ErrOperand
 	}
 
 	off, sym, err := parseImmediate(operands[0], 11)
 	if err != nil {
-		return fmt.Errorf("jsr: operand error: %w", err)
+		return err
 	}
 
 	*jsr = JSR{
@@ -949,7 +947,7 @@ func (jsr *JSR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	case jsr.SYMBOL != "":
 		offset, err := symbols.Offset(jsr.SYMBOL, pc, 11)
 		if err != nil {
-			return nil, fmt.Errorf("str: %w", err)
+			return nil, fmt.Errorf("%w", err)
 		}
 
 		code.Operand(offset)
@@ -980,7 +978,7 @@ func (jsrr *JSRR) Parse(opcode string, operands []string) error {
 	if opcode != "JSRR" {
 		return errors.New("jsrr: opcode error")
 	} else if len(operands) != 1 {
-		return errors.New("jsrr: operand error")
+		return ErrOperand
 	}
 
 	*jsrr = JSRR{
@@ -1062,8 +1060,10 @@ func (orig *ORIG) Is(target Operation) bool {
 }
 
 func (orig *ORIG) Parse(opcode string, operands []string) error {
-	if len(operands) != 1 {
-		return errors.New("argument error")
+	if opcode != ".ORIG" {
+		return ErrOpcode
+	} else if len(operands) != 1 {
+		return ErrOperand
 	}
 
 	arg := operands[0]
@@ -1076,6 +1076,7 @@ func (orig *ORIG) Parse(opcode string, operands []string) error {
 	val, err := strconv.ParseUint(arg, 0, 16)
 
 	if numError := (&strconv.NumError{}); errors.As(err, &numError) {
+		// TODO: err types
 		return fmt.Errorf("parse error: %s (%s)", numError.Num, numError.Err.Error())
 	} else if val > math.MaxUint16 {
 		return errors.New("argument error")

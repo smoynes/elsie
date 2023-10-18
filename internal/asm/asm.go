@@ -23,6 +23,7 @@
 package asm
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -94,47 +95,89 @@ func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
 
 	loc, ok := s[sym]
 	if !ok {
-		return 0xffff, &SymbolError{Symbol: sym, Loc: pc}
+		return badSymbol, &SymbolError{Symbol: sym, Loc: pc}
 	}
 
 	delta := int16(loc - pc)
-	bottom := ^(-1 << n)
-
 	if delta >= (1<<n) || delta < -(1<<n) {
-		return badSymbol, &OffsetError{uint16(delta)}
+		return badSymbol, &OffsetRangeError{
+			Range:  1 << n,
+			Offset: uint16(delta),
+		}
 	}
+
+	bottom := ^(-1 << n)
 
 	return uint16(delta) & uint16(bottom), nil
 }
 
 const badSymbol uint16 = 0xffff
 
-// SyntaxError is a wrapped error returned when the parser encounters a syntax error.
+var (
+	// ErrOpcode causes a SyntaxError if an opcode is invalid or incorrect.
+	ErrOpcode = errors.New("opcode error")
+
+	// ErrOperand causes a SyntaxError if an opcode's operands are invalid or incorrect.
+	ErrOperand = errors.New("operand error")
+
+	// ErrLiteral causes a SyntaxError if the literal operand is invalid.
+	ErrLiteral = errors.New("literal error")
+)
+
+// SyntaxError is a wrapped error returned when the assembler encounters a syntax error. If fields
+// are not known, they hold the zero value. For example, the filename is an empty string when the
+// source code is not a file.
 type SyntaxError struct {
 	File string // Source file name.
 	Loc  uint16 // Location counter.
-	Pos  uint16 // Line counter, zero value if now known.
-	Line string // Source code line, zero value if not known.
+	Pos  uint16 // Line counter.
+	Line string // Source code line.
 	Err  error  // Error cause.
 }
 
-func (pe *SyntaxError) Error() string {
-	if pe.Err == nil && pe.Line == "" {
-		return fmt.Sprintf("syntax error: loc: %0#4x", pe.Loc)
-	} else if pe.Err == nil && pe.Line != "" {
-		return fmt.Sprintf("syntax error: line: %q", pe.Line)
+func (se *SyntaxError) Error() string {
+	if se.Err == nil && se.Line == "" {
+		return fmt.Sprintf("syntax error: loc: %0#4x", se.Loc)
+	} else if se.Err == nil && se.Line != "" {
+		return fmt.Sprintf("syntax error: line: %q", se.Line)
 	} else {
-		return fmt.Sprintf("syntax error: %s: line: %0#4x %q", pe.Err, pe.Pos, pe.Line)
+		return fmt.Sprintf("syntax error: %s: line: %0#4x %q", se.Err, se.Pos, se.Line)
 	}
 }
 
-// OffsetError is a wrapped error returned when an offset value exceeds its range.
-type OffsetError struct {
-	Offset uint16
+// Is checks if SyntaxError's error-tree matches a target error.
+func (se *SyntaxError) Is(target error) bool {
+	if errors.Is(se.Err, target) {
+		return true
+	} else if err, ok := target.(*SyntaxError); ok && errors.Is(err, err.Err) {
+		return true
+	} else {
+		return se.Pos == err.Pos &&
+			se.Line == err.Line &&
+			se.Loc == err.Loc &&
+			se.File == err.File
+	}
 }
 
-func (oe *OffsetError) Error() string {
+// OffsetRangeError is a wrapped error returned when an offset value exceeds its range.
+type OffsetRangeError struct {
+	Offset uint16
+	Range  uint16
+}
+
+func (oe *OffsetRangeError) Error() string {
 	return fmt.Sprintf("offset error: %0#4x", oe.Offset)
+}
+
+// LiteralRangeError is a wrapped error returned when an offset value exceeds its range.
+type LiteralRangeError struct {
+	Literal string
+	Range   uint8
+}
+
+func (le *LiteralRangeError) Error() string {
+	return fmt.Sprintf("literal range error: %q (%0#4x, %0#4x)",
+		le.Literal, -uint16(1<<(le.Range)), 1<<(le.Range-1))
 }
 
 // RegisterError is a wrapped error returned when an instruction names an invalid register.

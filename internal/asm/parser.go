@@ -13,14 +13,12 @@ import (
 )
 
 // Parser reads source code and produces a symbol table, a syntax table and a collection of errors,
-// if any. The user calls |Parse| one or more times and then asks the Parser for the accumulated
+// if any. The user calls Parse one (or more) times and then asks the Parser for the accumulated
 // results. Some simple syntax checking is done during parsing, but it is not complete. The second
 // pass does most of semantic analysis in addition to code generation.
 //
 //	p := NewParser(logger)
 //	_ = p.Parse(os.Open("file1.asm"))
-//	_ = p.Parse(os.Open("file2.asm"))
-//	_ = p.Parse(os.Open("file3.asm"))
 //
 //	err := err.Err()
 //	println(errors.Is(err, SyntaxError{})) // true
@@ -83,29 +81,28 @@ func (p *Parser) Probe(opcode string, ins Operation) {
 	p.probeInstr = ins
 }
 
-// Parse parses an input stream. The parser takes ownership of the stream and will close it.
-func (p *Parser) Parse(in io.ReadCloser) {
-	defer func() {
-		_ = in.Close()
-	}()
+// Parse parses an input stream. If the stream implements, io.Closer, the parser takes ownership of
+// the stream and will close it.
+func (p *Parser) Parse(in io.Reader) {
+	if closer, ok := in.(io.Closer); ok {
+		defer func() {
+			_ = closer.Close()
+		}()
+	}
 
 	lines := bufio.NewScanner(in)
-	if err := lines.Err(); err != nil {
-		p.fatal = err
-		return
-	}
 
 	if file, ok := in.(interface{ Name() string }); ok {
 		p.filename = file.Name()
 	} else {
-		p.filename = "(unknown)"
+		p.filename = ""
 	}
 
 	for {
 		scanned := lines.Scan()
 
 		if err := lines.Err(); err != nil {
-			p.fatal = err
+			p.fatal = fmt.Errorf("parse: %w", err)
 			break
 		}
 
@@ -119,7 +116,7 @@ func (p *Parser) Parse(in io.ReadCloser) {
 		if err := p.parseLine(p.line); err != nil {
 			// Assume descendant accumulated syntax errors and that any errors returned are
 			// therefore fatal.
-			p.fatal = err
+			p.fatal = fmt.Errorf("parse: %w", err)
 			return
 		}
 	}
@@ -163,6 +160,8 @@ func (p *Parser) parseLine(line string) error {
 			p.fatal = err
 			return err
 		}
+
+		return nil
 	}
 
 	if matched := instructionPattern.FindStringSubmatch(remain); len(matched) > 2 {
@@ -184,8 +183,14 @@ func (p *Parser) parseLine(line string) error {
 		}
 
 		if err := p.parseInstruction(operator, operands); err != nil {
-			p.errs = append(p.errs, &SyntaxError{Loc: p.loc, Pos: p.pos, Line: p.line, Err: err})
+			p.addSyntaxError(err)
 		}
+
+		return nil
+	}
+
+	if len(remain) > 0 {
+		p.addSyntaxError(nil)
 	}
 
 	return nil
@@ -219,12 +224,12 @@ var (
 func (p *Parser) parseInstruction(opcode string, operands []string) error {
 	oper := p.parseOperator(opcode)
 	if oper == nil {
-		return errors.New("parse: operator error")
+		return ErrOpcode
 	}
 
 	err := oper.Parse(opcode, operands)
 	if err != nil {
-		return fmt.Errorf("parse: %s: %w", opcode, err)
+		return fmt.Errorf("%s: %w", opcode, err)
 	}
 
 	p.AddSyntax(oper)
@@ -424,7 +429,7 @@ func parseImmediate(oper string, n uint8) (lit uint16, sym string, err error) {
 // - -1
 func parseLiteral(operand string, n uint8) (uint16, error) {
 	if len(operand) == 0 {
-		return 0xffff, fmt.Errorf("literal error: %s", operand)
+		return 0xffff, ErrLiteral
 	}
 
 	prefix := operand[0]
@@ -440,21 +445,38 @@ func parseLiteral(operand string, n uint8) (uint16, error) {
 	}
 
 	// The parsed value must not exceed n bits, i.e. its range is [0, 2ⁿ). Using strconv.Uint16
-	// seems like the thing to do. However, it does not accept negative literals, e.g.
-	// ADD R1,R1,#-1. So, we use n+1 here, giving us the range [-2ⁿ, 2ⁿ], and checking for overflow
-	// and converting to unsigned.
+	// seems like the thing to do. However, it does not accept negative decimal literals, e.g. ADD
+	// R1,R1,#-1, which we would like to handle. So, we use a signed integer with n+1 bits, giving
+	// us the range [-2ⁿ, 2ⁿ], and checking for overflow and converting to unsigned.
 	val64, err := strconv.ParseInt(literal, 0, int(n)+1)
 	if err != nil {
-		return 0xffff, fmt.Errorf("literal error: %s %d", operand, val64)
+		return 0xffff, &LiteralRangeError{
+			Literal: literal,
+			Range:   n,
+		}
 	}
 
 	var bitmask int64 = 1<<n - 1
 
-	if val64 < -bitmask || val64 > bitmask { // 0 <= val64 < 2ⁿ
-		return 0xffff, fmt.Errorf("literal error: max: %x %s %x", 1<<n, operand, val64)
+	if val64 < -bitmask || val64 > bitmask {
+		return 0xffff, &LiteralRangeError{
+			Literal: literal,
+			Range:   n,
+		}
 	}
 
 	val16 := uint16(val64) & uint16(bitmask)
 
 	return val16, nil
+}
+
+// addSyntaxError appends a new SyntaxError wrapping err.
+func (p *Parser) addSyntaxError(err error) {
+	err = &SyntaxError{
+		Loc:  p.loc,
+		Pos:  p.pos,
+		Line: p.line,
+		Err:  err,
+	}
+	p.errs = append(p.errs, err)
 }
