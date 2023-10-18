@@ -47,7 +47,8 @@ jobs:
               -coverprofile cover.out \
               -covermode    count \
               -coverpkg     ./... \
-              -shuffle      on
+              -shuffle      on \
+              ./...
 
       - name: Report
         run: go tool cover -func=cover.out
