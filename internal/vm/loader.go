@@ -22,7 +22,7 @@ func NewLoader() *Loader {
 	return &Loader{log: logger}
 }
 
-// Load loads the obj
+// Load loads the object code starting at its origin address.
 func (l *Loader) Load(vm *LC3, obj ObjectCode) (uint16, error) {
 	var count uint16
 
@@ -46,10 +46,21 @@ func (l *Loader) Load(vm *LC3, obj ObjectCode) (uint16, error) {
 	return count, nil
 }
 
-// ObjectCode is a data structure that holds instructions and their origin offset in memory.
+func (l *Loader) LoadVector(vm *LC3, vector Word, handler ObjectCode) (uint16, error) {
+	if count, err := l.Load(vm, handler); err != nil {
+		return count, err
+	} else if err = vm.Mem.store(vector, handler.Orig); err != nil {
+		return count, fmt.Errorf("%w: %w", ErrObjectLoader, err)
+	} else {
+		return count, nil
+	}
+}
+
+// ObjectCode is a data structure that holds code and its origin offset in memory. Code may be
+// comprised of either instructions or data.
 type ObjectCode struct {
 	Orig Word
-	Code []Instruction
+	Code []Word
 }
 
 // Read loads an object from bytes.
@@ -69,7 +80,7 @@ func (obj *ObjectCode) Read(b []byte) (int, error) {
 
 	count += 2
 
-	obj.Code = make([]Instruction, len(b)/2-1)
+	obj.Code = make([]Word, len(b)/2-1)
 	err = binary.Read(in, binary.BigEndian, obj.Code)
 
 	if err != nil {

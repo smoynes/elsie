@@ -128,9 +128,9 @@ func TestAND_Generate(tt *testing.T) {
 	tcs := []generateCase{
 		{oper: &AND{DR: "R3", SR1: "R4", SR2: "R6"}, want: 0x5706},
 		{oper: &AND{DR: "R0", SR1: "R7", SYMBOL: "LABEL"}, want: 0x51e7},
-		{oper: &AND{DR: "R1", SR1: "R2", OFFSET: 0x12}, want: 0x52b2},
-		{oper: &AND{DR: "BAD", SR1: "R0", OFFSET: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
-		{oper: &AND{DR: "R7", SR1: "BAD", OFFSET: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
+		{oper: &AND{DR: "R1", SR1: "R2", LITERAL: 0x12}, want: 0x52b2},
+		{oper: &AND{DR: "BAD", SR1: "R0", LITERAL: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
+		{oper: &AND{DR: "R7", SR1: "BAD", LITERAL: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
 		{oper: &AND{DR: "R0", SR1: "R0", SR2: "R9"}, wantErr: &RegisterError{Reg: "R9"}},
 		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "BACK"}, want: 0x503e},
 		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "FAR"}, wantErr: &OffsetRangeError{Offset: 0xffd0}},

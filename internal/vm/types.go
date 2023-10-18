@@ -61,7 +61,7 @@ func (r Register) String() string {
 // Instruction is a value that encodes a single CPU operation and is stored in a special purpose
 // register. The top 4 bits of an instruction define the opcode; the remaining bits are used for
 // operands and flags.
-type Instruction Register
+type Instruction Word
 
 // NewInstruction creates a new instruction value for the given opcode.
 func NewInstruction(opcode Opcode, operands uint16) Instruction {

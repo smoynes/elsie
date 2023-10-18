@@ -21,7 +21,7 @@ func (*loaderHarness) Logger() *log.Logger {
 type loaderCase struct {
 	name         string
 	origin       Word
-	instructions []Instruction
+	instructions []Word
 	expLoaded    uint16
 	expErr       error
 }
@@ -32,15 +32,15 @@ func TestLoader(tt *testing.T) {
 	tcs := []loaderCase{{
 		name:   "Ok",
 		origin: 0x3100,
-		instructions: []Instruction{
-			NewInstruction(LEA, 0o73),
-			NewInstruction(TRAP, 0x25),
-			NewInstruction(STI, 0xdad),
+		instructions: []Word{
+			Word(NewInstruction(LEA, 0o73)),
+			Word(NewInstruction(TRAP, 0x25)),
+			Word(NewInstruction(STI, 0xdad)),
 		},
 		expLoaded: 3,
 	}, {
 		name:         "too short",
-		instructions: []Instruction{},
+		instructions: []Word{},
 		expErr:       ErrObjectLoader,
 	},
 	}
@@ -99,9 +99,9 @@ func TestObjectCode(t *testing.T) {
 		expRead: 6,
 		expObject: ObjectCode{
 			Orig: Word(0x4000),
-			Code: []Instruction{
-				Instruction(0x1234),
-				Instruction(0x5678),
+			Code: []Word{
+				Word(Instruction(0x1234).Encode()),
+				Word(Instruction(0x5678).Encode()),
 			},
 		},
 	}, {
