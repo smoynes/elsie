@@ -39,7 +39,7 @@ func (br *BR) Parse(opcode string, opers []string) error {
 	var nzp uint16
 
 	if len(opers) != 1 {
-		return errors.New("br: invalid operands")
+		return ErrOperand
 	}
 
 	switch strings.ToUpper(opcode) {
@@ -118,7 +118,7 @@ func (and AND) String() string { return fmt.Sprintf("%#v", and) }
 // Parse parses an AND instruction from its opcode and operands.
 func (and *AND) Parse(oper string, opers []string) error {
 	if len(opers) != 3 {
-		return errors.New("and: operands")
+		return ErrOperand
 	}
 
 	*and = AND{
@@ -203,7 +203,7 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 	if strings.ToUpper(opcode) != "LD" {
 		return errors.New("ld: opcode error")
 	} else if len(operands) != 2 {
-		return errors.New("ld: operand error")
+		return ErrOperand
 	}
 
 	*ld = LD{
@@ -266,7 +266,7 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 	if opcode != "LDR" {
 		return errors.New("ldr: opcode error")
 	} else if len(operands) != 3 {
-		return errors.New("ldr: operand error")
+		return ErrOperand
 	}
 
 	*ldr = LDR{
@@ -458,7 +458,7 @@ func (st *ST) Parse(opcode string, operands []string) error {
 	if opcode != "ST" {
 		return errors.New("st: opcode error")
 	} else if len(operands) != 2 {
-		return errors.New("st: operand error")
+		return ErrOperand
 	}
 
 	*st = ST{
@@ -800,11 +800,11 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 		*trap = TRAP{LITERAL: 0x25}
 		return nil
 	case opcode == "HALT" && len(operands) != 0:
-		return errors.New("trap: operand error")
+		return ErrOperand
 	case opcode != "TRAP":
 		return errors.New("trap: operator error")
 	case len(operands) != 1:
-		return errors.New("trap: operand error")
+		return ErrOperand
 	}
 
 	lit, err := parseLiteral(operands[0], 8)
@@ -980,7 +980,7 @@ func (jsrr *JSRR) Parse(opcode string, operands []string) error {
 	if opcode != "JSRR" {
 		return errors.New("jsrr: opcode error")
 	} else if len(operands) != 1 {
-		return errors.New("jsrr: operand error")
+		return ErrOperand
 	}
 
 	*jsrr = JSRR{

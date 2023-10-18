@@ -44,11 +44,11 @@ func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCas
 				if wantErr.Reg != expErr.(*RegisterError).Reg { //nolint:errorlint
 					t.Errorf("expected error: want: %#v, got: %#v", wantErr, expErr)
 				}
-			case *OffsetError:
+			case *OffsetRangeError:
 				if !errors.As(err, &wantErr) {
 					t.Errorf("expected error: want: %#v, got: %#v", expErr, err)
 				}
-				if wantErr.Offset != expErr.(*OffsetError).Offset { //nolint:errorlint
+				if wantErr.Offset != expErr.(*OffsetRangeError).Offset { //nolint:errorlint
 					t.Errorf("expected error: want: %#v, got: %#v", expErr, err)
 				}
 			case *SymbolError:
@@ -133,7 +133,7 @@ func TestAND_Generate(tt *testing.T) {
 		{oper: &AND{DR: "R7", SR1: "BAD", OFFSET: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
 		{oper: &AND{DR: "R0", SR1: "R0", SR2: "R9"}, wantErr: &RegisterError{Reg: "R9"}},
 		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "BACK"}, want: 0x503e},
-		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "FAR"}, wantErr: &OffsetError{Offset: 0xffd0}},
+		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "FAR"}, wantErr: &OffsetRangeError{Offset: 0xffd0}},
 	}
 
 	pc := uint16(0x3000)
@@ -153,7 +153,7 @@ func TestBR_Generate(tt *testing.T) {
 		{oper: &BR{NZP: 0x2, OFFSET: 0xfff0}, want: 0x05f0, wantErr: nil},
 		{oper: &BR{NZP: 0x3, SYMBOL: "LABEL"}, want: 0x0605, wantErr: nil},
 		{oper: &BR{NZP: 0x3, SYMBOL: "BACK"}, want: 0x0600, wantErr: nil},
-		{oper: &BR{NZP: 0x4, SYMBOL: "LONG"}, want: 0x061f, wantErr: &OffsetError{Offset: 0xd000}},
+		{oper: &BR{NZP: 0x4, SYMBOL: "LONG"}, want: 0x061f, wantErr: &OffsetRangeError{Offset: 0xd000}},
 	}
 
 	pc := uint16(0x3000)
@@ -175,8 +175,8 @@ func TestLDR_Generate(tt *testing.T) {
 		{oper: &LDR{DR: "R7", SR: "R4", SYMBOL: "LABEL"}, want: 0x6f05, wantErr: nil},
 		{oper: &LDR{DR: "R5", SR: "R1", SYMBOL: "BACK"}, want: 0x6a40, wantErr: nil},
 		{oper: &LDR{DR: "R3", SR: "R2", SYMBOL: "GONE"}, want: 0, wantErr: &SymbolError{0x3000, "GONE"}},
-		{oper: &LDR{DR: "R1", SR: "R3", SYMBOL: "FAR"}, want: 0, wantErr: &OffsetError{Offset: 0xbf00}},
-		{oper: &LDR{DR: "R2", SR: "R4", SYMBOL: "YONDER"}, want: 0, wantErr: &OffsetError{Offset: 0x1000}},
+		{oper: &LDR{DR: "R1", SR: "R3", SYMBOL: "FAR"}, want: 0, wantErr: &OffsetRangeError{Offset: 0xbf00}},
+		{oper: &LDR{DR: "R2", SR: "R4", SYMBOL: "YONDER"}, want: 0, wantErr: &OffsetRangeError{Offset: 0x1000}},
 		{oper: &LDR{DR: "R8", SR: "R2", SYMBOL: "LABEL"}, want: 0, wantErr: &RegisterError{Reg: "R8"}},
 		{oper: &LDR{DR: "R0", SR: "DR", SYMBOL: "LABEL"}, want: 0, wantErr: &RegisterError{Reg: "DR"}},
 	}
@@ -225,8 +225,8 @@ func TestLEA_Generate(tt *testing.T) {
 		{oper: &LEA{DR: "R0", OFFSET: 0x003f}, want: 0xe03f},
 		{oper: &LEA{DR: "R1", OFFSET: 0x01ff}, want: 0xe3ff},
 		{oper: &LEA{DR: "R2", SYMBOL: "THERE"}, want: 0xe480},
-		{oper: &LEA{DR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xfc00}},
-		{oper: &LEA{DR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0200}},
+		{oper: &LEA{DR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetRangeError{Offset: 0xfc00}},
+		{oper: &LEA{DR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetRangeError{Offset: 0x0200}},
 		{oper: &LEA{DR: "R5", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
 	}
 
@@ -248,8 +248,8 @@ func TestLDI_Generate(tt *testing.T) {
 		{oper: &LDI{SR: "R0", OFFSET: 0xffff}, want: 0xa1ff, wantErr: nil},
 		{oper: &LDI{SR: "R7", SYMBOL: "LABEL"}, want: 0xafff, wantErr: nil},
 		{oper: &LDI{SR: "R2", SYMBOL: "THERE"}, want: 0xa480},
-		{oper: &LDI{SR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xfdff}},
-		{oper: &LDI{SR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0200}},
+		{oper: &LDI{SR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetRangeError{Offset: 0xfdff}},
+		{oper: &LDI{SR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetRangeError{Offset: 0x0200}},
 		{oper: &LDI{SR: "R5", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
 	}
 
@@ -273,8 +273,8 @@ func TestST_Generate(tt *testing.T) {
 		{oper: &ST{SR: "R0", OFFSET: 0x10}, want: 0x3010, wantErr: nil},
 		{oper: &ST{SR: "R7", SYMBOL: "LABEL"}, want: 0x3fff, wantErr: nil},
 		{oper: &ST{SR: "R2", SYMBOL: "THERE"}, want: 0x3480},
-		{oper: &ST{SR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xfc00}},
-		{oper: &ST{SR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0200}},
+		{oper: &ST{SR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetRangeError{Offset: 0xfc00}},
+		{oper: &ST{SR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetRangeError{Offset: 0x0200}},
 		{oper: &ST{SR: "R5", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
 	}
 
@@ -295,8 +295,8 @@ func TestSTI_Generate(tt *testing.T) {
 		{oper: &STI{SR: "R0", OFFSET: 0x10}, want: 0xb010, wantErr: nil},
 		{oper: &STI{SR: "R7", SYMBOL: "LABEL"}, want: 0xbfff, wantErr: nil},
 		{oper: &STI{SR: "R2", SYMBOL: "THERE"}, want: 0xb480},
-		{oper: &STI{SR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xfc00}},
-		{oper: &STI{SR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0200}},
+		{oper: &STI{SR: "R3", SYMBOL: "WAYBACK"}, wantErr: &OffsetRangeError{Offset: 0xfc00}},
+		{oper: &STI{SR: "R4", SYMBOL: "OVERTHERE"}, wantErr: &OffsetRangeError{Offset: 0x0200}},
 		{oper: &STI{SR: "R5", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
 	}
 
@@ -320,8 +320,8 @@ func TestSTR_Generate(tt *testing.T) {
 		{oper: &STR{SR1: "R0", SR2: "R1", OFFSET: 0xffff}, want: 0x707f},
 		{oper: &STR{SR1: "R7", SR2: "R2", SYMBOL: "LABEL"}, want: 0x7e9f},
 		{oper: &STR{SR1: "R2", SR2: "R3", SYMBOL: "THERE"}, want: 0x74df},
-		{oper: &STR{SR1: "R3", SR2: "R4", SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xffd0}},
-		{oper: &STR{SR1: "R4", SR2: "R5", SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0040}},
+		{oper: &STR{SR1: "R3", SR2: "R4", SYMBOL: "WAYBACK"}, wantErr: &OffsetRangeError{Offset: 0xffd0}},
+		{oper: &STR{SR1: "R4", SR2: "R5", SYMBOL: "OVERTHERE"}, wantErr: &OffsetRangeError{Offset: 0x0040}},
 		{oper: &STR{SR1: "R5", SR2: "R6", SYMBOL: "DNE"}, wantErr: &SymbolError{Loc: 0x3000, Symbol: "DNE"}},
 	}
 
@@ -390,8 +390,8 @@ func TestJSR_Generate(tt *testing.T) {
 		{oper: &JSR{SYMBOL: "LABEL"}, want: 0x4fff},
 		{oper: &JSR{SYMBOL: "THERE"}, want: 0x49ff},
 		{oper: &JSR{SYMBOL: "BACK"}, want: 0x4800},
-		{oper: &JSR{SYMBOL: "WAYBACK"}, wantErr: &OffsetError{0xf7ff}},
-		{oper: &JSR{SYMBOL: "OVERTHERE"}, wantErr: &OffsetError{0x0800}},
+		{oper: &JSR{SYMBOL: "WAYBACK"}, wantErr: &OffsetRangeError{Offset: 0xf7ff}},
+		{oper: &JSR{SYMBOL: "OVERTHERE"}, wantErr: &OffsetRangeError{Offset: 0x0800}},
 	}
 
 	t.Run(pc, symbols, tcs)
@@ -557,8 +557,8 @@ func Test_CaseInsensitiveLabels(tt *testing.T) {
 		{oper: &JSR{SYMBOL: "label"}, want: 0x4fff},
 		{oper: &JSR{SYMBOL: "there"}, want: 0x49ff},
 		{oper: &JSR{SYMBOL: "back"}, want: 0x4800},
-		{oper: &JSR{SYMBOL: "wayback"}, wantErr: &OffsetError{0xf7ff}},
-		{oper: &JSR{SYMBOL: "overthere"}, wantErr: &OffsetError{0x0800}},
+		{oper: &JSR{SYMBOL: "wayback"}, wantErr: &OffsetRangeError{Offset: 0xf7ff}},
+		{oper: &JSR{SYMBOL: "overthere"}, wantErr: &OffsetRangeError{Offset: 0x0800}},
 	}
 
 	t.Run(pc, symbols, tcs)

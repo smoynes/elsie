@@ -95,16 +95,18 @@ func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
 
 	loc, ok := s[sym]
 	if !ok {
-		return 0xffff, &SymbolError{Symbol: sym, Loc: pc}
+		return badSymbol, &SymbolError{Symbol: sym, Loc: pc}
 	}
 
 	delta := int16(loc - pc)
-	bottom := ^(-1 << n)
-
 	if delta >= (1<<n) || delta < -(1<<n) {
-		return badSymbol, &OffsetError{uint16(delta)}
+		return badSymbol, &OffsetRangeError{
+			Range:  1 << n,
+			Offset: uint16(delta),
+		}
 	}
 
+	bottom := ^(-1 << n)
 	return uint16(delta) & uint16(bottom), nil
 }
 
@@ -151,12 +153,13 @@ func (se *SyntaxError) Is(target error) bool {
 	}
 }
 
-// OffsetError is a wrapped error returned when an offset value exceeds its range.
-type OffsetError struct {
+// OffsetRangeError is a wrapped error returned when an offset value exceeds its range.
+type OffsetRangeError struct {
 	Offset uint16
+	Range  uint16
 }
 
-func (oe *OffsetError) Error() string {
+func (oe *OffsetRangeError) Error() string {
 	return fmt.Sprintf("offset error: %0#4x", oe.Offset)
 }
 
