@@ -116,7 +116,7 @@ var (
 	// ErrOpcode causes a SyntaxError if an opcode is invalid or incorrect.
 	ErrOpcode = errors.New("opcode error")
 
-	// ErrOperand causes a SyntaxError if the operands of an opcode are invalid or incorrect.
+	// ErrOperand causes a SyntaxError if an opcode's operands are invalid or incorrect.
 	ErrOperand = errors.New("operand error")
 )
 
