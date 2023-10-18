@@ -6,7 +6,7 @@ virtual machine is meant to mimic or reflect the micro-architecture described in
 example, as you might see elsewhere, executing an instruction uses several function executions
 to mimic the microarchitecture.
 
-# CPU #
+# CPU
 
 The machine's CPU is extraordinarily simple. It has just:
 
@@ -16,7 +16,7 @@ The machine's CPU is extraordinarily simple. It has just:
   - an device interrupt controller
   - a memory controller
 
-# Memory #
+# Memory
 
 Memory is where we keep our most precious things: programs and data. Luckily, the LC-3 has nearly
 unlimited memory: 128 kilobytes in a 16-bit address space of 2-byte words. The addressable memory
@@ -28,7 +28,7 @@ space is divided into separate address spaces.
 
 The memory controller (or MMU) mediates access to the address spaces from the CPU.
 
-## Data Flow ##
+# Data Flow
 
 The MMU is translated logical addresses in the memory space to physical memory might be in RAM, CPU
 registers, on external devices throughout the system. The indirection of translating logical
@@ -43,7 +43,7 @@ use function arguments and return values to pass values instead. However, we use
 order to reflect the design of the LC-3 reference micro-architecture. For learning purposes, it
 helps to make the data flow explicit and try to model the clock cycles that keeps us all in time.
 
-## Access Control ##
+# Access Control
 
 The controller also enforces access control to each address space. The system space contains the
 code and data used for operating the machine and must only be accessed by privileged programs.
@@ -51,7 +51,7 @@ When the address register contains an address in the system space (or, is for a 
 device) and the processor is running with user privileges, then memory access will raise an
 access control violation (ACV) exception and a fault handler is called.
 
-## Data and Stacks ##
+# Data and Stacks
 
 The user and system spaces are further divided into regions. Primarily, each space contains a
 data region that includes global program data as well as the machine code for programs
@@ -65,13 +65,13 @@ when running with user privileges; likewise, the user's in USP while with system
 Both stacks grow down; that is, when a word is pushed onto the stack, the address decreases and
 will point at the new data on the top of the stack.
 
-# Interrupt Vector Tables #
+# Interrupt Vector Tables
 
 In addition to system data and code, the system space includes small but important tables
 containing the addresses of service routines for I/O interrupts, traps, and exceptions. The
 system loads these tables with addresses of handlers and jumps to these handlers.
 
-## Figure ##
+# Diagram
 
 Since ASCII art is worth a thousand words:
 
