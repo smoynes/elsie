@@ -1,5 +1,15 @@
-// cmd/elsie is the command-line interface to the ELSIE, an LC-3 simulator and tool suite.
-package main
+// ELSIE is a virtual machine and programming tool for the LC-3 educational computer.
+//
+// # Usage
+//
+//	go run github.com/smoynes/elsie <command>
+//
+// Commands:
+//   - exec
+//   - asm
+//   - demo
+//   - help
+package main // import "github.com/smoynes/elsie"
 
 import (
 	"context"

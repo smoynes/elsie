@@ -43,7 +43,7 @@ func (h help) Run(_ context.Context, args []string, out io.Writer, log *log.Logg
 
 func (h *help) Usage(out io.Writer) error {
 	_, err := fmt.Fprintln(out, `
-ELSIE is a virtual machine for the LC-3 educational computer.
+ELSIE is a virtual machine and programming tool for the LC-3 educational computer.
 
 Usage:
 
