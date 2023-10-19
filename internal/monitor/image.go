@@ -14,7 +14,10 @@ func WithSystemImage(image *SystemImage) vm.OptionFn {
 	return func(machine *vm.LC3, late bool) {
 		if late {
 			loader := vm.NewLoader(machine)
-			image.LoadTo(loader)
+
+			if _, err := image.LoadTo(loader); err != nil {
+				panic(err) // TODO: return error
+			}
 		}
 	}
 }
