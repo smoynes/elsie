@@ -21,12 +21,13 @@ func (*loaderHarness) Logger() *log.Logger {
 type loaderCase struct {
 	name         string
 	origin       Word
+	vector       Word
 	instructions []Word
 	expLoaded    uint16
 	expErr       error
 }
 
-func TestLoader(tt *testing.T) {
+func TestLoader_Load(tt *testing.T) {
 	tt.Parallel()
 
 	tcs := []loaderCase{{
@@ -38,6 +39,16 @@ func TestLoader(tt *testing.T) {
 			Word(NewInstruction(STI, 0xdad)),
 		},
 		expLoaded: 3,
+	}, {
+		name:   "error: overflow",
+		origin: 0xfffe,
+		instructions: []Word{
+			Word(NewInstruction(LEA, 0o73)),
+			Word(NewInstruction(TRAP, 0x25)),
+			Word(NewInstruction(STI, 0xdad)),
+		},
+		expErr:    ErrObjectLoader,
+		expLoaded: 1,
 	}, {
 		name:         "too short",
 		instructions: []Word{},
@@ -73,6 +84,83 @@ func TestLoader(tt *testing.T) {
 
 			if loaded == 0 && err == nil {
 				t.Error("none loaded")
+			}
+		})
+	}
+}
+
+func TestLoader_LoadVector(tt *testing.T) {
+	tt.Parallel()
+
+	tcs := []loaderCase{{
+		name:   "Ok",
+		origin: 0x3100,
+		vector: 0x0123,
+		instructions: []Word{
+			Word(NewInstruction(LEA, 0o73)),
+			Word(NewInstruction(TRAP, 0x25)),
+			Word(NewInstruction(STI, 0xdad)),
+		},
+		expLoaded: 3,
+	}, {
+		name:   "loader error",
+		origin: 0xffff,
+		vector: 0x0000,
+		instructions: []Word{
+			Word(NewInstruction(LEA, 0o73)),
+			Word(NewInstruction(TRAP, 0x25)),
+			Word(NewInstruction(STI, 0xdad)),
+		},
+		expErr:    ErrObjectLoader,
+		expLoaded: 0,
+	}, {
+		name:         "too short",
+		instructions: []Word{},
+		expErr:       ErrObjectLoader,
+	}, {
+		name:         "nil",
+		instructions: nil,
+		expErr:       ErrObjectLoader,
+	},
+	}
+
+	for _, tc := range tcs {
+		tc := tc
+
+		tt.Run(tc.name, func(tt *testing.T) {
+			t := loaderHarness{tt}
+			t.Parallel()
+
+			machine := New(WithLogger(t.Logger()))
+			loader := NewLoader(machine)
+
+			obj := ObjectCode{Orig: tc.origin, Code: tc.instructions}
+			loaded, err := loader.LoadVector(tc.vector, obj)
+
+			if loaded != tc.expLoaded {
+				t.Errorf("Wrong loaded count: got: %d != want: %d", loaded, tc.expLoaded)
+			}
+
+			switch {
+			case tc.expErr == nil && err != nil:
+				t.Error("unexpected error ", err)
+			case tc.expErr != nil && err == nil:
+				t.Error("expected error:", "want:", tc.expErr, "got:", err)
+			case !errors.Is(err, tc.expErr):
+				t.Error("unexpected error:", "want", tc.expErr, "got", err)
+			}
+
+			if loaded == 0 && err == nil {
+				t.Error("none loaded")
+			}
+
+			machine.Mem.MAR = Register(tc.vector)
+			if err = machine.Mem.Fetch(); err != nil {
+				t.Error("unexpected error:", "got", err)
+			}
+
+			if tc.expErr == nil && machine.Mem.MDR != Register(tc.origin) {
+				t.Error("want", tc.origin, "got", machine.Mem.MDR)
 			}
 		})
 	}
