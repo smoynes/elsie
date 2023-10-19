@@ -40,7 +40,7 @@ func TestLoader_Load(tt *testing.T) {
 		},
 		expLoaded: 3,
 	}, {
-		name:   "error: overflow",
+		name:   "loader error",
 		origin: 0xfffe,
 		instructions: []Word{
 			Word(NewInstruction(LEA, 0o73)),
@@ -114,6 +114,17 @@ func TestLoader_LoadVector(tt *testing.T) {
 		expErr:    ErrObjectLoader,
 		expLoaded: 0,
 	}, {
+		name:   "vector error",
+		origin: 0x1000,
+		vector: 0xffff,
+		instructions: []Word{
+			Word(NewInstruction(LEA, 0o73)),
+			Word(NewInstruction(TRAP, 0x25)),
+			Word(NewInstruction(STI, 0xdad)),
+		},
+		expErr:    ErrObjectLoader,
+		expLoaded: 3,
+	}, {
 		name:         "too short",
 		instructions: []Word{},
 		expErr:       ErrObjectLoader,
@@ -155,7 +166,7 @@ func TestLoader_LoadVector(tt *testing.T) {
 			}
 
 			machine.Mem.MAR = Register(tc.vector)
-			if err = machine.Mem.Fetch(); err != nil {
+			if err = machine.Mem.Fetch(); tc.expErr == nil && err != nil {
 				t.Error("unexpected error:", "got", err)
 			}
 
