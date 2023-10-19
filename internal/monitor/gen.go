@@ -27,6 +27,7 @@ type SystemImage struct {
 // handlers.
 func NewSystemImage() *SystemImage {
 	logger := log.DefaultLogger()
+
 	return &SystemImage{
 		Symbols:    asm.SymbolTable{},
 		Traps:      []vec{TrapHalt},
@@ -44,6 +45,7 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 	)
 
 	img.log.Debug("Loading traps handlers")
+
 	for _, trap := range img.Traps {
 		pc := trap.orig
 
@@ -70,6 +72,8 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 			for i := range encoded {
 				obj.Code = append(obj.Code, vm.Word(encoded[i]))
 			}
+
+			pc += 1
 		}
 
 		img.log.Debug("Loading code",
@@ -78,15 +82,11 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 			"size", len(obj.Code),
 		)
 
-		loader.LoadVector(trap.vector, obj)
-
-		if c, err := loader.Load(obj); err != nil {
+		if c, err := loader.LoadVector(trap.vector, obj); err != nil {
 			break
 		} else {
 			count += c
-			pc += 1
 		}
-
 	}
 
 	if err != nil {

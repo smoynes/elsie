@@ -60,7 +60,12 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	machine := vm.New(vm.WithLogger(logger))
 	loader := vm.NewLoader(machine)
 	img := monitor.NewSystemImage()
-	img.LoadTo(loader)
+
+	if size, err := img.LoadTo(loader); err != nil {
+		logger.Error("Error loading system image", "err", err)
+	} else {
+		logger.Debug("Loaded system image", "size", size)
+	}
 
 	logger.Info("Loading program")
 

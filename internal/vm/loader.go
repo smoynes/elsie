@@ -20,6 +20,7 @@ type Loader struct {
 // NewLoader creates a new object loader.
 func NewLoader(vm *LC3) *Loader {
 	logger := log.DefaultLogger()
+
 	return &Loader{
 		vm:  vm,
 		log: logger,
@@ -38,7 +39,7 @@ func (l *Loader) Load(obj ObjectCode) (uint16, error) {
 	)
 
 	for _, code := range obj.Code {
-		err := l.vm.Mem.store(addr, Word(code))
+		err := l.vm.Mem.store(addr, code)
 
 		if err != nil {
 			return count, fmt.Errorf("%w: %w", ErrObjectLoader, err)

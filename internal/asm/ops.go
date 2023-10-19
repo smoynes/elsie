@@ -89,7 +89,7 @@ func (br BR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 		code.Operand(br.OFFSET & 0x01ff)
 	}
 
-	return []uint16{uint16(code.Encode())}, nil
+	return []uint16{code.Encode()}, nil
 }
 
 // AND: Bitwise AND binary operator.
