@@ -2,8 +2,6 @@
 package monitor
 
 import (
-	"fmt"
-
 	"github.com/smoynes/elsie/internal/asm"
 	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/vm"
@@ -30,7 +28,8 @@ func WithDefaultSystemImage() vm.OptionFn {
 
 // SystemImage holds the initial state of memory for the machine.
 type SystemImage struct {
-	Symbols    asm.SymbolTable // System symbol table.
+	Symbols    asm.SymbolTable // Static symbol table.
+	Data       vm.ObjectCode   // System data, globally shared among all routines.
 	Traps      []Routine       // System calls are called from user context to do basic I/O.
 	ISRs       []Routine       // Interrupt service routines are called from interrupt context.
 	Exceptions []Routine       // Exception handlers are called in response to program faults.
@@ -51,8 +50,20 @@ type Routine struct {
 func NewSystemImage() *SystemImage {
 	logger := log.DefaultLogger()
 
+	data := vm.ObjectCode{
+		Orig: 0x0500,
+		Code: []vm.Word{
+			vm.Word('\n'),
+			vm.Word('b'), vm.Word('y'), vm.Word('e'), 0,
+		},
+	}
+	sym := asm.SymbolTable{}
+	sym["ASCIINEWLINE"] = 0x0500
+	sym["HALTMESSAGE"] = 0x0501
+
 	return &SystemImage{
-		Symbols:    asm.SymbolTable{},
+		Symbols:    sym,
+		Data:       data,
 		Traps:      []Routine{TrapHalt},
 		ISRs:       []Routine{},
 		Exceptions: []Routine{},
@@ -62,16 +73,12 @@ func NewSystemImage() *SystemImage {
 
 // LoadTo uses a loader to initialize the machine with the system image.
 func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
-	var (
-		err   error
-		count uint16
-	)
+	var count uint16
 
-	img.log.Debug("Loading traps handlers")
-
+	img.log.Debug("Loading trap handlers")
 	for _, trap := range img.Traps {
 		img.log.Debug("Generating code",
-			"orig", fmt.Sprintf("%0#4x", trap.Orig),
+			"orig", trap.Orig,
 			"size", len(trap.Code),
 		)
 
@@ -88,7 +95,7 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 
 			encoded, err := op.Generate(img.Symbols, uint16(pc))
 			if err != nil {
-				break
+				return count, err
 			}
 
 			for i := range encoded {
@@ -105,14 +112,10 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 		)
 
 		if c, err := loader.LoadVector(trap.Vector, obj); err != nil {
-			break
+			return count, err
 		} else {
 			count += c
 		}
-	}
-
-	if err != nil {
-		return count, err
 	}
 
 	return count, nil
