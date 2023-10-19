@@ -56,14 +56,11 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	}
 
 	logger.Info("Initializing machine")
+
 	machine := vm.New(vm.WithLogger(logger))
-
-	logger.Info("Loading trap handler")
-
-	loader := vm.NewLoader()
-	halt := monitor.TrapHalt{}
-	vector, handler := halt.Vector()
-	_, err := loader.LoadVector(machine, vector, handler)
+	loader := vm.NewLoader(machine)
+	img := monitor.NewSystemImage()
+	img.LoadTo(loader)
 
 	logger.Info("Loading program")
 
@@ -74,8 +71,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 		},
 	}
 
-	_, err = loader.Load(machine, code)
-	if err != nil {
+	if _, err := loader.Load(code); err != nil {
 		logger.Error(err.Error())
 		return 2
 	}

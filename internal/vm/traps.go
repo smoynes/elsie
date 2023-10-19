@@ -6,16 +6,16 @@ package vm
 func (vm *LC3) initializeTrapHandlers() {
 	var err error
 
-	loader := NewLoader()
+	loader := NewLoader(vm)
 
 	vm.log.Debug("Loading trap handlers", "traps", []Word{TrapHALT})
 
-	count, err := loader.Load(vm, trapHaltHandler)
+	count, err := loader.Load(trapHaltHandler)
 	if err != nil {
 		panic(err)
 	}
 
-	c, err := loader.Load(vm, trapHaltVector)
+	c, err := loader.Load(trapHaltVector)
 	if err != nil {
 		panic(err)
 	}

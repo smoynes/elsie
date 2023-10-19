@@ -13,27 +13,32 @@ import (
 
 // Loader takes object code and loads it into the machine's memory.
 type Loader struct {
+	vm  *LC3
 	log *log.Logger
 }
 
 // NewLoader creates a new object loader.
-func NewLoader() *Loader {
+func NewLoader(vm *LC3) *Loader {
 	logger := log.DefaultLogger()
-	return &Loader{log: logger}
+	return &Loader{
+		vm:  vm,
+		log: logger,
+	}
 }
 
 // Load loads the object code starting at its origin address.
-func (l *Loader) Load(vm *LC3, obj ObjectCode) (uint16, error) {
-	var count uint16
-
+func (l *Loader) Load(obj ObjectCode) (uint16, error) {
 	if len(obj.Code) == 0 {
-		return count, ErrObjectLoader
+		return 0, ErrObjectLoader
 	}
 
-	addr := obj.Orig
+	var (
+		addr  = obj.Orig
+		count = uint16(0)
+	)
 
 	for _, code := range obj.Code {
-		err := vm.Mem.store(addr, Word(code))
+		err := l.vm.Mem.store(addr, Word(code))
 
 		if err != nil {
 			return count, fmt.Errorf("%w: %w", ErrObjectLoader, err)
@@ -46,10 +51,13 @@ func (l *Loader) Load(vm *LC3, obj ObjectCode) (uint16, error) {
 	return count, nil
 }
 
-func (l *Loader) LoadVector(vm *LC3, vector Word, handler ObjectCode) (uint16, error) {
-	if count, err := l.Load(vm, handler); err != nil {
+// LoadVector stores the object and sets the vector-table entry to the object's origin address.
+func (l *Loader) LoadVector(vector Word, obj ObjectCode) (uint16, error) {
+	l.log.Debug("Loading vector", "vec", vector, "obj", obj)
+
+	if count, err := l.Load(obj); err != nil {
 		return count, err
-	} else if err = vm.Mem.store(vector, handler.Orig); err != nil {
+	} else if err = l.vm.Mem.store(vector, obj.Orig); err != nil {
 		return count, fmt.Errorf("%w: %w", ErrObjectLoader, err)
 	} else {
 		return count, nil

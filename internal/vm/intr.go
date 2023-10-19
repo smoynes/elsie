@@ -229,10 +229,10 @@ const (
 	TrapHALT  = Word(0x0025)
 )
 
-// Interrupt vector table address.
+// Interrupt service routine table and defined service routines.
 const (
-	// 0x0100:0x01ff
-	InterruptVectorTable = Word(0x0100) // IVT
+	ISRTable    = Word(0x0100) // IVT (0x0100:0x01ff)
+	ISRKeyboard = Word(0x0080) // KBD
 )
 
 // Exception vector table and defined vectors in the table.
@@ -242,10 +242,4 @@ const (
 	ExceptionPMV             = Word(0x00)   // PMV
 	ExceptionXOP             = Word(0x01)   // XOP
 	ExceptionACV             = Word(0x02)   // ACV
-)
-
-// Interrupt service routines and defined vectors.
-const (
-	ISRTable    = Word(0x0180) // ISR
-	ISRKeyboard = Word(0x80)   // KBD
 )

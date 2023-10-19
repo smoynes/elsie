@@ -52,11 +52,11 @@ func TestLoader(tt *testing.T) {
 			t := loaderHarness{tt}
 			t.Parallel()
 
-			loader := NewLoader()
 			machine := New(WithLogger(t.Logger()))
+			loader := NewLoader(machine)
 
 			obj := ObjectCode{Orig: tc.origin, Code: tc.instructions}
-			loaded, err := loader.Load(machine, obj)
+			loaded, err := loader.Load(obj)
 
 			if loaded != tc.expLoaded {
 				t.Errorf("Wrong loaded count: got: %d != want: %d", loaded, tc.expLoaded)

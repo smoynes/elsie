@@ -63,8 +63,8 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer,
 		vm.WithTrapHandlers(),
 	)
 
-	loader := vm.NewLoader()
-	count, err := loader.Load(machine, code)
+	loader := vm.NewLoader(machine)
+	count, err := loader.Load(code)
 
 	if err != nil {
 		logger.Error(err.Error())

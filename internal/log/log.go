@@ -77,7 +77,7 @@ func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
 	out := bytes.NewBuffer(buf)
 
 	if !rec.Time.IsZero() {
-		fmt.Fprintf(out, "%10s : %s\n", "TIMESTAMP", rec.Time.Format(time.RFC3339))
+		fmt.Fprintf(out, "%10s : %s\n", "TIMESTAMP", rec.Time.Format(time.RFC3339Nano))
 	}
 
 	fmt.Fprintf(out, "%10s : %s\n", "LEVEL", rec.Level.String())
