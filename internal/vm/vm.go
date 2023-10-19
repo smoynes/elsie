@@ -289,19 +289,11 @@ func (rf RegisterFile) LogValue() log.Value {
 // An OptionFn is modifies the machine during initialization. The function is called twice:
 type OptionFn func(maching *LC3, late bool)
 
-// WithSystemContext initializes the machine to use system context.
+// WithSystemContext initializes the machine to use system context, i.e. with system privileges and
+// stack.
 func WithSystemContext() OptionFn {
 	return func(vm *LC3, late bool) {
 		vm.PSR &^= (StatusPrivilege & StatusUser)
 		vm.REG[SP] = vm.SSP
-	}
-}
-
-// WithTrapHandlers initializes the system's default trap handlers.
-func WithTrapHandlers() OptionFn {
-	return func(vm *LC3, late bool) {
-		if !late {
-			vm.initializeTrapHandlers()
-		}
 	}
 }

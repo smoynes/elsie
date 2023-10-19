@@ -10,10 +10,10 @@ import (
 //   - Handler: 0x1000
 //   - Table: 0x00
 //   - Vector: 0x25
-var TrapHalt = vec{
-	vector: vm.TrapTable + vm.TrapHALT,
-	orig:   0x1000,
-	code: []asm.Operation{
+var TrapHalt = Routine{
+	Vector: vm.TrapTable + vm.TrapHALT,
+	Orig:   0x1000,
+	Code: []asm.Operation{
 		&asm.AND{DR: "R0", SR1: "R0", LITERAL: 0},
 		&asm.LEA{DR: "R1", OFFSET: 0x01},
 		&asm.STR{SR1: "R0", SR2: "R1", OFFSET: 0},
