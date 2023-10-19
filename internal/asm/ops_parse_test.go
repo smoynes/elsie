@@ -397,25 +397,25 @@ func TestLDI_Parse(t *testing.T) {
 		{
 			name:   "LDI label",
 			opcode: "LDI", operands: []string{"SR", "LABEL"},
-			want:    &LDI{SR: "SR", OFFSET: 0, SYMBOL: "LABEL"},
+			want:    &LDI{DR: "SR", OFFSET: 0, SYMBOL: "LABEL"},
 			wantErr: nil,
 		},
 		{
 			name:   "LDI literal",
 			opcode: "LDI", operands: []string{"SR", "#-1"},
-			want:    &LDI{SR: "SR", OFFSET: 0x01ff},
+			want:    &LDI{DR: "SR", OFFSET: 0x01ff},
 			wantErr: nil,
 		},
 		{
 			name:   "LDI literal too large",
 			opcode: "LDI", operands: []string{"SR", "#x0200"},
-			want:    &LDI{SR: "SR", OFFSET: 0x00},
+			want:    &LDI{DR: "SR", OFFSET: 0x00},
 			wantErr: &SyntaxError{},
 		},
 		{
 			name:   "LDI literal too negative",
 			opcode: "LDI", operands: []string{"SR", "#xff00"},
-			want:    &LDI{SR: "SR", OFFSET: 0x3f},
+			want:    &LDI{DR: "SR", OFFSET: 0x3f},
 			wantErr: &SyntaxError{},
 		},
 	}

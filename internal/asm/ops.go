@@ -383,7 +383,7 @@ func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type LDI struct {
-	SR     string
+	DR     string
 	SYMBOL string
 	OFFSET uint16
 }
@@ -400,7 +400,7 @@ func (ldi *LDI) Parse(opcode string, operands []string) error {
 	}
 
 	*ldi = LDI{
-		SR: operands[0],
+		DR: operands[0],
 	}
 
 	ldi.OFFSET, ldi.SYMBOL, err = parseImmediate(operands[1], 9)
@@ -412,10 +412,10 @@ func (ldi *LDI) Parse(opcode string, operands []string) error {
 }
 
 func (ldi LDI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
-	sr := registerVal(ldi.SR)
+	sr := registerVal(ldi.DR)
 
 	if sr == badGPR {
-		return nil, &RegisterError{"ldi", ldi.SR}
+		return nil, &RegisterError{"ldi", ldi.DR}
 	}
 
 	code := vm.NewInstruction(vm.LDI, sr<<9)

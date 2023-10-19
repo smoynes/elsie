@@ -27,7 +27,7 @@ var TrapHalt = Routine{
 		&asm.TRAP{LITERAL: 0x21},                  // PUTC
 
 		// Clear RUN flag in Machine Control Register.
-		&asm.LDI{SR: "R1", OFFSET: 8},            // Load R1 <- MCR address
+		&asm.LDI{DR: "R1", OFFSET: 8},            // Load R1 <- MCR address
 		&asm.LD{DR: "R0", OFFSET: 8},             // Load R0 <- MASK
 		&asm.AND{DR: "R0", SR1: "R1", SR2: "R0"}, // Clear top bit.
 		&asm.STI{SR: "R0", OFFSET: 6},            // Store value to MCR addr.
