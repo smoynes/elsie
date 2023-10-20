@@ -196,7 +196,7 @@ func (vm *LC3) Decode() operation {
 func (vm *LC3) EvalAddress(op operation) {
 	if op, ok := op.(addressable); ok && op.Err() == nil {
 		op.EvalAddress()
-		vm.log.Debug("eval", "OP", op)
+		vm.log.Debug("eval", "OP", op, "MAR", vm.Mem.MAR)
 	}
 }
 
@@ -204,6 +204,10 @@ func (vm *LC3) EvalAddress(op operation) {
 func (vm *LC3) FetchOperands(op operation) {
 	if op, ok := op.(fetchable); ok && op.Err() == nil {
 		if err := vm.Mem.Fetch(); err != nil {
+			vm.log.Debug("access control violation",
+				"OP", op.String(), "MAR", vm.Mem.MAR,
+			)
+
 			err = &acv{
 				&interrupt{
 					table: 0x01,
@@ -219,7 +223,7 @@ func (vm *LC3) FetchOperands(op operation) {
 		}
 
 		op.FetchOperands()
-		vm.log.Debug("fetched", "OP", op.String())
+		vm.log.Debug("fetched", "OP", op.String(), "MAR", vm.Mem.MAR, "MDR", vm.Mem.MDR)
 	}
 }
 
@@ -237,6 +241,11 @@ func (vm *LC3) StoreResult(op operation) {
 		op.StoreResult() // Can't fail.
 
 		if err := vm.Mem.Store(); err != nil {
+			vm.log.Debug("access control violation",
+				"OP", op.String(),
+				"MAR", vm.Mem.MAR,
+			)
+
 			err = &acv{
 				&interrupt{
 					table: 0x01,
@@ -251,7 +260,7 @@ func (vm *LC3) StoreResult(op operation) {
 			return
 		}
 
-		vm.log.Debug("stored", "OP", op.String())
+		vm.log.Debug("stored", "OP", op.String(), "MAR", vm.Mem.MAR, "MDR", vm.Mem.MDR)
 	}
 }
 
