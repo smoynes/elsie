@@ -56,20 +56,10 @@ func NewSystemImage() *SystemImage {
 
 	data := vm.ObjectCode{
 		Orig: 0x0500,
-		Code: []vm.Word{
-			vm.Word('\n'),
-			vm.Word('b'), vm.Word('y'), vm.Word('e'), 0,
-		},
+		Code: []vm.Word{},
 	}
 
 	sym := asm.SymbolTable{}
-	sym["ASCIINEWLINE"] = uint16(data.Orig)
-	sym["HALTMESSAGE"] = uint16(data.Orig) + 1
-
-	sym["INTMASK"] = uint16(TrapOut.Orig) + 0x1d // TODO(wtf): ???
-	sym["PSR"] = uint16(TrapOut.Orig) + 0x1e     // TODO(wtf): ???
-	sym["DSR"] = uint16(TrapOut.Orig) + 0x1f     // TODO(wtf): ???
-	sym["DDR"] = uint16(TrapOut.Orig) + 0x20     // TODO(wtf): ???
 
 	return &SystemImage{
 		Symbols: sym,
