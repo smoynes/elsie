@@ -224,15 +224,15 @@ func (ae *acv) String() string {
 
 // Trap handler table and defined vectors in the table.
 const (
-	// 0x0000:0x00ff
-	TrapTable = Word(0x0000)
-	TrapHALT  = Word(0x0025)
+	TrapTable = Word(0x0000) // TRAPs (0x0000:0x00ff)
+	TrapOUT   = Word(0x21)
+	TrapHALT  = Word(0x25)
 )
 
 // Interrupt service routine table and defined service routines.
 const (
 	ISRTable    = Word(0x0100) // IVT (0x0100:0x01ff)
-	ISRKeyboard = Word(0x0080) // KBD
+	ISRKeyboard = Word(0x80)   // KBD
 )
 
 // Exception vector table and defined vectors in the table.
