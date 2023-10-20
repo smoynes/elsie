@@ -30,7 +30,7 @@ func NewLoader(vm *LC3) *Loader {
 // Load loads the object code starting at its origin address.
 func (l *Loader) Load(obj ObjectCode) (uint16, error) {
 	if len(obj.Code) == 0 {
-		return 0, ErrObjectLoader
+		return 0, fmt.Errorf("%w: object too small", ErrObjectLoader)
 	}
 
 	var (
