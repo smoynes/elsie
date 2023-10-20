@@ -2,6 +2,8 @@
 package monitor
 
 import (
+	"fmt"
+
 	"github.com/smoynes/elsie/internal/asm"
 	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/vm"
@@ -26,9 +28,10 @@ func WithDefaultSystemImage() vm.OptionFn {
 	return WithSystemImage(NewSystemImage())
 }
 
-// SystemImage holds the initial state of memory for the machine.
+// SystemImage holds the initial state of memory for the machine. After construction, the image is
+// loaded into the machine using the poorly named LoadTo function.
 type SystemImage struct {
-	Symbols    asm.SymbolTable // Static symbol table.
+	Symbols    asm.SymbolTable // System or monitor symbol table.
 	Data       vm.ObjectCode   // System data, globally shared among all routines.
 	Traps      []Routine       // System calls are called from user context to do basic I/O.
 	ISRs       []Routine       // Interrupt service routines are called from interrupt context.
@@ -40,9 +43,10 @@ type SystemImage struct {
 // Routine represents a system-defined system handler. Each routine's code is stored at an origin
 // offset. The machine dispatches to the routine using an entry in a vector table.
 type Routine struct {
-	Vector vm.Word         // Vector table-entry.
-	Orig   vm.Word         // Origin-offset address.
-	Code   []asm.Operation // Code and data.
+	Vector  vm.Word         // Vector table-entry.
+	Orig    vm.Word         // Origin-offset address.
+	Code    []asm.Operation // Code and data.
+	Symbols asm.SymbolTable // Routine symbols.
 }
 
 // NewSystemImage creates a default system image including basic I/O system calls and exception
@@ -57,14 +61,23 @@ func NewSystemImage() *SystemImage {
 			vm.Word('b'), vm.Word('y'), vm.Word('e'), 0,
 		},
 	}
+
 	sym := asm.SymbolTable{}
-	sym["ASCIINEWLINE"] = 0x0500
-	sym["HALTMESSAGE"] = 0x0501
+	sym["ASCIINEWLINE"] = uint16(data.Orig)
+	sym["HALTMESSAGE"] = uint16(data.Orig) + 1
+
+	sym["INTMASK"] = uint16(TrapOut.Orig) + 0x1d // TODO(wtf): ???
+	sym["PSR"] = uint16(TrapOut.Orig) + 0x1e     // TODO(wtf): ???
+	sym["DSR"] = uint16(TrapOut.Orig) + 0x1f     // TODO(wtf): ???
+	sym["DDR"] = uint16(TrapOut.Orig) + 0x20     // TODO(wtf): ???
 
 	return &SystemImage{
-		Symbols:    sym,
-		Data:       data,
-		Traps:      []Routine{TrapHalt},
+		Symbols: sym,
+		Data:    data,
+		Traps: []Routine{
+			TrapHalt,
+			TrapOut,
+		},
 		ISRs:       []Routine{},
 		Exceptions: []Routine{},
 		log:        logger,
@@ -73,9 +86,10 @@ func NewSystemImage() *SystemImage {
 
 // LoadTo uses a loader to initialize the machine with the system image.
 func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
-	var count uint16
-
 	img.log.Debug("Loading trap handlers")
+
+	count := uint16(0)
+
 	for _, trap := range img.Traps {
 		img.log.Debug("Generating code",
 			"orig", trap.Orig,
@@ -88,14 +102,28 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 			Code: make([]vm.Word, 0, len(trap.Code)),
 		}
 
+		// This is wild.
+		sym := asm.SymbolTable{}
+
+		for label, addr := range img.Symbols {
+			sym[label] = addr
+		}
+
+		for label, addr := range trap.Symbols {
+			sym[label] = addr
+		}
+
+		// TODO: This is eerily similar to Generator.WriteTo. The difference are:
+		//   - here, errors are not wrapped/unwrapped
+		//   - instead of writing bytes to a Writer, vm.Word are appended to a buffer
 		for _, op := range trap.Code {
 			if op == nil {
 				continue
 			}
 
-			encoded, err := op.Generate(img.Symbols, uint16(pc))
+			encoded, err := op.Generate(sym, uint16(pc))
 			if err != nil {
-				return count, err
+				return count, fmt.Errorf("pc: %v (%s): %w", pc, op, err)
 			}
 
 			for i := range encoded {
