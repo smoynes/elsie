@@ -9,10 +9,10 @@ import (
 //   - Table:   0x0000
 //   - Vector:  0x25
 //   - Handler: 0x0520
-//   - Size:    0x13
 //
 // Adapted from Fig. 9.14, 3/e.
 var TrapHalt = Routine{
+	Name:   "HALT",
 	Vector: vm.TrapTable + vm.TrapHALT,
 	Orig:   0x0520,
 	Symbols: asm.SymbolTable{
@@ -66,10 +66,9 @@ var TrapHalt = Routine{
 //   - Handler: 0x0420
 //   - Size:    ??
 //
-// Adapted from Fig. 9.14, 3/e.
-//
 // Adapted from Fig. 9.22, 3/e.
 var TrapOut = Routine{
+	Name:   "OUT",
 	Vector: vm.TrapTable + vm.TrapOUT,
 	Orig:   0x0420,
 	Symbols: asm.SymbolTable{

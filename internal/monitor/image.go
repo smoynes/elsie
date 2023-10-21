@@ -43,6 +43,7 @@ type SystemImage struct {
 // Routine represents a system-defined system handler. Each routine's code is stored at an origin
 // offset. The machine dispatches to the routine using an entry in a vector table.
 type Routine struct {
+	Name    string          // Debug friend.
 	Vector  vm.Word         // Vector table-entry.
 	Orig    vm.Word         // Origin-offset address.
 	Code    []asm.Operation // Code and data.
@@ -59,7 +60,7 @@ func NewSystemImage() *SystemImage {
 		Code: []vm.Word{},
 	}
 
-	sym := asm.SymbolTable{}
+	sym := asm.SymbolTable{} // TODO: No global symbols.
 
 	return &SystemImage{
 		Symbols: sym,
@@ -82,7 +83,9 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 
 	for _, trap := range img.Traps {
 		img.log.Debug("Generating code",
+			"trap", trap.Name,
 			"orig", trap.Orig,
+			"symbols", len(trap.Symbols),
 			"size", len(trap.Code),
 		)
 
@@ -123,10 +126,11 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 			pc += 1
 		}
 
-		img.log.Debug("Loading code",
+		img.log.Debug("Loading vector",
+			"trap", trap.Name,
 			"orig", trap.Orig,
-			"vector", trap.Vector,
-			"size", len(obj.Code),
+			"symbols", len(trap.Symbols),
+			"size", len(trap.Code),
 		)
 
 		if c, err := loader.LoadVector(trap.Vector, obj); err != nil {
