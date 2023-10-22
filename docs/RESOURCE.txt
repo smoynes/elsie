@@ -1,0 +1,39 @@
+        Resources
+=========================
+
+The authors of the following resources are true heroes.
+
+The textbook is, of course, required reading. All due credit to Yale N. Patt and
+Sanjay Patel:
+
+  Introduction to Computing Systems: From Bits & Gates to C/C++ & Beyond, 3e.
+  https://www.mheducation.com/highered/product/introduction-computing-systems-bits-gates-c-c-beyond-patt-patel/M9781260150537.html
+
+Student resources for second edition. There are problem and solution sets that
+are useful, even if they do reference a previous edition with a few significant
+differences:
+
+  Introduction to Computing Systems: From Bits and Gates to C and Beyond, 2/e
+  https://highered.mheducation.com/sites/0072467509/
+
+The learning tools used in courses taught by Dr. Patt. Cross platform GUI and
+CLI, assembler, tester, and samples. It is updated to the third edition and is
+indispensable:
+
+  LC3Tools
+  https://github.com/chiragsakhuja/lc3tools
+
+A really fantastic web-based simulator and assembler:
+
+  LC-3 Simulator
+  https://wchargin.com/lc3web/
+
+Another instructor's treatment of the ISA:
+
+  LC-3 ISA, Lecture Notes
+  https://www.cs.utexas.edu/users/fussell/courses/cs310h/lectures/Lecture_10-310h.pdf
+
+A fun blog post:
+
+  Post-apocalyptic programming
+  https://zserge.com/posts/post-apocalyptic-programming/
