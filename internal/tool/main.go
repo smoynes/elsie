@@ -23,12 +23,12 @@ Commands:
 func main() {
 	args := os.Args
 	dir, err := os.Getwd()
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	for {
-		dir = path.Dir(dir)
 		file := path.Join(dir, "go.mod")
 
 		if _, err := os.Stat(file); err == nil {
