@@ -1,34 +1,45 @@
-# TODO #
+                                Project Tracker
+================================================================================
 
+      Simple tools for complex problems -- a text file is often all you need.
+
+-----------------------------
+            TODO
+-----------------------------
+
+- BIOS: (this is a lot of work)
+  - [ ] TRAP x21
+  - [ ] TRAP x23
+  - [ ] TRAP x25
+  - [ ] "linker", hex encoding
+- [ ] EXEC: keyboard works
+- DOCS:
+  - [.] tutorial
+  - [ ] design
+  - [.] development
+- [ ] MONITOR: trap, exception, and interrupt routines
 - ASM:
   - [.] document grammar more completely
   - directives remaining:
     - [ ] .END
     - [ ] .EXTERNAL
-- [ ] LOAD: polish loader
-- BIOS:
-  - [ ] TRAP x21
-  - [ ] TRAP x23
-  - [ ] TRAP x25
-  - [ ] system loader
-- [ ] EXEC: keyboards
-- DOCS:
-  - [.] tutorial
-  - [ ] design
-- [ ] MONITOR: trap, exception, and interrupt routines
+- [ ] TERM: finish the terminal I/O
 - [ ] LINK: code linker
-- [ ] DUMP: hex encoder
+- [ ] LOAD: load intel hex system images
+- [ ] DUMP: intel hex encoder
 - [ ] CLI: sub commands for tools, terminal, repl
 - [ ] LOG: program output to STDOUT, logging output to STDERR (unless in
       demo)
-- [ ] TERM: finish the terminal I/O
 - [ ] REPL: step debugger shell
 - [ ] TIMER: simple timer device
 - [ ] NEWLANG: interpreted language; threaded compiler
+- [ ] WEBASM: portability
 
 ... more to come.
 
-## DID ##
+-----------------------------
+            DONE
+-----------------------------
 
 - ASM:
  - [x] LOAD: object loader, really basic
@@ -52,7 +63,9 @@
   - [x] memory mapped I/O
   - [x] hardware interrupts
 
-## IDEAS ##
+-----------------------------
+           IDEAS
+-----------------------------
 
  I've thought about:
 
@@ -65,7 +78,3 @@
     IPC services, or even a microkernel;
   - concurrency and parallelism, _e.g._ co-operative sequential processes,
     preemptive multitasking, multicore execution.
-
-Admittedly, some of these experiments are pretty straightforward, while others
-appear daunting and complex; some are immediate goals, but most are mere thought
-experiments. Trying to do all of that work might be a path in madness.
