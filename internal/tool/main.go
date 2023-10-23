@@ -16,8 +16,9 @@ var usage = `go run internal/tool <COMMAND>
 
 Commands:
 
-- deps: checks build dependencies: (stringer, docker)
-- container: builds docker image: smoynes/elsie
+- deps       checks build dependencies: (stringer, docker)
+- container  builds docker image: smoynes/elsie
+- lint       check style with golangci-lint
 `
 
 func main() {
@@ -34,7 +35,7 @@ func main() {
 		if _, err := os.Stat(file); err == nil {
 			break
 		} else if os.IsNotExist(err) {
-			dir = path.Join(file, "..")
+			dir = path.Dir(dir)
 		} else {
 			log.Fatal(err)
 		}
@@ -47,11 +48,15 @@ func main() {
 	switch {
 	case len(args) == 2 && os.Args[1] == "deps":
 		if err := installTools(); err != nil {
-			os.Exit(-1)
+			log.Fatal(err)
 		}
 	case len(args) == 2 && os.Args[1] == "container":
 		if err := dockerBuild(); err != nil {
-			os.Exit(-1)
+			log.Fatal(err)
+		}
+	case len(args) == 2 && os.Args[1] == "lint":
+		if err := golangciLint(); err != nil {
+			log.Fatal(err)
 		}
 	default:
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", usage)
@@ -79,6 +84,7 @@ func installTools() error {
 func dockerBuild() error {
 	docker := exec.Command("docker", "build", "-t", "smoynes/elsie", ".")
 	out, err := docker.StderrPipe()
+
 	if err != nil {
 		return fmt.Errorf("docker: pipe: %w", err)
 	}
@@ -104,8 +110,40 @@ func dockerBuild() error {
 		return fmt.Errorf("docker: wait: %w", err)
 	}
 
-	println("Built container: smoynes/elsie:latest")
-	println("  docker run smoynes/elsie")
+	println("\n\nBuilt container:")
+	println("\tdocker run smoynes/elsie")
+
+	return nil
+}
+
+func golangciLint() error {
+	linter := exec.Command("golangci-lint", "run")
+	out, err := linter.StdoutPipe()
+
+	if err != nil {
+		return fmt.Errorf("golangci-lint: pipe: %w", err)
+	}
+
+	if err = linter.Start(); err != nil {
+		return fmt.Errorf("golangci-lint: run: %w", err)
+	}
+
+	fmt.Println("golangci-lint:")
+
+	for {
+		copied, err := io.Copy(os.Stdout, out)
+		if err != nil {
+			return fmt.Errorf("golangci-lint: io: %w", err)
+		}
+
+		if copied == 0 {
+			break
+		}
+	}
+
+	if err = linter.Wait(); err != nil {
+		return fmt.Errorf("golangci-lint: wait: %w", err)
+	}
 
 	return nil
 }
