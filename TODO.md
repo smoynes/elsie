@@ -51,3 +51,21 @@
   - [x] service traps
   - [x] memory mapped I/O
   - [x] hardware interrupts
+
+## IDEAS ##
+
+ I've thought about:
+
+  - running some programs written by others;
+  - building a simple compiler for high-level language;
+  - extending the ISA with new instructions, data types, or a math co-processor;
+  - adding new I/O devices tape storage, block storage, or network emulators and
+    adapters;
+  - expanding the operating system, with new system calls, a runtime library,
+    IPC services, or even a microkernel;
+  - concurrency and parallelism, _e.g._ co-operative sequential processes,
+    preemptive multitasking, multicore execution.
+
+Admittedly, some of these experiments are pretty straightforward, while others
+appear daunting and complex; some are immediate goals, but most are mere thought
+experiments. Trying to do all of that work might be a path in madness.

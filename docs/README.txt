@@ -53,12 +53,13 @@ It is a lot closer to a PDP/11 machine than anything you have in your home or
 pocket. Nevertheless, it is still takes quite a lot of effort to understand well
 enough to write programs.
 
-    Project Goals
----------------------
+-----------------------------
+       Project Goals
+-----------------------------
 
 ELSIE is not novel: hardware simulators already exist for the LC-3 architecture,
 of course. The textbook publishers provide one and there are many others freely
-available online.[^4] This one is admittedly a mere reinvention of the wheel.
+available online.[1] This one is admittedly a mere reinvention of the wheel.
 That said, the gift the design and engineering process affords is that sometimes
 it reveals something fundamental about either our world or ourselves. So, I
 think, it is worth retreading the path.
@@ -82,50 +83,32 @@ gain a better understanding of the essence of computing. If nothing else is
 achieved than learning a bit, exploring some ideas, and hearing a few good
 stories, it will have been worth it.
 
-I have lots to learn, many ideas for experiments, and a few more plans to bring
-to my workbench. I've thought about:
-
-  - simulating the LS-3 ISA in software;
-  - building development tools like an assembler, linker, loader, and step-wise
-    debugger;
-  - writing some programs in assembly, translating to machine code;
-  - running some programs written by others;
-  - building a simple compiler for high-level language[^2];
-  - extending the ISA with new instructions, data types, or a math co-processor;
-  - adding new I/O devices tape storage, block storage, or network emulators and
-    adapters;
-  - expanding the operating system, with new system calls, a runtime library,
-    IPC services, or even a microkernel;
-  - concurrency and parallelism, _e.g._ co-operative sequential processes,
-    preemptive multitasking, multicore execution.
-
-Admittedly, some of these experiments are pretty straightforward, while others
-appear daunting and complex; some are immediate goals, but most are mere thought
-experiments. Trying to do all of that work might be a path in madness.
-
 -----------------------------
        Get in Touch
 -----------------------------
 
+I have lots to learn, many ideas for experiments to run, and even a few more
+project plans to bring to my workbench.
+
 You are welcome to reach out if:
 
   - you're a fellow learner;
-  - if you find this project useful (or buggy); or,
-  - if you have any questions or feedback.
+  - if you find this project useful or buggy; or,
+  - if you have any ideas or questions or feedback.
 
-You can start a [discussion](https://github.com/smoynes/elsie/discussions) on
-this project or you're welcome to contact me directly through my GitHub profile.
+You can start a discussion on this project
+<https://github.com/smoynes/elsie/discussions> or you're welcome to contact me
+directly through my GitHub profile.
 
-Please browse the code or follow the project if you enjoy the absurdist
-theatrics of a curious software engineer. As ever, I simply seek to understand
-the essence of computing and to embody _Shokunin Kishitsu_ (職人気質), the
-artisan's spirit.
+Please follow the project if you enjoy the absurdist theatrics of a curious
+software engineer. As ever, I simply seek to understand the essence of computing
+and to embody _Shokunin Kishitsu_ (職人気質), the artisan's spirit.
 
 -----------------------------
          Dedication
 -----------------------------
 
-This work is dedicated to the MCM/70[^3] and its pioneering designers.
+This work is dedicated to the MCM/70[2] and its pioneering designers.
 
 -----------------------------
         Documentation
@@ -139,11 +122,10 @@ This work is dedicated to the MCM/70[^3] and its pioneering designers.
          Footnotes
 -----------------------------
 
-[1]: Leading to the creation of another dynamically typed, interpreted language.
-     It is inevitable.
-[2]: https://en.wikipedia.org/wiki/MCM/70
-[3]: You can find references to other tools and some useful resources in
+[1]: You can find references to other tools and a few useful resources in
      docs/RESOURCES.txt.
+
+[2]: https://en.wikipedia.org/wiki/MCM/70
 
 -----------------------------
 
