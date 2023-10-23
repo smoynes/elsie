@@ -1,0 +1,71 @@
+        Development Guide
+=================================
+
+This document describes how to develop ELSIE.
+
+Go version 1.21 is required. In general, standard Go tooling is used to build,
+install, manage dependencies, etc. The following commands complete a single
+development cycle:
+
+        git clone https://github.com/smoynes/elsie.git
+        go generate ./...
+        go build
+        go test
+        go doc
+        go run . demo
+
+If you do not have Go installed and you are using a Windows, macOS or Linux, you
+may find instructions how to download a release here: https://golang.org/dl/. If
+you are using another platform and its developers support Go, use that one
+instead. For example, on Raspberry Pi OS:
+
+        sudo apt install go
+
+If you have Go installed, but do not have version 1.21, you can install a recent
+release using the instructions here: https://go.dev/doc/manage-install. For
+example, again for Raspberry Pi OS:
+
+        go install golang.org/dl/go1.21.3@latest
+        alias go="~/gobin/go1.21.3"
+        go download
+
+-----------------------------
+        Cross compile
+-----------------------------
+
+To compile a binary for another platform, e.g. my Raspberry Pi Model B:
+
+        GOOS=linux GOARCH=arm GOARM=6 \
+        go build -o elsie.armv6l.bin .
+
+-----------------------------
+        Dependencies
+-----------------------------
+
+ELSIE has the following dependencies:
+
+  - Go, the programming language and its tools.
+  - golang.org/x/tools/cmd/stringer to generate debug strings for constant
+    values.
+  - optionally, Docker to build container images.
+  - optionally, golangci-lint to check Go coding style.
+
+As a learning tool, ELSIE has a design goal that its development should simple
+and easy. To that end, dependencies are restricted to only tools, packages, and
+methods that are supported by the Go Development Team. This includes Go and its
+standard library, of course, but also includes modules in the "golang.org/x"
+namespace, modules for dependency management, and simple text file formats.
+
+Each design decision that introduces a dependency adds complexity, limits
+portability, and requires another skill or trivial knowledge from future
+developers. Often, it has been found, something that is easy in the short term
+makes things unexpectedly more difficult over longer time scales. So, we limit
+ourselves to essential tools only. Notably, this excludes some very common and
+standard tools like make, shell and YAML.
+
+Go is not perfect, nor are its developer's or corporate sponsors infallible; far
+from it in fact. However, by acknowledging its flaws and yet embracing
+minimalism and Normhaus design, we make space for essential understanding and
+creativity to form and we build things that have a better chance of standing the
+tests of time. So long as Go is maintained, we can expect some motivated people
+to be able to fix its problems.
