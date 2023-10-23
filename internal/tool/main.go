@@ -47,7 +47,7 @@ func main() {
 
 	switch {
 	case len(args) == 2 && os.Args[1] == "deps":
-		if err := installTools(); err != nil {
+		if err := deps(); err != nil {
 			log.Fatal(err)
 		}
 	case len(args) == 2 && os.Args[1] == "container":
@@ -63,19 +63,23 @@ func main() {
 	}
 }
 
-func installTools() error {
+func deps() error {
 	if stringer, err := exec.LookPath("stringer"); err != nil {
-		return fmt.Errorf("stringer: %w", err)
+		return fmt.Errorf("stringer (required): %w", err)
 	} else {
-		fmt.Println("stringer:", stringer)
+		fmt.Println("stringer (required):", stringer)
 	}
 
-	docker := exec.Command("docker", "version")
-
-	if err := docker.Run(); err != nil {
-		return fmt.Errorf("docker: version: %w", err)
+	if linter, err := exec.LookPath("golangci-lint"); err != nil {
+		return fmt.Errorf("golangci-lint (optional): %w", err)
 	} else {
-		fmt.Println("docker:", docker)
+		fmt.Println("golangci-lint (optional):", linter)
+	}
+
+	if docker, err := exec.LookPath("docker"); err != nil {
+		return fmt.Errorf("docker (optional): version: %w", err)
+	} else {
+		fmt.Println("docker (optional):", docker)
 	}
 
 	return nil
