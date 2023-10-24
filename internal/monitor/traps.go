@@ -10,53 +10,41 @@ import (
 //   - Vector:  0x25
 //   - Handler: 0x0520
 //
-// Adapted from Fig. 9.14, 3/e.
+// Adapted from https://github.com/chiragsakhuja/lc3tools/tree/master/src/lc3os.cpp
 var TrapHalt = Routine{
 	Name:   "HALT",
 	Vector: vm.TrapTable + vm.TrapHALT,
 	Orig:   0x0520,
 	Symbols: asm.SymbolTable{
-		"ASCIINEWLINE": 0x052f - 1,
-		"SAVER0":       0x0530 - 1,
-		"SAVER1":       0x0531 - 1,
-		"HALTMESSAGE":  0x0532 - 1,
-		"MCR":          0x0533 - 1,
-		"MASK":         0x0534 - 1,
+		"HALTMESSAGE": 0x0526 - 1,
+		"MCR":         0x0527 - 1,
+		"MASK":        0x0528 - 1,
 	},
 	Code: []asm.Operation{
-		/* 0x0520 */
-		&asm.ST{SR: "R1", SYMBOL: "SAVER1"}, // R1 -> [SAVER1] ; Store R1 to hold MCR address.
-		&asm.ST{SR: "R0", SYMBOL: "SAVER0"}, // R0 -> [SAVER0] ; Store R0 to hold temporary value.
-
 		// Print a message. Alert the media.
-		/* 0x0522 */
-		&asm.LD{DR: "R0", SYMBOL: "ASCIINEWLINE"},
-		&asm.TRAP{LITERAL: 0x21}, // OUT
+		/* 0x0520 */
 		&asm.LEA{DR: "R0", SYMBOL: "HALTMESSAGE"},
 		&asm.TRAP{LITERAL: 0x21}, // TODO: PUTS
-		&asm.LD{DR: "R0", SYMBOL: "ASCIINEWLINE"},
-		&asm.TRAP{LITERAL: 0x21}, // OUT
 
 		// Clear RUN flag in Machine Control Register.
-		/* 0x0528 */
-		&asm.LDI{DR: "R1", SYMBOL: "MCR"},        // Fetch R1 <- [MCR] ; Load MCR.
-		&asm.LD{DR: "R0", SYMBOL: "MASK"},        // Fetch R0 <- MASK ; Load bitmask.
-		&asm.AND{DR: "R0", SR1: "R1", SR2: "R0"}, // Clear top bit.
-		&asm.STI{SR: "R0", SYMBOL: "MCR"},        // Store R0 -> [MCR] ; Replace value in MCR.
+		/* 0x0522 */
+		&asm.LDI{DR: "R0", SYMBOL: "MCR"},        // R0 <- [MCR] ; Load MCR.
+		&asm.LD{DR: "R1", SYMBOL: "MASK"},        // R1 <- MASK ; Load bitmask.
+		&asm.AND{DR: "R0", SR1: "R0", SR2: "R1"}, // R1 <- R0 & R1 ; Clear top bit using bit mask
+		&asm.STI{SR: "R0", SYMBOL: "MCR"},        // [MCR]<- R0 ; Replace value in MCR.
 
-		// Exit from HALT(!?): restore registers and return from trap.
-		/* 0x052c */
-		&asm.LD{DR: "R1", OFFSET: 0x0003},
-		&asm.LD{DR: "R0", OFFSET: 0x0001},
-		&asm.RTI{},
+		// Halt again, if we reach here, forever.
+		/* 0x0525 */
+		&asm.BR{
+			NZP:    uint8(vm.ConditionNegative | vm.ConditionPositive | vm.ConditionZero),
+			SYMBOL: "",
+			OFFSET: ^(uint16(5)) + 1,
+		},
 
 		// Routine data.
-		/* 0x052f */ &asm.FILL{LITERAL: uint16('\n')}, // ASCIINEWLINE.
-		/* 0x0530 */ &asm.BLKW{ALLOC: 1}, // Stored R0.
-		/* 0x0531 */ &asm.BLKW{ALLOC: 1}, // Stored R1.
-		/* 0x0532 */ &asm.STRINGZ{LITERAL: "!"}, // HALTMESSAGE.
-		/* 0x0533 */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // What it says.
-		/* 0x0534 */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
+		/* 0x0526 */ &asm.STRINGZ{LITERAL: "!"}, // HALTMESSAGE.
+		/* 0x0527 */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // I/O address of MCR.
+		/* 0x0528 */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
 	},
 }
 
