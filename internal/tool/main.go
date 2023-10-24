@@ -1,9 +1,10 @@
 // Package tool defines very naive scripts for development tasks. These are not intended to be
-// portable and simply replace equivalent shell scripts. Just like shell, it is a miracle when these
-// scripts work at all.
+// portable and simply replace rote commands with tasks. Think of them as executable screenplays.
+// Just like shell, it is a miracle when these scripts work at all.
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -16,32 +17,15 @@ var usage = `go run internal/tool <COMMAND>
 
 Commands:
 
-- deps       checks build dependencies: (stringer, docker)
+- deps       checks build dependencies: (stringer, docker, golangci-lint)
 - container  builds docker image: smoynes/elsie
 - lint       check style with golangci-lint
 `
 
 func main() {
 	args := os.Args
-	dir, err := os.Getwd()
 
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for {
-		file := path.Join(dir, "go.mod")
-
-		if _, err := os.Stat(file); err == nil {
-			break
-		} else if os.IsNotExist(err) {
-			dir = path.Dir(dir)
-		} else {
-			log.Fatal(err)
-		}
-	}
-
-	if err := os.Chdir(dir); err != nil {
+	if err := projectWorkingDirectory(); err != nil {
 		log.Fatal(err)
 	}
 
@@ -61,6 +45,40 @@ func main() {
 	default:
 		fmt.Fprintf(os.Stderr, "Usage: %s\n", usage)
 	}
+}
+
+// projectWorkingDirectory finds the project directory and changes the working directory to it. The
+// project directory is the working directory or its ancestor with a go.mod file. If a project
+// directory is not found or, to prevent inadvertent catastrophes, it is found to be a root
+// directory, an error is returned.
+func projectWorkingDirectory() error {
+	dir, err := os.Getwd()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for {
+		file := path.Join(dir, "go.mod")
+
+		if _, err := os.Stat(file); err == nil {
+			break
+		} else if os.IsNotExist(err) {
+			dir = path.Dir(dir)
+		} else {
+			return err
+		}
+	}
+
+	if dir == path.Dir(dir) {
+		return errors.New("project directory is root directory")
+	}
+
+	if err := os.Chdir(dir); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func deps() error {
