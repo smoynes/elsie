@@ -23,7 +23,7 @@ performance. As such, it is much more than mere software.
 The LC-3 computer was designed as a educational tool for undergraduate
 computer-engineering students and is described in detail in an excellent
 textbook, _Introduction to Computing Systems: From Bits & Gates to C/C++ and
-Beyond_ (3/e), by Yale Patt and Sanjay Patal.
+Beyond_ (3/e), by Yale Patt and Sanjay Patel.
 
 The LC-3 instruction set and architecture includes:
 
