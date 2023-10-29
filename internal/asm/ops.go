@@ -796,14 +796,23 @@ func (trap TRAP) String() string { return fmt.Sprintf("%#v", trap) }
 
 func (trap *TRAP) Parse(opcode string, operands []string) error {
 	switch {
-	case opcode == "HALT" && len(operands) == 0:
-		*trap = TRAP{LITERAL: 0x25}
+	case opcode == "HALT":
+		if len(operands) != 0 {
+			return fmt.Errorf("HALT: %w", ErrOperand)
+		}
+		*trap = TRAP{LITERAL: uint16(vm.TrapHALT)}
 		return nil
-	case opcode == "HALT" && len(operands) != 0:
-		return ErrOperand
-	case opcode != "TRAP":
-		return errors.New("trap: operator error")
-	case len(operands) != 1:
+	case opcode == "OUT":
+		if len(operands) != 0 {
+			return fmt.Errorf("HALT: %w", ErrOperand)
+		}
+		*trap = TRAP{LITERAL: uint16(vm.TrapOUT)}
+		return nil
+	case opcode == "TRAP":
+		if len(operands) != 1 {
+			return ErrOperand
+		}
+	default:
 		return ErrOperand
 	}
 
