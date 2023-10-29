@@ -16,9 +16,9 @@ var TrapHalt = Routine{
 	Vector: vm.TrapTable + vm.TrapHALT,
 	Orig:   0x0520,
 	Symbols: asm.SymbolTable{
-		"HALTMESSAGE": 0x0526 - 1,
-		"MCR":         0x0527 - 1,
-		"MASK":        0x0528 - 1,
+		"HALTMESSAGE": 0x0527,
+		"MCR":         0x0528,
+		"MASK":        0x0529,
 	},
 	Code: []asm.Operation{
 		// Print a message. Alert the media.
@@ -34,7 +34,7 @@ var TrapHalt = Routine{
 		&asm.STI{SR: "R0", SYMBOL: "MCR"},        // [MCR]<- R0 ; Replace value in MCR.
 
 		// Halt again, if we reach here, forever.
-		/* 0x0525 */
+		/* 0x0526 */
 		&asm.BR{
 			NZP:    uint8(vm.ConditionNegative | vm.ConditionPositive | vm.ConditionZero),
 			SYMBOL: "",
@@ -42,9 +42,9 @@ var TrapHalt = Routine{
 		},
 
 		// Routine data.
-		/* 0x0526 */ &asm.STRINGZ{LITERAL: "!"}, // HALTMESSAGE.
-		/* 0x0527 */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // I/O address of MCR.
-		/* 0x0528 */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
+		/* 0x0527 */ &asm.STRINGZ{LITERAL: "!"}, // HALTMESSAGE.
+		/* 0x0528 */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // I/O address of MCR.
+		/* 0x0529 */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
 	},
 }
 

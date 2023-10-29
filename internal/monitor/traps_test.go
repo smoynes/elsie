@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/smoynes/elsie/internal/asm"
@@ -18,16 +19,7 @@ func (*trapHarness) Logger() *log.Logger {
 func TestTrap_Halt(tt *testing.T) {
 	t := trapHarness{tt}
 
-	trap := TrapHalt
-	haltRoutine := Routine{
-		Name:    "Test" + trap.Orig.String(),
-		Vector:  0x35,
-		Orig:    trap.Orig,
-		Code:    trap.Code,
-		Symbols: trap.Symbols,
-	}
-
-	obj, err := Generate(haltRoutine)
+	obj, err := Generate(TrapHalt)
 
 	if err != nil {
 		t.Error(err)
@@ -56,7 +48,7 @@ func TestTrap_Halt(tt *testing.T) {
 		log:     t.Logger(),
 		Symbols: nil,
 		Traps: []Routine{
-			haltRoutine,
+			TrapHalt,
 			putsRoutine},
 	}
 
@@ -75,12 +67,18 @@ func TestTrap_Halt(tt *testing.T) {
 	loader := vm.NewLoader(machine)
 	loader.Load(code)
 
-	err = machine.Step()
-	if err != nil {
-		t.Error(err)
+	machine.MCR = 0xffff
+
+	for i := 0; i < 100; i++ {
+		err = machine.Step()
+		if errors.Is(err, vm.ErrHalted) {
+			break
+		} else if err != nil {
+			t.Error(err)
+		}
 	}
 
-	if machine.PC != 0x3000 {
+	if machine.MCR.Running() {
 		t.Error("pc", machine)
 	}
 }

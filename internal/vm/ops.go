@@ -249,8 +249,6 @@ func (op *ld) Execute() {
 //	| 1010 | DR | OFFSET9 |
 //	|------+--------------|
 //	|15  12|11 9|8       0|
-//
-// .
 type ldi struct {
 	mo
 	dr     GPR

@@ -10,6 +10,9 @@ import (
 	"github.com/smoynes/elsie/internal/log"
 )
 
+// ErrHalted is a wrapped error returned when the CPU is stepped while the HALT flag in MCR is set.
+var ErrHalted = errors.New("halted")
+
 // Run starts and executes the instruction cycle until the program halts.
 func (vm *LC3) Run(ctx context.Context) error {
 	var err error
@@ -83,7 +86,9 @@ func (vm *LC3) serviceInterrupts() error {
 //
 // An instruction implements methods according to its operational semantics; see [operation].
 func (vm *LC3) Step() error {
-	if err := vm.Fetch(); err != nil {
+	if !vm.MCR.Running() {
+		return fmt.Errorf("ins: %w", ErrHalted)
+	} else if err := vm.Fetch(); err != nil {
 		return fmt.Errorf("ins: %w", err)
 	}
 
@@ -223,7 +228,8 @@ func (vm *LC3) FetchOperands(op operation) {
 		}
 
 		op.FetchOperands()
-		vm.log.Debug("fetched", "OP", op.String(), "MAR", vm.Mem.MAR, "MDR", vm.Mem.MDR)
+		vm.log.Debug("fetched", "OP", op.String(),
+			"MAR", vm.Mem.MAR, "MDR", vm.Mem.MDR)
 	}
 }
 
