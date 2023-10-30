@@ -20,26 +20,35 @@ func (vm *LC3) Run(ctx context.Context) error {
 	vm.log.Info("START", log.Group("STATE", vm))
 
 	for {
-		if err := ctx.Err(); err != nil {
-			return err
+		if err = ctx.Err(); err != nil {
+			break
 		} else if !vm.MCR.Running() {
 			break
 		}
 
-		err = vm.Step()
-		if err != nil {
+		if err = vm.Step(); err != nil {
 			break
 		}
 
 		vm.log.Info("EXEC", log.Group("STATE", vm))
 
-		err = vm.serviceInterrupts()
-		if err != nil {
+		if err = vm.serviceInterrupts(); err != nil {
 			break
 		}
 	}
 
-	vm.log.Info("HALTED (HCF)", log.Group("STATE", vm))
+	if err != nil {
+		vm.log.Error(
+			"HALTED (HCF)",
+			"ERR", err,
+			log.Group("STATE", vm),
+		)
+	} else {
+		vm.log.Info(
+			"HALTED (TRAP)",
+			log.Group("STATE", vm),
+		)
+	}
 
 	return err
 }
@@ -54,10 +63,10 @@ func (vm *LC3) serviceInterrupts() error {
 			psr:   vm.PSR,
 		}
 
-		vm.log.Debug("interrupt requested", "ISR", isr)
+		vm.log.Debug("INTR raised", "ISR", isr)
 
 		if err := isr.Handle(vm); err != nil {
-			// TODO: Handle error.
+			// TODO: Double fault handler!
 			return fmt.Errorf("int: %w", err)
 		}
 	}
@@ -96,11 +105,9 @@ func (vm *LC3) Step() error {
 	vm.EvalAddress(op)
 	vm.FetchOperands(op)
 	vm.Execute(op)
-	vm.StoreResult(op)
+	vm.Writeback(op)
 
-	err := op.Err()
-
-	if err == nil {
+	if err := op.Err(); err == nil {
 		vm.log.Debug("executed instruction", "OP", op)
 
 		return nil
@@ -207,10 +214,18 @@ func (vm *LC3) EvalAddress(op operation) {
 
 // FetchOperands reads from memory into a CPU register if the operation is fetchable.
 func (vm *LC3) FetchOperands(op operation) {
-	if op, ok := op.(fetchable); ok && op.Err() == nil {
+	if op.Err() != nil {
+		return
+	}
+
+	if op, ok := op.(fetchable); ok {
 		if err := vm.Mem.Fetch(); err != nil {
-			vm.log.Debug("access control violation",
-				"OP", op.String(), "MAR", vm.Mem.MAR,
+			vm.log.Debug(
+				"ACV raised",
+				"OP", op.String(),
+				"MAR", vm.Mem.MAR,
+				"PL", vm.PSR.Privilege(),
+				"ERR", err,
 			)
 
 			err = &acv{
@@ -228,28 +243,55 @@ func (vm *LC3) FetchOperands(op operation) {
 		}
 
 		op.FetchOperands()
-		vm.log.Debug("fetched", "OP", op.String(),
-			"MAR", vm.Mem.MAR, "MDR", vm.Mem.MDR)
+
+		vm.log.Debug(
+			"loaded",
+			"OP", op.String(),
+			"MAR", vm.Mem.MAR,
+			"MDR", vm.Mem.MDR,
+		)
 	}
 }
 
 // Execute does the operation.
 func (vm *LC3) Execute(op operation) {
-	if op, ok := op.(executable); ok && op.Err() == nil {
+	if op.Err() != nil {
+		return
+	}
+
+	if op, ok := op.(executable); ok {
 		op.Execute()
-		vm.log.Debug("exec", log.String("OP", op.String()))
+		vm.log.Debug(
+			"executed",
+			"OP", op.String(),
+			"ERR", op.Err(),
+		)
 	}
 }
 
-// StoreResult writes registers to memory if the operation is storable.
-func (vm *LC3) StoreResult(op operation) {
-	if op, ok := op.(storable); ok && op.Err() == nil {
-		op.StoreResult() // Can't fail.
+// Writeback writes registers to memory if the operation is storable.
+func (vm *LC3) Writeback(op operation) {
+	if op.Err() != nil {
+		return
+	}
+
+	vm.log.Debug(
+		"writeback",
+		"OP", op.String(),
+		"MAR", vm.Mem.MAR,
+		"MDR", vm.Mem.MDR,
+	)
+
+	if op, ok := op.(storable); ok {
+		op.StoreResult()
 
 		if err := vm.Mem.Store(); err != nil {
-			vm.log.Debug("access control violation",
+			vm.log.Debug(
+				"ACV raised",
 				"OP", op.String(),
 				"MAR", vm.Mem.MAR,
+				"PL", vm.PSR.Privilege(),
+				"ERR", err,
 			)
 
 			err = &acv{
@@ -266,7 +308,12 @@ func (vm *LC3) StoreResult(op operation) {
 			return
 		}
 
-		vm.log.Debug("stored", "OP", op.String(), "MAR", vm.Mem.MAR, "MDR", vm.Mem.MDR)
+		vm.log.Debug(
+			"wroteback",
+			"OP", op.String(),
+			"MAR", vm.Mem.MAR,
+			"MDR", vm.Mem.MDR,
+		)
 	}
 }
 
