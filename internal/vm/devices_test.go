@@ -94,8 +94,8 @@ func TestDisplayDriver(tt *testing.T) {
 			statusAddr, Word(0x8000), got)
 	}
 
-	if got, err := displayDriver.Read(dataAddr); err == nil {
-		t.Errorf("expected read error: %s", dataAddr)
+	if got, err := displayDriver.Read(dataAddr); err != nil {
+		t.Errorf("unexpected expected read error: %s", err)
 	} else if got == Word(uninitialized) {
 		t.Errorf("uninitialized display register: %s:%s", dataAddr, got)
 	}

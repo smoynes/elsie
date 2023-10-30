@@ -61,10 +61,10 @@ var TrapOut = Routine{
 	Orig:   0x0420,
 	Symbols: asm.SymbolTable{
 		"POLL":    0x0429,
-		"INTMASK": 0x0436,
-		"PSR":     0x0437,
-		"DSR":     0x0438,
-		"DDR":     0x0439,
+		"INTMASK": 0x0435,
+		"PSR":     0x0436,
+		"DSR":     0x0437,
+		"DDR":     0x0438,
 	},
 	Code: []asm.Operation{
 		// Push R1,R2,R3 onto the stack.
@@ -91,7 +91,7 @@ var TrapOut = Routine{
 		&asm.STI{SR: "R2", SYMBOL: "PSR"}, // Store R2 -> [PSR] ; Disable interrupts.
 
 		/*0x042b */
-		&asm.LDI{DR: "R3", SYMBOL: "DSR", OFFSET: 0}, // Fetch R3 <- [DSR] ; Check status.
+		&asm.LDI{DR: "R3", SYMBOL: "DSR"}, // Fetch R3 <- [DSR] ; Check status.
 		&asm.BR{ // Branch if not-ready.
 			NZP:    uint8(vm.ConditionZero | vm.ConditionPositive),
 			SYMBOL: "POLL",
@@ -120,8 +120,8 @@ var TrapOut = Routine{
 
 		// Trap-scoped variables.
 		/*0x0436 */ &asm.FILL{LITERAL: 0xbfff}, // MASK to disable interrupts.
-		/*0x0437 */ &asm.FILL{LITERAL: uint16(vm.PSRAddr)}, // Register I/O addresses.
-		/*0x0438 */ &asm.FILL{LITERAL: uint16(vm.DSRAddr)},
-		/*0x0439 */ &asm.FILL{LITERAL: uint16(vm.DDRAddr)},
+		/*0x0437 */ &asm.FILL{LITERAL: uint16(vm.PSRAddr)}, // I/O addresses: processor status-,
+		/*0x0438 */ &asm.FILL{LITERAL: uint16(vm.DSRAddr)}, // display status-, and
+		/*0x0439 */ &asm.FILL{LITERAL: uint16(vm.DDRAddr)}, // display data-registers
 	},
 }

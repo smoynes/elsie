@@ -197,9 +197,9 @@ const (
 
 func (ps ProcessorStatus) String() string {
 	return fmt.Sprintf(
-		"%s (N:%t Z:%t P:%t PR:%d PL:%d)",
-		Word(ps), ps.Negative(), ps.Zero(), ps.Positive(), ps.Privilege(),
-		ps.Priority(),
+		"%s (N:%t Z:%t P:%t PR:%s PL:%d)",
+		Word(ps), ps.Negative(), ps.Zero(), ps.Positive(),
+		ps.Privilege(), ps.Priority(),
 	)
 }
 
@@ -295,5 +295,17 @@ func WithSystemContext() OptionFn {
 	return func(vm *LC3, late bool) {
 		vm.PSR &^= (StatusPrivilege & StatusUser)
 		vm.REG[SP] = vm.SSP
+	}
+}
+
+// WithDisplay is an option function that configures a callback that is called for displayed words.
+// It uses late initialization under the assumption startup output is not listened for.
+func WithDisplayListener(listener func(uint16)) OptionFn {
+	return func(vm *LC3, late bool) {
+		if late {
+			driver := vm.Mem.Devices.Get(DDRAddr).(*DisplayDriver)
+			display := driver.handle.device
+			display.Listen(listener)
+		}
 	}
 }

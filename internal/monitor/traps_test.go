@@ -116,19 +116,24 @@ func TestTrap_Out(tt *testing.T) {
 		},
 	}
 
+	displayed := make(chan uint16, 10)
 	machine := vm.New(
 		WithSystemImage(&image),
+		vm.WithDisplayListener(func(out uint16) {
+			select {
+			case displayed <- out:
+			}
+		}),
 	)
 	loader := vm.NewLoader(machine)
 
-	machine.REG[vm.R0] = 0x3010
 	msg := vm.ObjectCode{
 		Orig: 0x3010,
 		Code: []vm.Word{
-			0x003A,
-			0x003B,
-			0x003C,
-			0x0021,
+			0x3A3A,
+			0x3B3B,
+			0x3C3C,
+			0x2121,
 			0x0000,
 		},
 	}
@@ -139,26 +144,40 @@ func TestTrap_Out(tt *testing.T) {
 		Orig: 0x3000,
 		Code: []vm.Word{
 			vm.Word(vm.NewInstruction(
-				vm.TRAP,
-				uint16(vm.TrapOUT)).Encode(),
+				vm.TRAP, uint16(vm.TrapOUT)).Encode(),
+			),
+			vm.Word(vm.NewInstruction(
+				vm.TRAP, uint16(vm.TrapHALT)).Encode(),
 			),
 		},
 	}
+
 	loader.Load(code)
 
-	for i := 0; i < 200; i++ {
-		if machine.IR < 0x3000 {
-			continue
-		}
-
-		t.Logf("DDR")
+	for i := 0; i < 56; i++ {
 		err = machine.Step()
+
+		t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)
+
 		if err != nil {
-			t.Error(err)
+			t.Errorf("Step error %s", err)
+			break
+		} else if machine.PC > 0x3000 {
+			break
+		} else if !machine.MCR.Running() {
+			break
 		}
 	}
 
-	if !machine.MCR.Running() {
-		t.Error("pc", machine)
+	close(displayed)
+
+	var vals []uint16
+	for out := range displayed {
+		t.Logf("output: %04x", out)
+		vals = append(vals, out)
+	}
+
+	if len(vals) != 3 {
+		t.Errorf("displayed %+v", vals)
 	}
 }

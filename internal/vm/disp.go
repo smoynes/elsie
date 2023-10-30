@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"context"
 	"fmt"
 	"sync"
 )
@@ -77,13 +76,30 @@ func (disp *Display) Write(data Register) {
 	disp.notify()
 }
 
+// Read returns the value of the display data register.
+func (disp *Display) Read() Register {
+	disp.mut.Lock()
+	defer disp.mut.Unlock()
+
+	return disp.ddr
+}
+
 // DSR returns the value of the display status register.
 func (disp *Display) DSR() Register {
-	// Locking here is dubious.
 	disp.mut.Lock()
 	defer disp.mut.Unlock()
 
 	return disp.dsr
+}
+
+// Status updates the value of the display status register and returns the previous value.
+func (disp *Display) SetDSR(val Register) Register {
+	disp.mut.Lock()
+	defer disp.mut.Unlock()
+
+	prev := disp.dsr
+	disp.dsr = val
+	return prev
 }
 
 // Listen adds a display listener. Every listener function is called every time the display data is
@@ -101,9 +117,9 @@ func (disp *Display) notify() {
 		fn(uint16(disp.ddr))
 	}
 
-	// After notifying all that care, the display is ready for more data. Despite the recommendation
-	// to poll for device readiness, with few listeners and the device lock held, the program isn't
-	// likely to see the device as not ready.
+	// After notifying all that care to listen, the display is ready for more data. Despite the
+	// recommendation to poll for device readiness, with few listeners and the device lock held, the
+	// program isn't likely to see the device as not ready.
 	disp.dsr |= DisplayReady
 }
 
@@ -121,18 +137,6 @@ type DisplayDriver struct {
 	// Addresses to which the registers are mapped.
 	statusAddr Word
 	dataAddr   Word
-}
-
-// WithDisplayDriver creates a new display and its driver. It returns a cancellation function that
-// will release display resources.
-func WithDisplayDriver(parent context.Context) (context.Context, *DisplayDriver, context.CancelFunc) {
-	var (
-		display     = NewDisplay()
-		driver      = NewDisplayDriver(display)
-		ctx, cancel = context.WithCancel(parent)
-	)
-
-	return ctx, driver, cancel
 }
 
 // NewDisplayDriver creates a new driver for the display. The driver has ownership of the device.
@@ -154,11 +158,14 @@ func (driver *DisplayDriver) Init(vm *LC3, addrs []Word) {
 
 // Read gets the status of the display device. Reading any other address returns an error.
 func (driver *DisplayDriver) Read(addr Word) (Word, error) {
-	if addr == driver.statusAddr {
+	switch addr {
+	case driver.statusAddr:
 		return Word(driver.handle.device.DSR()), nil
+	case driver.dataAddr:
+		return Word(driver.handle.device.Read()), nil
+	default:
+		return Word(0xdea1), fmt.Errorf("read: %w: %s:%s", ErrNoDevice, addr, driver)
 	}
-
-	return Word(0xdea1), fmt.Errorf("read: %w: %s:%s", ErrNoDevice, addr, driver)
 }
 
 // InterruptRequested returns true when the display raises an interrupt request. For our purposes,
@@ -170,12 +177,16 @@ func (driver *DisplayDriver) InterruptRequested() bool {
 
 // Write sets the data register of the display device. Writing any other address returns an error.
 func (driver *DisplayDriver) Write(addr Word, value Register) error {
-	if addr == driver.dataAddr {
+	switch addr {
+	case driver.dataAddr:
 		driver.handle.device.Write(value)
 		return nil
+	case driver.statusAddr:
+		driver.handle.device.SetDSR(value)
+		return nil
+	default:
+		return fmt.Errorf("write: %w: %s:%s", ErrNoDevice, addr, driver)
 	}
-
-	return fmt.Errorf("write: %w: %s:%s", ErrNoDevice, addr, driver)
 }
 
 func (driver *DisplayDriver) String() string {
