@@ -275,14 +275,14 @@ func (vm *LC3) Writeback(op operation) {
 		return
 	}
 
-	vm.log.Debug(
-		"writeback",
-		"OP", op.String(),
-		"MAR", vm.Mem.MAR,
-		"MDR", vm.Mem.MDR,
-	)
-
 	if op, ok := op.(storable); ok {
+		vm.log.Debug(
+			"writeback",
+			"OP", op.String(),
+			"MAR", vm.Mem.MAR,
+			"MDR", vm.Mem.MDR,
+		)
+
 		op.StoreResult()
 
 		if err := vm.Mem.Store(); err != nil {

@@ -317,8 +317,6 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	| 1110 | DR | OFFSET9 |
 //	|------+----+---------|
 //	|15  12|11 9|8       0|
-//
-// .
 type LEA struct {
 	DR     string
 	SYMBOL string
