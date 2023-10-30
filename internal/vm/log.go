@@ -35,6 +35,7 @@ func (vm *LC3) LogValue() log.Value {
 		log.String("MDR", vm.Mem.MDR.String()),
 		log.Any("INT", vm.INT),
 		log.Any("REG", vm.REG),
+		log.Any("DDR", vm.Mem.Devices.DDR()),
 	)
 }
 

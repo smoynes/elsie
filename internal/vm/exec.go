@@ -20,6 +20,13 @@ func (vm *LC3) Run(ctx context.Context) error {
 	vm.log.Info("START", log.Group("STATE", vm))
 
 	for {
+		select {
+		case <-ctx.Done():
+			vm.log.Warn("CANCELLED")
+			return ctx.Err()
+		default:
+		}
+
 		if err = ctx.Err(); err != nil {
 			break
 		} else if !vm.MCR.Running() {

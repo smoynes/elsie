@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -48,6 +49,9 @@ func (d *demo) FlagSet() *cli.FlagSet {
 }
 
 func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logger) int {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	if d.quiet {
 		log.LogLevel.Set(log.Error)
 	}
@@ -89,25 +93,41 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	}
 
 	go func() {
+		logger.Info("Starting display")
+
 		timer := time.NewTicker(1200 * time.Millisecond)
 		defer timer.Stop()
 
 		for {
 			select {
 			case disp := <-dispCh:
-				println(disp)
+				r := rune(disp)
+				fmt.Printf("%c", r)
+			case <-ctx.Done():
+				return
 			}
 
 			<-timer.C
 		}
 	}()
 
-	logger.Info("Starting machine")
+	go func() {
+		logger.Info("Starting machine")
 
-	if err := machine.Run(ctx); err != nil {
-		logger.Error(err.Error())
-		return 2
-	}
+		err := machine.Run(ctx)
+
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			logger.Warn("Demo timeout")
+			return
+		default:
+			logger.Error(err.Error())
+		}
+	}()
+
+	<-ctx.Done()
+
+	close(dispCh)
 
 	logger.Info("Demo completed")
 

@@ -42,7 +42,7 @@ var TrapHalt = Routine{
 		},
 
 		// Routine data.
-		/* 0x0527 */ &asm.STRINGZ{LITERAL: "!"}, // HALTMESSAGE.
+		/* 0x0527 */ &asm.STRINGZ{LITERAL: "HALT THIS NONSENSE AT ONCE!"}, // HALTMESSAGE.
 		/* 0x0528 */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // I/O address of MCR.
 		/* 0x0529 */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
 	},
