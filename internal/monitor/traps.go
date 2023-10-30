@@ -60,11 +60,11 @@ var TrapOut = Routine{
 	Vector: vm.TrapTable + vm.TrapOUT,
 	Orig:   0x0420,
 	Symbols: asm.SymbolTable{
-		"POLL":    0x0429 - 1,
-		"INTMASK": 0x0436 - 1,
-		"PSR":     0x0437 - 1,
-		"DSR":     0x0438 - 1,
-		"DDR":     0x0439 - 1,
+		"POLL":    0x0429,
+		"INTMASK": 0x0436,
+		"PSR":     0x0437,
+		"DSR":     0x0438,
+		"DDR":     0x0439,
 	},
 	Code: []asm.Operation{
 		// Push R1,R2,R3 onto the stack.
@@ -80,14 +80,14 @@ var TrapOut = Routine{
 		/*0x0426 */
 		&asm.LDI{DR: "R1", SYMBOL: "PSR"},
 
-		// R1 <- [PSR] & ^IE ; Keep PSR with interrupts disabled.
+		// R2 <- [PSR] & ^IE ; Keep PSR with interrupts disabled.
 		/*0x0427 */
 		&asm.LD{DR: "R2", SYMBOL: "INTMASK"},
 		&asm.AND{DR: "R2", SR1: "R1", SR2: "R2"},
 
 		// POLL
 		/*0x0429 */
-		&asm.STI{SR: "R1", SYMBOL: "PSR"}, // Store R1 -> [PSR] ; Enable interrupts (possibly).
+		&asm.STI{SR: "R1", SYMBOL: "PSR"}, // Store R1 -> [PSR] ; Enable interrupts, if prev enabled.
 		&asm.STI{SR: "R2", SYMBOL: "PSR"}, // Store R2 -> [PSR] ; Disable interrupts.
 
 		/*0x042b */
