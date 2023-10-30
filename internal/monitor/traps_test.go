@@ -73,7 +73,7 @@ func TestTrap_Halt(tt *testing.T) {
 
 	machine.MCR = 0xffff
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		err = machine.Step()
 		if errors.Is(err, vm.ErrHalted) {
 			break
@@ -154,7 +154,7 @@ func TestTrap_Out(tt *testing.T) {
 
 	loader.Load(code)
 
-	for i := 0; i < 56; i++ {
+	for i := 0; i < 1000; i++ {
 		err = machine.Step()
 
 		t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)
