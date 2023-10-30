@@ -12,10 +12,11 @@ import (
 // When the machine writes to the display, the device automatically clears its interrupt-ready
 // status-flag to indicate the display buffer is full. Once the device completely outputs the
 // character, it sets the ready flag again. In the meantime, if the machine writes to the display
-// before the device clears the buffer, data is overwritten and precious data is lost. Don't do it!
-// Instead, programs should poll until the device is ready.
+// before the device clears the flag, data is overwritten and precious data could be lost. Don't do
+// it! Instead, programs should poll until the device is ready.
 type Display struct {
-	// mut provides mutually exclusive R/W access to the device registers.
+	// mut provides mutually exclusive R/W access to the device registers. TODO: Locking ought to be
+	// done by the driver in terms of conceptual model.
 	mut *sync.Mutex
 
 	// Display Status Register. The top two bits encode the interrupt-ready and enable flags. When
@@ -32,7 +33,8 @@ type Display struct {
 
 	// Listeners. Each listener function is called every time the data register is written. Listener
 	// functions must not block, fail, or panic. Really, the value should be written to a buffered
-	// channel or otherwise asynchronously handle the event.
+	// channel or otherwise asynchronously handle the event. TODO: The listeners are driver-level
+	// types.
 	list []func(uint16)
 }
 
@@ -57,11 +59,12 @@ func (disp *Display) Init(_ *LC3, _ []Word) {
 	}
 
 	disp.mut.Lock()
+	defer disp.mut.Unlock()
+
 	disp.dsr = DisplayReady // Born ready.
 	disp.ddr = 0x2368       // ⍨
-	disp.mut.Unlock()
-
 	disp.notify()
+
 }
 
 // Write updates the display data register with the given data. It (briefly) clears the ready
