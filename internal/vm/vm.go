@@ -64,7 +64,7 @@ func New(opts ...OptionFn) *LC3 {
 		}
 	)
 
-	vm.withLogger(log.DefaultLogger())
+	vm.updateLogger(log.DefaultLogger())
 
 	// Run early init.
 	for _, fn := range opts {
