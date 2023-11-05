@@ -9,9 +9,9 @@ comprehensive, and imaginary.
 The project includes:
 
  - a virtual machine, that executes instructions;
- - a system monitor or BIOS, that implements system calls;
  - an assembler, for translating from LCASM source to machine code;
  - a loader, that puts programs into memory;
+ - a system monitor or BIOS, that implements system calls;
  - virtual devices for display and keyboard I/O;
  - many unnecessary words by your author; and
  - maybe, more to come…

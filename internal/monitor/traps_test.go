@@ -100,7 +100,7 @@ func TestTrap_Out(tt *testing.T) {
 		t.Error(err)
 	}
 
-	if len(obj.Code) < 9 {
+	if len(obj.Code) < 15 {
 		// Code must be AT LEAST 15 words: 12 instructions and a few bytes of data.
 		t.Error("code too short", len(obj.Code))
 	} else if len(obj.Code) >= 50 {
@@ -127,34 +127,20 @@ func TestTrap_Out(tt *testing.T) {
 	)
 	loader := vm.NewLoader(machine)
 
-	msg := vm.ObjectCode{
-		Orig: 0x3010,
-		Code: []vm.Word{
-			0x3A3A,
-			0x3B3B,
-			0x3C3C,
-			0x2121,
-			0x0000,
-		},
-	}
-
-	loader.Load(msg)
-
 	code := vm.ObjectCode{
 		Orig: 0x3000,
 		Code: []vm.Word{
 			vm.Word(vm.NewInstruction(
 				vm.TRAP, uint16(vm.TrapOUT)).Encode(),
 			),
-			vm.Word(vm.NewInstruction(
-				vm.TRAP, uint16(vm.TrapHALT)).Encode(),
-			),
 		},
 	}
 
 	loader.Load(code)
 
-	for i := 0; i < 1000; i++ {
+	machine.REG[vm.R0] = 0x2365
+
+	for i := 0; i < 100; i++ {
 		err = machine.Step()
 
 		t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)
@@ -173,11 +159,10 @@ func TestTrap_Out(tt *testing.T) {
 
 	var vals []uint16
 	for out := range displayed {
-		t.Logf("output: %04x", out)
 		vals = append(vals, out)
 	}
 
-	if len(vals) != 3 {
+	if len(vals) != 1 || vals[0] != 0x2365 {
 		t.Errorf("displayed %+v", vals)
 	}
 }

@@ -42,17 +42,16 @@ var TrapHalt = Routine{
 		},
 
 		// Routine data.
-		/* 0x0527 */ &asm.STRINGZ{LITERAL: "HALT THIS NONSENSE AT ONCE!"}, // HALTMESSAGE.
+		/* 0x0527 */ &asm.STRINGZ{LITERAL: "HALT!"}, // HALTMESSAGE.
 		/* 0x0528 */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // I/O address of MCR.
 		/* 0x0529 */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
 	},
 }
 
-// TrapOut is the system call to write a character to the display.
+// TrapOut is the system call to write a single character to the display.
 //   - Table:   0x0000
 //   - Vector:  0x21
 //   - Handler: 0x0420
-//   - Size:    ??
 //
 // Adapted from Fig. 9.22, 3/e.
 var TrapOut = Routine{
@@ -92,12 +91,12 @@ var TrapOut = Routine{
 
 		/*0x042b */
 		&asm.LDI{DR: "R3", SYMBOL: "DSR"}, // Fetch R3 <- [DSR] ; Check status.
-		&asm.BR{ // Branch if not-ready.
+		&asm.BR{ // Branch if top bit is 0, i.e. display not-ready.
 			NZP:    uint8(vm.ConditionZero | vm.ConditionPositive),
 			SYMBOL: "POLL",
 		},
 
-		// R0 -> [DDR] ; Store trap argument R0 in DDR.
+		// R0 -> [DDR] ; Store trap argument from R0 into DDR.
 		/*0x042d */
 		&asm.STI{SR: "R0", SYMBOL: "DDR"},
 

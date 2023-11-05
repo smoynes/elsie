@@ -83,6 +83,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	code := vm.ObjectCode{
 		Orig: 0x3000,
 		Code: []vm.Word{
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapHALT))),
 		},
 	}
@@ -92,10 +93,17 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 		return 2
 	}
 
+	machine.REG[vm.R0] = 0x2364
+
+	if _, err := loader.Load(code); err != nil {
+		logger.Error("error loading code:", err)
+		return 2
+	}
+
 	go func() {
 		logger.Info("Starting display")
 
-		timer := time.NewTicker(1200 * time.Millisecond)
+		timer := time.NewTicker(800 * time.Millisecond)
 		defer timer.Stop()
 
 		for {
