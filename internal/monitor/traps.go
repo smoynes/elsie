@@ -13,7 +13,7 @@ import (
 // Adapted from https://github.com/chiragsakhuja/lc3tools/tree/master/src/lc3os.cpp
 var TrapHalt = Routine{
 	Name:   "HALT",
-	Vector: vm.TrapTable + vm.TrapHALT,
+	Vector: vm.TrapTable + vm.Word(vm.TrapHALT),
 	Orig:   0x0520,
 	Symbols: asm.SymbolTable{
 		"HALTMESSAGE": 0x0527,
@@ -56,7 +56,7 @@ var TrapHalt = Routine{
 // Adapted from Fig. 9.22, 3/e.
 var TrapOut = Routine{
 	Name:   "OUT",
-	Vector: vm.TrapTable + vm.TrapOUT,
+	Vector: vm.TrapTable + vm.Word(vm.TrapOUT),
 	Orig:   0x0420,
 	Symbols: asm.SymbolTable{
 		"POLL":    0x0429,

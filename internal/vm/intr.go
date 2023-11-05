@@ -224,9 +224,10 @@ func (ae *acv) String() string {
 
 // Trap handler table and defined vectors in the table.
 const (
-	TrapTable = Word(0x0000) // TRAPs (0x0000:0x00ff)
-	TrapOUT   = Word(0x21)
-	TrapHALT  = Word(0x25)
+	TrapTable = Word(0x0000) // TRAP (0x0000:0x00ff)
+	TrapOUT   = uint8(0x21)  // OUT
+	TrapPUTS  = uint8(0x22)  // PUTS
+	TrapHALT  = uint8(0x25)  // HALT
 )
 
 // Interrupt service routine table and defined service routines.
@@ -237,8 +238,7 @@ const (
 
 // Exception vector table and defined vectors in the table.
 const (
-	// 0x0100:0x017f
-	ExceptionServiceRoutines = Word(0x0100) // EXC
+	ExceptionServiceRoutines = Word(0x0100) // EXC // 0x0100:0x017f
 	ExceptionPMV             = Word(0x00)   // PMV
 	ExceptionXOP             = Word(0x01)   // XOP
 	ExceptionACV             = Word(0x02)   // ACV

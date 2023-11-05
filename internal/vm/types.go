@@ -283,13 +283,13 @@ const (
 )
 
 // Condition represents a NZP condition operand from an instruction.
-type Condition Word
+type Condition uint8
 
 // Condition flags.
 const (
-	ConditionPositive Condition = 0x1 // P
-	ConditionZero     Condition = 0x2 // Z
-	ConditionNegative Condition = 0x4 // N
+	ConditionPositive = Condition(1 << iota) // P
+	ConditionZero                            // Z
+	ConditionNegative                        // N
 )
 
 func (c Condition) String() string {
