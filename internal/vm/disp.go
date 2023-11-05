@@ -77,6 +77,11 @@ func (disp *Display) Write(data Register) {
 	disp.dsr &^= DisplayReady
 
 	disp.notify()
+
+	// After notifying all that listeners, the display is ready for more data. Despite the
+	// recommendation to poll for device readiness, the program isn't likely to see the device as
+	// not ready because we set READY before returning from the write request.
+	disp.dsr |= DisplayReady
 }
 
 // Read returns the value of the display data register.
@@ -106,7 +111,7 @@ func (disp *Display) SetDSR(val Register) Register {
 }
 
 // Listen adds a display listener. Every listener function is called every time the display data is
-// written.
+// written. TODO: Should this be moved to the driver?
 func (disp *Display) Listen(listener func(uint16)) {
 	disp.mut.Lock()
 	defer disp.mut.Unlock()
@@ -119,11 +124,6 @@ func (disp *Display) notify() {
 	for _, fn := range disp.list {
 		fn(uint16(disp.ddr))
 	}
-
-	// After notifying all that care to listen, the display is ready for more data. Despite the
-	// recommendation to poll for device readiness, with few listeners and the device lock held, the
-	// program isn't likely to see the device as not ready.
-	disp.dsr |= DisplayReady
 }
 
 func (disp *Display) String() string {
@@ -193,11 +193,11 @@ func (driver *DisplayDriver) Write(addr Word, value Register) error {
 }
 
 func (driver *DisplayDriver) String() string {
-	if driver.handle.device != nil {
-		return fmt.Sprintf("DisplayDriver(display:%s)", driver.handle.device)
-	} else {
+	if driver.handle.device == nil {
 		return "DisplayDriver(display:nil)"
 	}
+
+	return fmt.Sprintf("DisplayDriver(display:%s)", driver.handle.device)
 }
 
 func (driver *DisplayDriver) device() string {
