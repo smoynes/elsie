@@ -38,6 +38,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/smoynes/elsie/internal/vm"
 )
 
 // Grammar declares the syntax of LCASM in EBNF (with some liberties).
@@ -266,3 +268,18 @@ func (si *SourceInfo) Unwrap() Operation {
 
 	return si.Operation
 }
+
+// Condition holds the condition flags for a BR opcode.
+type Condition uint8
+
+// Condition codes.
+const (
+	CondPositive = uint8(vm.ConditionPositive)
+	CondZero     = uint8(vm.ConditionZero)
+	CondNegative = uint8(vm.ConditionNegative)
+
+	CondZP  = CondZero | CondPositive
+	CondNZ  = CondNegative | CondZero
+	CondNP  = CondNegative | CondPositive
+	CondNZP = CondNegative | CondZero | CondPositive
+)
