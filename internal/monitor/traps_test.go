@@ -73,7 +73,7 @@ func TestTrap_Halt(tt *testing.T) {
 
 	machine.MCR = 0xffff
 
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		err = machine.Step()
 		if errors.Is(err, vm.ErrHalted) {
 			break
@@ -141,6 +141,94 @@ func TestTrap_Out(tt *testing.T) {
 	machine.REG[vm.R0] = 0x2365
 
 	for i := 0; i < 100; i++ {
+		err = machine.Step()
+
+		t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)
+
+		if err != nil {
+			t.Errorf("Step error %s", err)
+			break
+		} else if machine.PC > 0x3000 {
+			break
+		} else if !machine.MCR.Running() {
+			break
+		}
+	}
+
+	close(displayed)
+
+	var vals []uint16
+	for out := range displayed {
+		vals = append(vals, out)
+	}
+
+	if len(vals) != 1 || vals[0] != 0x2365 {
+		t.Errorf("displayed %+v", vals)
+	}
+}
+
+func TestTrap_Puts(tt *testing.T) {
+	t := trapHarness{tt}
+
+	if testing.Verbose() {
+		log.LogLevel.Set(log.Debug)
+	}
+
+	obj, err := Generate(TrapOut)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(obj.Code) < 15 {
+		// Code must be AT LEAST 15 words: 12 instructions and a few bytes of data.
+		t.Error("code too short", len(obj.Code))
+	} else if len(obj.Code) >= 50 {
+		t.Error("code too long", len(obj.Code))
+	}
+
+	// We want to test this trap with another.
+	image := SystemImage{
+		log:     t.Logger(),
+		Symbols: nil,
+		Traps: []Routine{
+			TrapPuts,
+			TrapOut,
+		},
+	}
+
+	displayed := make(chan uint16, 10)
+	machine := vm.New(
+		WithSystemImage(&image),
+		vm.WithDisplayListener(func(out uint16) {
+			select {
+			case displayed <- out:
+			}
+		}),
+	)
+	loader := vm.NewLoader(machine)
+
+	code := vm.ObjectCode{
+		Orig: 0x3000,
+		Code: []vm.Word{
+			vm.Word(vm.NewInstruction(
+				vm.TRAP, uint16(vm.TrapOUT)).Encode(),
+			),
+		},
+	}
+
+	loader.Load(code)
+
+	code = vm.ObjectCode{
+		Orig: 0x3100,
+		Code: []vm.Word{0x2364, 0x2363, 0x2365, 0},
+	}
+
+	loader.Load(code)
+
+	machine.REG[vm.R0] = 0x3100
+
+	for i := 0; i < 20; i++ {
 		err = machine.Step()
 
 		t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)

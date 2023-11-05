@@ -124,3 +124,61 @@ var TrapOut = Routine{
 		/*0x0439 */ &asm.FILL{LITERAL: uint16(vm.DDRAddr)}, // display data-registers
 	},
 }
+
+// TrapPuts is the system call to write a zero-terminated string to the display.
+//
+//	Table:   0x0000
+//	Vector:  0x22
+//	Handler: 0x0460
+//	Input:   R0, address of zero terminated string.
+//
+// Adapted from github.com/chriagsakhuja/lc3tools under the terms of the Apache Software Licence.
+var TrapPuts = Routine{
+	Name:   "PUTS",
+	Vector: vm.TrapTable + vm.Word(vm.TrapPUTS),
+	Orig:   0x0460,
+	Symbols: asm.SymbolTable{
+		"LOOP":   0x0465,
+		"RETURN": 0x046a,
+		"DSR":    0x0429,
+		"DDR":    0x0435,
+	},
+	Code: []asm.Operation{
+		// Push R0,R1 onto the stack.
+		/*0x0460*/
+		&asm.ADD{DR: "R6", SR1: "R6", LITERAL: 0xffff},
+		&asm.STR{SR1: "R0", SR2: "R6"},
+		&asm.ADD{DR: "R6", SR1: "R6", LITERAL: 0xffff},
+		&asm.STR{SR1: "R1", SR2: "R6"},
+
+		// Move input pointer R0 to R1.
+		/*0x0464*/
+		&asm.ADD{DR: "R1", SR1: "R0"},
+
+		// Loop over in array and write each value to DDR.
+		/*LOOP: 0x0465*/
+		&asm.LDR{DR: "R0", SR: "R1"},
+		&asm.BR{NZP: uint8(vm.ConditionNegative), OFFSET: 0x0000}, // Return if value is zero.
+
+		// Call trap OUT.
+		&asm.TRAP{LITERAL: uint16(vm.TrapOUT)},
+
+		// Increment loop pointer.
+		&asm.ADD{DR: "R1", SR1: "R1", LITERAL: 0x0001},
+
+		&asm.BR{NZP: asm.CondNZP, OFFSET: uint16(^(-4))},
+
+		// Restore stack.
+		/*RETURN: 0x046a*/
+		&asm.LDR{DR: "R1", SR: "R6", OFFSET: 0},
+		&asm.ADD{DR: "R6", SR1: "R6", LITERAL: 1},
+		&asm.LDR{DR: "R1", SR: "R6", OFFSET: 0},
+		&asm.ADD{DR: "R6", SR1: "R6", LITERAL: 1},
+
+		&asm.RTI{},
+
+		// Trap-scoped variables.
+		/*0x0438 */ &asm.FILL{LITERAL: uint16(vm.DSRAddr)}, // display status-, and
+		/*0x0439 */ &asm.FILL{LITERAL: uint16(vm.DDRAddr)}, // data-registers.
+	},
+}
