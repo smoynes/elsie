@@ -1,4 +1,4 @@
-﻿# Tutorial: Building and Running Programs #
+# Tutorial: Building and Running Programs #
 
 In this tutorial you will learn more about:
 
