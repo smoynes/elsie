@@ -3,6 +3,7 @@ package monitor
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/smoynes/elsie/internal/asm"
 	"github.com/smoynes/elsie/internal/log"
@@ -11,17 +12,24 @@ import (
 
 type trapHarness struct{ *testing.T }
 
-func (*trapHarness) Logger() *log.Logger {
-	log.LogLevel.Set(log.Debug)
-	return log.DefaultLogger()
-}
-
-func TestTrap_Halt(tt *testing.T) {
+func NewHarness(tt *testing.T) *trapHarness {
 	t := trapHarness{tt}
 
 	if testing.Verbose() {
 		log.LogLevel.Set(log.Debug)
+	} else {
+		log.LogLevel.Set(log.Warn)
 	}
+
+	return &t
+}
+
+func (*trapHarness) Logger() *log.Logger {
+	return log.DefaultLogger()
+}
+
+func TestTrap_Halt(tt *testing.T) {
+	t := NewHarness(tt)
 
 	obj, err := Generate(TrapHalt)
 
@@ -39,22 +47,16 @@ func TestTrap_Halt(tt *testing.T) {
 
 	// We wish to test this trap without depending upon others so we stub the OUT trap.
 	putsRoutine := Routine{
-		Name:   "Stub OUT",
-		Orig:   TrapOut.Orig,
-		Vector: TrapOut.Vector,
+		Name:   "Stub PUTS",
+		Orig:   TrapPuts.Orig,
+		Vector: TrapPuts.Vector,
 		Code: []asm.Operation{
 			&asm.RTI{},
 		},
 		Symbols: map[string]uint16{},
 	}
 
-	image := SystemImage{
-		log:     t.Logger(),
-		Symbols: nil,
-		Traps: []Routine{
-			TrapHalt,
-			putsRoutine},
-	}
+	image := SystemImage{log: t.Logger(), Symbols: nil, Traps: []Routine{TrapHalt, putsRoutine}}
 
 	machine := vm.New(
 		WithSystemImage(&image),
@@ -73,22 +75,30 @@ func TestTrap_Halt(tt *testing.T) {
 
 	machine.MCR = 0xffff
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 300; i++ {
 		err = machine.Step()
+
+		if testing.Verbose() {
+			t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)
+		}
+
 		if errors.Is(err, vm.ErrHalted) {
+			break
+		} else if !machine.MCR.Running() {
 			break
 		} else if err != nil {
 			t.Error(err)
+			break
 		}
 	}
 
 	if machine.MCR.Running() {
-		t.Error("pc", machine)
+		t.Errorf("MCR not stopped.\n%s\n", machine)
 	}
 }
 
 func TestTrap_Out(tt *testing.T) {
-	t := trapHarness{tt}
+	t := NewHarness(tt)
 
 	if testing.Verbose() {
 		log.LogLevel.Set(log.Debug)
@@ -125,6 +135,7 @@ func TestTrap_Out(tt *testing.T) {
 			}
 		}),
 	)
+
 	loader := vm.NewLoader(machine)
 
 	code := vm.ObjectCode{
@@ -143,7 +154,9 @@ func TestTrap_Out(tt *testing.T) {
 	for i := 0; i < 100; i++ {
 		err = machine.Step()
 
-		t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)
+		if testing.Verbose() {
+			t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)
+		}
 
 		if err != nil {
 			t.Errorf("Step error %s", err)
@@ -200,6 +213,8 @@ func TestTrap_Puts(tt *testing.T) {
 	displayed := make(chan uint16, 10)
 	machine := vm.New(
 		WithSystemImage(&image),
+
+		// TODO: the names out and displayed are inverted by meaning here.
 		vm.WithDisplayListener(func(out uint16) {
 			select {
 			case displayed <- out:
@@ -207,31 +222,32 @@ func TestTrap_Puts(tt *testing.T) {
 		}),
 	)
 	loader := vm.NewLoader(machine)
-
 	code := vm.ObjectCode{
 		Orig: 0x3000,
 		Code: []vm.Word{
 			vm.Word(vm.NewInstruction(
-				vm.TRAP, uint16(vm.TrapOUT)).Encode(),
+				vm.TRAP, uint16(vm.TrapPUTS)).Encode(),
 			),
 		},
 	}
 
 	loader.Load(code)
 
+	machine.REG[vm.R0] = 0x3100
 	code = vm.ObjectCode{
 		Orig: 0x3100,
-		Code: []vm.Word{0x2364, 0x2363, 0x2365, 0},
+		Code: []vm.Word{vm.Word('!'), vm.Word('!' + 1), vm.Word('!' + 2), 0},
 	}
 
 	loader.Load(code)
 
-	machine.REG[vm.R0] = 0x3100
-
-	for i := 0; i < 20; i++ {
+	// We expect that only a few dozen instructions are executed to output a few bytes.
+	for i := 0; i < 100; i++ { // TODO
 		err = machine.Step()
 
-		t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)
+		if testing.Verbose() {
+			t.Logf("Stepped\n%s\n%s\nerr %v", machine.String(), machine.REG, err)
+		}
 
 		if err != nil {
 			t.Errorf("Step error %s", err)
@@ -243,6 +259,7 @@ func TestTrap_Puts(tt *testing.T) {
 		}
 	}
 
+	time.Sleep(100 * time.Millisecond)
 	close(displayed)
 
 	var vals []uint16
@@ -250,7 +267,15 @@ func TestTrap_Puts(tt *testing.T) {
 		vals = append(vals, out)
 	}
 
-	if len(vals) != 1 || vals[0] != 0x2365 {
-		t.Errorf("displayed %+v", vals)
+	t.Log("displayed", len(vals), "values:")
+
+	if len(vals) != 3 {
+		t.Errorf("expected 3 displayed values, got %d", len(vals))
+	}
+
+	for i := range vals {
+		if vals[i] != 0x0021 {
+			t.Errorf("vals[%d] != 0x0021, got: %04X", i, vals[i])
+		}
 	}
 }

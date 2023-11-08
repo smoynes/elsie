@@ -16,7 +16,8 @@ var TrapHalt = Routine{
 	Vector: vm.TrapTable + vm.Word(vm.TrapHALT),
 	Orig:   0x0520,
 	Symbols: asm.SymbolTable{
-		"HALTMESSAGE": 0x0527,
+		"RETRY":       0x0521,
+		"HALTMESSAGE": 0x0526,
 		"MCR":         0x0528,
 		"MASK":        0x0529,
 	},
@@ -24,7 +25,7 @@ var TrapHalt = Routine{
 		// Print a message. Alert the media.
 		/* 0x0520 */
 		&asm.LEA{DR: "R0", SYMBOL: "HALTMESSAGE"},
-		&asm.TRAP{LITERAL: 0x21}, // TODO: PUTS
+		&asm.TRAP{LITERAL: 0x22}, // Call Trap PUTS
 
 		// Clear RUN flag in Machine Control Register.
 		/* 0x0522 */
@@ -36,9 +37,8 @@ var TrapHalt = Routine{
 		// Halt again, if we reach here, forever.
 		/* 0x0526 */
 		&asm.BR{
-			NZP:    uint8(vm.ConditionNegative | vm.ConditionPositive | vm.ConditionZero),
-			SYMBOL: "",
-			OFFSET: ^(uint16(5)) + 1,
+			NZP:    asm.CondNZP,
+			SYMBOL: "RETRY",
 		},
 
 		// Routine data.
@@ -49,6 +49,7 @@ var TrapHalt = Routine{
 }
 
 // TrapOut is the system call to write a single character to the display.
+//
 //   - Table:   0x0000
 //   - Vector:  0x21
 //   - Handler: 0x0420
@@ -132,7 +133,9 @@ var TrapOut = Routine{
 //	Handler: 0x0460
 //	Input:   R0, address of zero terminated string.
 //
-// Adapted from github.com/chriagsakhuja/lc3tools under the terms of the Apache Software Licence.
+// Adapted from github.com/chriagsakhuja/lc3tools, under the terms of the Apache Software Licence.
+// You are free to use this code under those terms rather than CC-BY-SA, if you wish, however
+// unlikely it might be.
 var TrapPuts = Routine{
 	Name:   "PUTS",
 	Vector: vm.TrapTable + vm.Word(vm.TrapPUTS),
@@ -158,21 +161,21 @@ var TrapPuts = Routine{
 		// Loop over in array and write each value to DDR.
 		/*LOOP: 0x0465*/
 		&asm.LDR{DR: "R0", SR: "R1"},
-		&asm.BR{NZP: uint8(vm.ConditionNegative), OFFSET: 0x0000}, // Return if value is zero.
 
-		// Call trap OUT.
+		// Return if value is zero.
+		&asm.BR{NZP: uint8(vm.ConditionZero), SYMBOL: "RETURN"},
+
+		// Call trap OUT. Increment loop index, and branch to LOOP.
+		/*0x0467*/
 		&asm.TRAP{LITERAL: uint16(vm.TrapOUT)},
-
-		// Increment loop pointer.
 		&asm.ADD{DR: "R1", SR1: "R1", LITERAL: 0x0001},
-
-		&asm.BR{NZP: asm.CondNZP, OFFSET: uint16(^(-4))},
+		&asm.BR{NZP: asm.CondNZP, SYMBOL: "LOOP"},
 
 		// Restore stack.
 		/*RETURN: 0x046a*/
 		&asm.LDR{DR: "R1", SR: "R6", OFFSET: 0},
 		&asm.ADD{DR: "R6", SR1: "R6", LITERAL: 1},
-		&asm.LDR{DR: "R1", SR: "R6", OFFSET: 0},
+		&asm.LDR{DR: "R0", SR: "R6", OFFSET: 0},
 		&asm.ADD{DR: "R6", SR1: "R6", LITERAL: 1},
 
 		&asm.RTI{},

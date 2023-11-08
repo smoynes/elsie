@@ -68,6 +68,7 @@ func NewSystemImage() *SystemImage {
 		Traps: []Routine{
 			TrapHalt,
 			TrapOut,
+			TrapPuts,
 		},
 		ISRs:       []Routine{},
 		Exceptions: []Routine{},
