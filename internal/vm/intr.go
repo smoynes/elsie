@@ -74,8 +74,9 @@ func (i Interrupt) String() string {
 func (i *Interrupt) Register(priority Priority, isr ISR) {
 	if entry := i.idt[priority]; entry.driver != nil {
 		// TODO: return error
-		i.log.Error("intr: device priority conflict: want: %s:%s, have: %s:%s",
-			priority.String(), isr.String(), priority.String(), entry.String(),
+		i.log.Error("intr: device priority conflict",
+			"want", priority.String()+":"+isr.String(),
+			"got", priority.String()+":"+entry.String(),
 		)
 	} else {
 		entry.driver = isr.driver
