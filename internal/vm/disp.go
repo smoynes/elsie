@@ -64,7 +64,6 @@ func (disp *Display) Init(_ *LC3, _ []Word) {
 	disp.dsr = DisplayReady // Born ready.
 	disp.ddr = 0x2368       // ⍨
 	disp.notify()
-
 }
 
 // Write updates the display data register with the given data. It (briefly) clears the ready
@@ -107,6 +106,7 @@ func (disp *Display) SetDSR(val Register) Register {
 
 	prev := disp.dsr
 	disp.dsr = val
+
 	return prev
 }
 
@@ -161,7 +161,7 @@ func (driver *DisplayDriver) Init(vm *LC3, addrs []Word) {
 
 // Read gets the status of the display device. Reading any other address returns an error.
 func (driver *DisplayDriver) Read(addr Word) (Word, error) {
-	switch addr {
+	switch addr { //golint:exhaustive
 	case driver.statusAddr:
 		return Word(driver.handle.device.DSR()), nil
 	case driver.dataAddr:

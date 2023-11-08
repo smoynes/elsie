@@ -798,13 +798,17 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 		if len(operands) != 0 {
 			return fmt.Errorf("HALT: %w", ErrOperand)
 		}
+
 		*trap = TRAP{LITERAL: uint16(vm.TrapHALT)}
+
 		return nil
 	case opcode == "OUT":
 		if len(operands) != 0 {
 			return fmt.Errorf("HALT: %w", ErrOperand)
 		}
+
 		*trap = TRAP{LITERAL: uint16(vm.TrapOUT)}
+
 		return nil
 	case opcode == "TRAP":
 		if len(operands) != 1 {

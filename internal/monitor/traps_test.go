@@ -12,8 +12,10 @@ import (
 
 type trapHarness struct{ *testing.T }
 
-func NewHarness(tt *testing.T) *trapHarness {
-	t := trapHarness{tt}
+func NewHarness(t *testing.T) *trapHarness {
+	t.Helper()
+
+	tt := trapHarness{t}
 
 	if testing.Verbose() {
 		log.LogLevel.Set(log.Debug)
@@ -21,7 +23,7 @@ func NewHarness(tt *testing.T) *trapHarness {
 		log.LogLevel.Set(log.Warn)
 	}
 
-	return &t
+	return &tt
 }
 
 func (*trapHarness) Logger() *log.Logger {
@@ -71,7 +73,7 @@ func TestTrap_Halt(tt *testing.T) {
 	}
 
 	loader := vm.NewLoader(machine)
-	loader.Load(code)
+	unsafeLoad(loader, code)
 
 	machine.MCR = 0xffff
 
@@ -147,7 +149,7 @@ func TestTrap_Out(tt *testing.T) {
 		},
 	}
 
-	loader.Load(code)
+	unsafeLoad(loader, code)
 
 	machine.REG[vm.R0] = 0x2365
 
@@ -170,7 +172,7 @@ func TestTrap_Out(tt *testing.T) {
 
 	close(displayed)
 
-	var vals []uint16
+	vals := make([]uint16, 0, len(displayed))
 	for out := range displayed {
 		vals = append(vals, out)
 	}
@@ -231,7 +233,7 @@ func TestTrap_Puts(tt *testing.T) {
 		},
 	}
 
-	loader.Load(code)
+	unsafeLoad(loader, code)
 
 	machine.REG[vm.R0] = 0x3100
 	code = vm.ObjectCode{
@@ -239,7 +241,7 @@ func TestTrap_Puts(tt *testing.T) {
 		Code: []vm.Word{vm.Word('!'), vm.Word('!' + 1), vm.Word('!' + 2), 0},
 	}
 
-	loader.Load(code)
+	unsafeLoad(loader, code)
 
 	// We expect that only a few dozen instructions are executed to output a few bytes.
 	for i := 0; i < 100; i++ { // TODO
@@ -262,7 +264,7 @@ func TestTrap_Puts(tt *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 	close(displayed)
 
-	var vals []uint16
+	vals := make([]uint16, 0, len(displayed))
 	for out := range displayed {
 		vals = append(vals, out)
 	}
@@ -277,5 +279,12 @@ func TestTrap_Puts(tt *testing.T) {
 		if vals[i] != 0x0021 {
 			t.Errorf("vals[%d] != 0x0021, got: %04X", i, vals[i])
 		}
+	}
+}
+
+func unsafeLoad(loader *vm.Loader, code vm.ObjectCode) {
+	_, err := loader.Load(code)
+	if err != nil {
+		panic(err.Error())
 	}
 }
