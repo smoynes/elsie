@@ -140,12 +140,44 @@ func (mmio MMIO) PSR() ProcessorStatus {
 
 // DDR returns the value of the display data register, if it has been mapped.
 func (mmio MMIO) DDR() rune {
+	ddr := rune('⍝')
 	if dev := mmio.devs[DDRAddr]; dev != nil {
 		val := dev.(*DisplayDriver)
-		ddr := val.handle.device.ddr
-
-		return rune(ddr)
+		ddr = rune(val.handle.device.ddr)
 	}
 
-	return '⍝'
+	return ddr
+}
+
+// DDR returns the value of the display status register, if it has been mapped.
+func (mmio MMIO) DSR() Word {
+	dsr := Word('⍝')
+	if dev := mmio.devs[DSRAddr]; dev != nil {
+		val := dev.(*DisplayDriver)
+		dsr = Word(val.handle.device.dsr)
+	}
+
+	return dsr
+}
+
+// KBDR returns the value of the keyboard data register, if it has been mapped.
+func (mmio MMIO) KBDR() Word {
+	kbdr := Word('⍝')
+	if dev := mmio.devs[KBDRAddr]; dev != nil {
+		val := dev.(*Keyboard)
+		kbdr = Word(val.KBDR)
+	}
+
+	return kbdr
+}
+
+// KBSR returns the value of the keyboard status register, if it has been mapped.
+func (mmio MMIO) KBSR() Word {
+	kbsr := Word('⍝')
+	if dev := mmio.devs[KBSRAddr]; dev != nil {
+		val := dev.(*Keyboard)
+		kbsr = Word(val.KBSR)
+	}
+
+	return kbsr
 }
