@@ -13,27 +13,33 @@ import (
 
 // Loader takes object code and loads it into the machine's memory.
 type Loader struct {
+	vm  *LC3
 	log *log.Logger
 }
 
 // NewLoader creates a new object loader.
-func NewLoader() *Loader {
+func NewLoader(vm *LC3) *Loader {
 	logger := log.DefaultLogger()
-	return &Loader{log: logger}
+
+	return &Loader{
+		vm:  vm,
+		log: logger,
+	}
 }
 
-// Load loads the obj
-func (l *Loader) Load(vm *LC3, obj ObjectCode) (uint16, error) {
-	var count uint16
-
+// Load loads the object code starting at its origin address.
+func (l *Loader) Load(obj ObjectCode) (uint16, error) {
 	if len(obj.Code) == 0 {
-		return count, ErrObjectLoader
+		return 0, fmt.Errorf("%w: object too small", ErrObjectLoader)
 	}
 
-	addr := obj.Orig
+	var (
+		addr  = obj.Orig
+		count = uint16(0)
+	)
 
 	for _, code := range obj.Code {
-		err := vm.Mem.store(addr, Word(code))
+		err := l.vm.Mem.store(addr, code)
 
 		if err != nil {
 			return count, fmt.Errorf("%w: %w", ErrObjectLoader, err)
@@ -46,10 +52,24 @@ func (l *Loader) Load(vm *LC3, obj ObjectCode) (uint16, error) {
 	return count, nil
 }
 
-// ObjectCode is a data structure that holds instructions and their origin offset in memory.
+// LoadVector stores the object and sets the vector-table entry to the object's origin address.
+func (l *Loader) LoadVector(vector Word, obj ObjectCode) (uint16, error) {
+	l.log.Debug("Loading vector", "vec", vector, "obj", obj)
+
+	if count, err := l.Load(obj); err != nil {
+		return count, err
+	} else if err = l.vm.Mem.store(vector, obj.Orig); err != nil {
+		return count, fmt.Errorf("%w: %w", ErrObjectLoader, err)
+	} else {
+		return count, nil
+	}
+}
+
+// ObjectCode is a data structure that holds code and its origin offset in memory. Code may be
+// comprised of either instructions or data.
 type ObjectCode struct {
 	Orig Word
-	Code []Instruction
+	Code []Word
 }
 
 // Read loads an object from bytes.
@@ -69,7 +89,7 @@ func (obj *ObjectCode) Read(b []byte) (int, error) {
 
 	count += 2
 
-	obj.Code = make([]Instruction, len(b)/2-1)
+	obj.Code = make([]Word, len(b)/2-1)
 	err = binary.Read(in, binary.BigEndian, obj.Code)
 
 	if err != nil {

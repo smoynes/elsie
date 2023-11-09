@@ -249,8 +249,6 @@ func (op *ld) Execute() {
 //	| 1010 | DR | OFFSET9 |
 //	|------+--------------|
 //	|15  12|11 9|8       0|
-//
-// .
 type ldi struct {
 	mo
 	dr     GPR
@@ -351,7 +349,7 @@ func (op lea) String() string {
 	return fmt.Sprintf("LEA{dr:%s,offset:%s}", op.dr.String(), op.offset.String())
 }
 
-var _ fetchable = &lea{}
+var _ executable = &lea{}
 
 func (op *lea) Decode(vm *LC3) {
 	*op = lea{
@@ -361,12 +359,8 @@ func (op *lea) Decode(vm *LC3) {
 	}
 }
 
-func (op *lea) EvalAddress() {
-	op.vm.Mem.MAR = Register(int16(op.vm.PC) + int16(op.offset))
-}
-
-func (op *lea) FetchOperands() {
-	op.vm.REG[op.dr] = op.vm.Mem.MDR
+func (op *lea) Execute() {
+	op.vm.REG[op.dr].Offset(op.offset)
 }
 
 // ST: Store word in memory.

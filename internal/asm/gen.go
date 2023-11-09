@@ -9,6 +9,7 @@ import (
 	"io"
 
 	"github.com/smoynes/elsie/internal/log"
+	"github.com/smoynes/elsie/internal/vm"
 )
 
 // Generator controls the code generation pass of the assembler. The generator starts at the
@@ -97,6 +98,24 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 	}
 
 	return count, nil
+}
+
+// Encode generates operations encoded as word values. Unlike WriteTo, Encode does not handle
+// directives, just instruction and data values.
+func (gen *Generator) Encode() ([]vm.Word, error) {
+	encoded := make([]vm.Word, 0, len(gen.syntax))
+
+	for _, val := range gen.syntax {
+		if code, err := val.Generate(gen.symbols, gen.pc); err != nil {
+			return nil, fmt.Errorf("gen: %w", err)
+		} else if len(code) != 0 {
+			panic(code)
+		} else {
+			encoded = append(encoded, vm.Word(code[0]))
+		}
+	}
+
+	return encoded, nil
 }
 
 // unwrap returns the base operation from possibly wrapped operation.

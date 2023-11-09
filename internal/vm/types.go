@@ -58,10 +58,15 @@ func (r Register) String() string {
 	return Word(r).String()
 }
 
+// Offset adds an offset value to a register. The offset is taken as a
+func (r *Register) Offset(offset Word) {
+	*r = Register(Word(*r) + offset)
+}
+
 // Instruction is a value that encodes a single CPU operation and is stored in a special purpose
 // register. The top 4 bits of an instruction define the opcode; the remaining bits are used for
 // operands and flags.
-type Instruction Register
+type Instruction Word
 
 // NewInstruction creates a new instruction value for the given opcode.
 func NewInstruction(opcode Opcode, operands uint16) Instruction {
@@ -283,13 +288,13 @@ const (
 )
 
 // Condition represents a NZP condition operand from an instruction.
-type Condition Word
+type Condition uint8
 
 // Condition flags.
 const (
-	ConditionPositive Condition = 0x1 // P
-	ConditionZero     Condition = 0x2 // Z
-	ConditionNegative Condition = 0x4 // N
+	ConditionPositive = Condition(1 << iota) // P
+	ConditionZero                            // Z
+	ConditionNegative                        // N
 )
 
 func (c Condition) String() string {

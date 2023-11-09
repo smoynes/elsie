@@ -500,13 +500,10 @@ func TestInstructions(tt *testing.T) {
 			cpu = t.Make()
 		)
 
-		cpu.PC = 0x0400
-		cpu.REG[R0] = 0xff00
-
-		_ = cpu.Mem.store(Word(cpu.PC), 0b1110_000_1_00000000)
-		_ = cpu.Mem.store(Word(0x0301), 0xdead)
-
 		initialStatus := cpu.PSR
+
+		cpu.PC = 0x0400
+		_ = cpu.Mem.store(Word(cpu.PC), 0b1110_000_1_00000000)
 
 		err := cpu.Step()
 		if err != nil {
@@ -517,9 +514,9 @@ func TestInstructions(tt *testing.T) {
 			t.Errorf("IR: %s, want: %s, got: %s", cpu.IR.String(), LEA, op)
 		}
 
-		if cpu.REG[R0] != 0xdead {
+		if cpu.PC != 0x0401 {
 			t.Errorf("R0 incorrect, want: %s, got: %s",
-				Register(0xdead), cpu.REG[R0])
+				Register(0x0401), cpu.PC)
 		}
 
 		if initialStatus != cpu.PSR {

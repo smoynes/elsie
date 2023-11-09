@@ -10,6 +10,7 @@ import (
 
 	"github.com/smoynes/elsie/internal/cli"
 	"github.com/smoynes/elsie/internal/log"
+	"github.com/smoynes/elsie/internal/monitor"
 	"github.com/smoynes/elsie/internal/vm"
 )
 
@@ -60,11 +61,11 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer,
 	logger.Debug("Initializing machine")
 	machine := vm.New(
 		vm.WithLogger(logger),
-		vm.WithTrapHandlers(),
+		monitor.WithDefaultSystemImage(),
 	)
 
-	loader := vm.NewLoader()
-	count, err := loader.Load(machine, code)
+	loader := vm.NewLoader(machine)
+	count, err := loader.Load(code)
 
 	if err != nil {
 		logger.Error(err.Error())

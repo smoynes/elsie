@@ -64,7 +64,7 @@ func New(opts ...OptionFn) *LC3 {
 		}
 	)
 
-	vm.withLogger(log.DefaultLogger())
+	vm.updateLogger(log.DefaultLogger())
 
 	// Run early init.
 	for _, fn := range opts {
@@ -197,9 +197,9 @@ const (
 
 func (ps ProcessorStatus) String() string {
 	return fmt.Sprintf(
-		"%s (N:%t Z:%t P:%t PR:%d PL:%d)",
-		Word(ps), ps.Negative(), ps.Zero(), ps.Positive(), ps.Privilege(),
-		ps.Priority(),
+		"%s (N:%t Z:%t P:%t PR:%s PL:%d)",
+		Word(ps), ps.Negative(), ps.Zero(), ps.Positive(),
+		ps.Privilege(), ps.Priority(),
 	)
 }
 
@@ -289,7 +289,8 @@ func (rf RegisterFile) LogValue() log.Value {
 // An OptionFn is modifies the machine during initialization. The function is called twice:
 type OptionFn func(maching *LC3, late bool)
 
-// WithSystemContext initializes the machine to use system context.
+// WithSystemContext initializes the machine to use system context, i.e. with system privileges and
+// stack.
 func WithSystemContext() OptionFn {
 	return func(vm *LC3, late bool) {
 		vm.PSR &^= (StatusPrivilege & StatusUser)
@@ -297,11 +298,14 @@ func WithSystemContext() OptionFn {
 	}
 }
 
-// WithTrapHandlers initializes the system's default trap handlers.
-func WithTrapHandlers() OptionFn {
+// WithDisplay is an option function that configures a callback that is called for displayed words.
+// It uses late initialization under the assumption startup output is not listened for.
+func WithDisplayListener(listener func(uint16)) OptionFn {
 	return func(vm *LC3, late bool) {
-		if !late {
-			vm.initializeTrapHandlers()
+		if late {
+			driver := vm.Mem.Devices.Get(DDRAddr).(*DisplayDriver)
+			display := driver.handle.device
+			display.Listen(listener)
 		}
 	}
 }

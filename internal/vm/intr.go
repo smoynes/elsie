@@ -74,8 +74,9 @@ func (i Interrupt) String() string {
 func (i *Interrupt) Register(priority Priority, isr ISR) {
 	if entry := i.idt[priority]; entry.driver != nil {
 		// TODO: return error
-		i.log.Error("intr: device priority conflict: want: %s:%s, have: %s:%s",
-			priority.String(), isr.String(), priority.String(), entry.String(),
+		i.log.Error("intr: device priority conflict",
+			"want", priority.String()+":"+isr.String(),
+			"got", priority.String()+":"+entry.String(),
 		)
 	} else {
 		entry.driver = isr.driver
@@ -224,28 +225,22 @@ func (ae *acv) String() string {
 
 // Trap handler table and defined vectors in the table.
 const (
-	// 0x0000:0x00ff
-	TrapTable = Word(0x0000)
-	TrapHALT  = Word(0x0025)
+	TrapTable = Word(0x0000) // TRAP (0x0000:0x00ff)
+	TrapOUT   = uint8(0x21)  // OUT
+	TrapPUTS  = uint8(0x22)  // PUTS
+	TrapHALT  = uint8(0x25)  // HALT
 )
 
-// Interrupt vector table address.
+// Interrupt service routine table and defined service routines.
 const (
-	// 0x0100:0x01ff
-	InterruptVectorTable = Word(0x0100) // IVT
+	ISRTable    = Word(0x0100) // IVT (0x0100:0x01ff)
+	ISRKeyboard = Word(0x80)   // KBD
 )
 
 // Exception vector table and defined vectors in the table.
 const (
-	// 0x0100:0x017f
-	ExceptionServiceRoutines = Word(0x0100) // EXC
+	ExceptionServiceRoutines = Word(0x0100) // EXC // 0x0100:0x017f
 	ExceptionPMV             = Word(0x00)   // PMV
 	ExceptionXOP             = Word(0x01)   // XOP
 	ExceptionACV             = Word(0x02)   // ACV
-)
-
-// Interrupt service routines and defined vectors.
-const (
-	ISRTable    = Word(0x0180) // ISR
-	ISRKeyboard = Word(0x80)   // KBD
 )

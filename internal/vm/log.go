@@ -8,19 +8,21 @@ import (
 func WithLogger(log *log.Logger) OptionFn {
 	return func(vm *LC3, late bool) {
 		if !late {
-			vm.withLogger(log)
+			vm.updateLogger(log)
 		}
 	}
 }
 
-// TODO: This is weird.
-func (vm *LC3) withLogger(logger *log.Logger) {
+// updateLogger changes the VM's logger.
+// TODO: This is weird. Sub-components should be able to reference the global logger directly.
+func (vm *LC3) updateLogger(logger *log.Logger) {
 	vm.log = logger
 	vm.Mem.log = logger.With(log.String("subsystem", "MEM"))
 	vm.Mem.Devices.log = logger.With(log.String("subsystem", "MMIO"))
 	vm.INT.log = logger.With(log.String("subsystem", "INTR"))
 }
 
+// LogValue formats a log record that describes the state of the VM.
 func (vm *LC3) LogValue() log.Value {
 	return log.GroupValue(
 		log.String("PC", vm.PC.String()),
@@ -31,6 +33,10 @@ func (vm *LC3) LogValue() log.Value {
 		log.String("MCR", vm.MCR.String()),
 		log.String("MAR", vm.Mem.MAR.String()),
 		log.String("MDR", vm.Mem.MDR.String()),
+		log.Any("DDR", vm.Mem.Devices.DDR()),
+		log.Any("DSR", vm.Mem.Devices.DSR()),
+		log.Any("KBDR", vm.Mem.Devices.KBDR()),
+		log.Any("KBSR", vm.Mem.Devices.KBSR()),
 		log.Any("INT", vm.INT),
 		log.Any("REG", vm.REG),
 	)

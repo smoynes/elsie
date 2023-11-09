@@ -1,4 +1,4 @@
-// Package log provides logging output.
+// Package log provides structured logging to the virtual machine and its parts.
 package log
 
 import (
@@ -20,7 +20,7 @@ var (
 	// call DefaultLogger and cache the result. The default will not change at runtime.
 	DefaultLogger = func() *Logger { return NewFormattedLogger(os.Stderr) }
 
-	// SetDefault overrides the default logger.
+	// SetDefault overrides the default log output.
 	SetDefault = slog.SetDefault
 
 	// LogLevel is a variable holding the log level. It can be changed at runtime.
@@ -77,7 +77,7 @@ func (h *Handler) Handle(ctx context.Context, rec slog.Record) error {
 	out := bytes.NewBuffer(buf)
 
 	if !rec.Time.IsZero() {
-		fmt.Fprintf(out, "%10s : %s\n", "TIMESTAMP", rec.Time.Format(time.RFC3339))
+		fmt.Fprintf(out, "%10s : %s\n", "TIMESTAMP", rec.Time.Format(time.RFC3339Nano))
 	}
 
 	fmt.Fprintf(out, "%10s : %s\n", "LEVEL", rec.Level.String())

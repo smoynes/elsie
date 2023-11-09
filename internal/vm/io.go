@@ -101,14 +101,10 @@ func (mmio MMIO) Load(addr Word) (Register, error) {
 // Map configures the memory mapping for device I/O. Keys in the map are addresses and values are
 // device drivers or registers.
 func (mmio *MMIO) Map(devices map[Word]any) error {
-	updated := make(map[Word]any)
-
 	for addr, dev := range devices {
 		if dev == nil {
 			return fmt.Errorf("%w: map: bad device: %s, %T", errMMIO, addr, dev)
 		} else if dd, ok := dev.(Device); ok && dd != nil {
-			updated[addr] = dd
-
 			mmio.log.Debug("mapped device",
 				log.String("ADDR", addr.String()),
 				log.String("DEVICE", dd.device()),
@@ -119,10 +115,16 @@ func (mmio *MMIO) Map(devices map[Word]any) error {
 		}
 	}
 
-	// Update mapping only if all devices are valid.
-	mmio.devs = updated
+	// Add new mappings only if all devices are valid.
+	for addr, dev := range devices {
+		mmio.devs[addr] = dev
+	}
 
 	return nil
+}
+
+func (mmio MMIO) Get(addr Word) any {
+	return mmio.devs[addr]
 }
 
 // PSR returns the value of the status register, if it has been mapped.
@@ -134,4 +136,52 @@ func (mmio MMIO) PSR() ProcessorStatus {
 	}
 
 	return psr
+}
+
+// DDR returns the value of the display data register, if it has been mapped.
+func (mmio MMIO) DDR() rune {
+	ddr := rune('⍝')
+
+	if dev := mmio.devs[DDRAddr]; dev != nil {
+		val := dev.(*DisplayDriver)
+		ddr = rune(val.handle.device.ddr)
+	}
+
+	return ddr
+}
+
+// DDR returns the value of the display status register, if it has been mapped.
+func (mmio MMIO) DSR() Word {
+	dsr := Word('⍝')
+
+	if dev := mmio.devs[DSRAddr]; dev != nil {
+		val := dev.(*DisplayDriver)
+		dsr = Word(val.handle.device.dsr)
+	}
+
+	return dsr
+}
+
+// KBDR returns the value of the keyboard data register, if it has been mapped.
+func (mmio MMIO) KBDR() Word {
+	kbdr := Word('⍝')
+
+	if dev := mmio.devs[KBDRAddr]; dev != nil {
+		val := dev.(*Keyboard)
+		kbdr = Word(val.KBDR)
+	}
+
+	return kbdr
+}
+
+// KBSR returns the value of the keyboard status register, if it has been mapped.
+func (mmio MMIO) KBSR() Word {
+	kbsr := Word('⍝')
+
+	if dev := mmio.devs[KBSRAddr]; dev != nil {
+		val := dev.(*Keyboard)
+		kbsr = Word(val.KBSR)
+	}
+
+	return kbsr
 }

@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"context"
 	"fmt"
 	"sync"
 )
@@ -13,10 +12,11 @@ import (
 // When the machine writes to the display, the device automatically clears its interrupt-ready
 // status-flag to indicate the display buffer is full. Once the device completely outputs the
 // character, it sets the ready flag again. In the meantime, if the machine writes to the display
-// before the device clears the buffer, data is overwritten and precious data is lost. Don't do it!
-// Instead, programs should poll until the device is ready.
+// before the device clears the flag, data is overwritten and precious data could be lost. Don't do
+// it! Instead, programs should poll until the device is ready.
 type Display struct {
-	// mut provides mutually exclusive R/W access to the device registers.
+	// mut provides mutually exclusive R/W access to the device registers. TODO: Locking ought to be
+	// done by the driver in terms of conceptual model.
 	mut *sync.Mutex
 
 	// Display Status Register. The top two bits encode the interrupt-ready and enable flags. When
@@ -33,7 +33,8 @@ type Display struct {
 
 	// Listeners. Each listener function is called every time the data register is written. Listener
 	// functions must not block, fail, or panic. Really, the value should be written to a buffered
-	// channel or otherwise asynchronously handle the event.
+	// channel or otherwise asynchronously handle the event. TODO: The listeners are driver-level
+	// types.
 	list []func(uint16)
 }
 
@@ -58,10 +59,10 @@ func (disp *Display) Init(_ *LC3, _ []Word) {
 	}
 
 	disp.mut.Lock()
+	defer disp.mut.Unlock()
+
 	disp.dsr = DisplayReady // Born ready.
 	disp.ddr = 0x2368       // ⍨
-	disp.mut.Unlock()
-
 	disp.notify()
 }
 
@@ -75,19 +76,42 @@ func (disp *Display) Write(data Register) {
 	disp.dsr &^= DisplayReady
 
 	disp.notify()
+
+	// After notifying all that listeners, the display is ready for more data. Despite the
+	// recommendation to poll for device readiness, the program isn't likely to see the device as
+	// not ready because we set READY before returning from the write request.
+	disp.dsr |= DisplayReady
+}
+
+// Read returns the value of the display data register.
+func (disp *Display) Read() Register {
+	disp.mut.Lock()
+	defer disp.mut.Unlock()
+
+	return disp.ddr
 }
 
 // DSR returns the value of the display status register.
 func (disp *Display) DSR() Register {
-	// Locking here is dubious.
 	disp.mut.Lock()
 	defer disp.mut.Unlock()
 
 	return disp.dsr
 }
 
+// Status updates the value of the display status register and returns the previous value.
+func (disp *Display) SetDSR(val Register) Register {
+	disp.mut.Lock()
+	defer disp.mut.Unlock()
+
+	prev := disp.dsr
+	disp.dsr = val
+
+	return prev
+}
+
 // Listen adds a display listener. Every listener function is called every time the display data is
-// written.
+// written. TODO: Should this be moved to the driver?
 func (disp *Display) Listen(listener func(uint16)) {
 	disp.mut.Lock()
 	defer disp.mut.Unlock()
@@ -100,11 +124,6 @@ func (disp *Display) notify() {
 	for _, fn := range disp.list {
 		fn(uint16(disp.ddr))
 	}
-
-	// After notifying all that care, the display is ready for more data. Despite the recommendation
-	// to poll for device readiness, with few listeners and the device lock held, the program isn't
-	// likely to see the device as not ready.
-	disp.dsr |= DisplayReady
 }
 
 func (disp *Display) String() string {
@@ -121,18 +140,6 @@ type DisplayDriver struct {
 	// Addresses to which the registers are mapped.
 	statusAddr Word
 	dataAddr   Word
-}
-
-// WithDisplayDriver creates a new display and its driver. It returns a cancellation function that
-// will release display resources.
-func WithDisplayDriver(parent context.Context) (context.Context, *DisplayDriver, context.CancelFunc) {
-	var (
-		display     = NewDisplay()
-		driver      = NewDisplayDriver(display)
-		ctx, cancel = context.WithCancel(parent)
-	)
-
-	return ctx, driver, cancel
 }
 
 // NewDisplayDriver creates a new driver for the display. The driver has ownership of the device.
@@ -156,9 +163,11 @@ func (driver *DisplayDriver) Init(vm *LC3, addrs []Word) {
 func (driver *DisplayDriver) Read(addr Word) (Word, error) {
 	if addr == driver.statusAddr {
 		return Word(driver.handle.device.DSR()), nil
+	} else if addr == driver.dataAddr {
+		return Word(driver.handle.device.Read()), nil
+	} else {
+		return Word(0xdea1), fmt.Errorf("read: %w: %s:%s", ErrNoDevice, addr, driver)
 	}
-
-	return Word(0xdea1), fmt.Errorf("read: %w: %s:%s", ErrNoDevice, addr, driver)
 }
 
 // InterruptRequested returns true when the display raises an interrupt request. For our purposes,
@@ -173,17 +182,20 @@ func (driver *DisplayDriver) Write(addr Word, value Register) error {
 	if addr == driver.dataAddr {
 		driver.handle.device.Write(value)
 		return nil
+	} else if addr == driver.statusAddr {
+		driver.handle.device.SetDSR(value)
+		return nil
+	} else {
+		return fmt.Errorf("write: %w: %s:%s", ErrNoDevice, addr, driver)
 	}
-
-	return fmt.Errorf("write: %w: %s:%s", ErrNoDevice, addr, driver)
 }
 
 func (driver *DisplayDriver) String() string {
-	if driver.handle.device != nil {
-		return fmt.Sprintf("DisplayDriver(display:%s)", driver.handle.device)
-	} else {
+	if driver.handle.device == nil {
 		return "DisplayDriver(display:nil)"
 	}
+
+	return fmt.Sprintf("DisplayDriver(display:%s)", driver.handle.device)
 }
 
 func (driver *DisplayDriver) device() string {

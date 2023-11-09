@@ -75,7 +75,7 @@ func (br *BR) Parse(opcode string, opers []string) error {
 	return nil
 }
 
-func (br *BR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (br BR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	code := vm.NewInstruction(vm.BR, uint16(br.NZP)<<9)
 
 	if br.SYMBOL != "" {
@@ -106,11 +106,11 @@ func (br *BR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	|------+----+-----+---+----------|
 //	|15  12|11 9|8   6| 5 |4        0|
 type AND struct {
-	DR     string
-	SR1    string
-	SR2    string // Register mode.
-	SYMBOL string // Symbolic reference.
-	OFFSET uint16 // Otherwise.
+	DR      string
+	SR1     string
+	SR2     string // Register mode.
+	SYMBOL  string // Symbolic reference.
+	LITERAL uint16 // Otherwise.
 }
 
 func (and AND) String() string { return fmt.Sprintf("%#v", and) }
@@ -137,14 +137,14 @@ func (and *AND) Parse(oper string, opers []string) error {
 		return err
 	}
 
-	and.OFFSET = off
+	and.LITERAL = off
 	and.SYMBOL = sym
 
 	return nil
 }
 
 // Generate returns the machine code for an AND instruction.
-func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (and AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	dr := registerVal(and.DR)
 	sr1 := registerVal(and.SR1)
 
@@ -175,7 +175,7 @@ func (and *AND) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 		code.Operand(offset)
 	default:
 		code.Operand(1 << 5)
-		code.Operand(and.OFFSET & 0x001f)
+		code.Operand(and.LITERAL & 0x001f)
 	}
 
 	return []uint16{code.Encode()}, nil
@@ -317,8 +317,6 @@ func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //	| 1110 | DR | OFFSET9 |
 //	|------+----+---------|
 //	|15  12|11 9|8       0|
-//
-// .
 type LEA struct {
 	DR     string
 	SYMBOL string
@@ -383,7 +381,7 @@ func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 //
 // .
 type LDI struct {
-	SR     string
+	DR     string
 	SYMBOL string
 	OFFSET uint16
 }
@@ -400,7 +398,7 @@ func (ldi *LDI) Parse(opcode string, operands []string) error {
 	}
 
 	*ldi = LDI{
-		SR: operands[0],
+		DR: operands[0],
 	}
 
 	ldi.OFFSET, ldi.SYMBOL, err = parseImmediate(operands[1], 9)
@@ -412,10 +410,10 @@ func (ldi *LDI) Parse(opcode string, operands []string) error {
 }
 
 func (ldi LDI) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
-	sr := registerVal(ldi.SR)
+	sr := registerVal(ldi.DR)
 
 	if sr == badGPR {
-		return nil, &RegisterError{"ldi", ldi.SR}
+		return nil, &RegisterError{"ldi", ldi.DR}
 	}
 
 	code := vm.NewInstruction(vm.LDI, sr<<9)
@@ -657,7 +655,7 @@ func (jmp *JMP) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (jmp *JMP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (jmp JMP) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	sr := registerVal(jmp.SR)
 
 	if sr == badGPR {
@@ -694,7 +692,7 @@ func (ret *RET) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (ret *RET) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (ret RET) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	code := vm.NewInstruction(vm.RET, uint16(vm.RETP)<<6)
 
 	return []uint16{code.Encode()}, nil
@@ -796,14 +794,27 @@ func (trap TRAP) String() string { return fmt.Sprintf("%#v", trap) }
 
 func (trap *TRAP) Parse(opcode string, operands []string) error {
 	switch {
-	case opcode == "HALT" && len(operands) == 0:
-		*trap = TRAP{LITERAL: 0x25}
+	case opcode == "HALT":
+		if len(operands) != 0 {
+			return fmt.Errorf("HALT: %w", ErrOperand)
+		}
+
+		*trap = TRAP{LITERAL: uint16(vm.TrapHALT)}
+
 		return nil
-	case opcode == "HALT" && len(operands) != 0:
-		return ErrOperand
-	case opcode != "TRAP":
-		return errors.New("trap: operator error")
-	case len(operands) != 1:
+	case opcode == "OUT":
+		if len(operands) != 0 {
+			return fmt.Errorf("HALT: %w", ErrOperand)
+		}
+
+		*trap = TRAP{LITERAL: uint16(vm.TrapOUT)}
+
+		return nil
+	case opcode == "TRAP":
+		if len(operands) != 1 {
+			return ErrOperand
+		}
+	default:
 		return ErrOperand
 	}
 
@@ -886,7 +897,7 @@ func (not *NOT) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (not *NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (not NOT) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	if not.DR == "" || not.SR == "" {
 		return nil, fmt.Errorf("not: bad operand")
 	}
@@ -940,7 +951,7 @@ func (jsr *JSR) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (jsr *JSR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (jsr JSR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	code := vm.NewInstruction(vm.JSR, 1<<11)
 
 	switch {
@@ -988,7 +999,7 @@ func (jsrr *JSRR) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (jsrr *JSRR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (jsrr JSRR) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	reg := registerVal(jsrr.SR)
 	if reg == badGPR {
 		return nil, &RegisterError{"jsrr", jsrr.SR}
@@ -1014,7 +1025,7 @@ func (fill *FILL) Parse(opcode string, operands []string) error {
 	return err
 }
 
-func (fill *FILL) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (fill FILL) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{fill.LITERAL}, nil
 }
 
@@ -1032,7 +1043,7 @@ func (blkw *BLKW) Parse(opcode string, operands []string) error {
 	return err
 }
 
-func (blkw *BLKW) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (blkw BLKW) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	code := make([]uint16, blkw.ALLOC)
 	for i := uint16(0); i < blkw.ALLOC; i++ {
 		code[i] = 0x2361
@@ -1089,7 +1100,7 @@ func (orig *ORIG) Parse(opcode string, operands []string) error {
 
 // Generate encodes the origin as the entry point in machine code. It should only be called as the
 // first operation when generating code.
-func (orig *ORIG) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (orig ORIG) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	return []uint16{orig.LITERAL}, nil
 }
 
@@ -1109,7 +1120,7 @@ func (s *STRINGZ) ParseString(opcode string, val string) error {
 	return nil
 }
 
-func (s *STRINGZ) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
+func (s STRINGZ) Generate(symbols SymbolTable, pc uint16) ([]uint16, error) {
 	code := append(utf16.Encode([]rune(s.LITERAL)), 0) // null terminate value.
 	return code, nil
 }
