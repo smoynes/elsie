@@ -49,8 +49,11 @@ func (d *demo) FlagSet() *cli.FlagSet {
 }
 
 func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logger) int {
-	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
+	ctx, done := context.WithCancel(ctx)
+	defer done()
+
+	ctx, cancelTimeout := context.WithTimeout(ctx, 5*time.Second)
+	defer cancelTimeout()
 
 	if d.quiet {
 		log.LogLevel.Set(log.Error)
@@ -138,6 +141,8 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 		case err != nil:
 			logger.Error(err.Error())
 		}
+
+		done()
 	}()
 
 	<-ctx.Done()
