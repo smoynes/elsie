@@ -18,8 +18,8 @@ var TrapHalt = Routine{
 	Symbols: asm.SymbolTable{
 		"RETRY":       0x0521,
 		"HALTMESSAGE": 0x0526,
-		"MCR":         0x0528,
-		"MASK":        0x0529,
+		"MCR":         0x052c,
+		"MASK":        0x052d,
 	},
 	Code: []asm.Operation{
 		// Print a message. Alert the media.
@@ -42,9 +42,9 @@ var TrapHalt = Routine{
 		},
 
 		// Routine data.
-		/* 0x0527 */ &asm.STRINGZ{LITERAL: "HALT!"}, // HALTMESSAGE.
-		/* 0x0528 */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // I/O address of MCR.
-		/* 0x0529 */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
+		/* 0x0527 + 6 */ &asm.STRINGZ{LITERAL: "HALT!"}, // HALTMESSAGE.
+		/* 0x052d */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // I/O address of MCR.
+		/* 0x052e */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
 	},
 }
 

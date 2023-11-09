@@ -249,14 +249,14 @@ func (vm *LC3) FetchOperands(op operation) {
 			return
 		}
 
-		op.FetchOperands()
-
 		vm.log.Debug(
-			"loaded",
+			"fetched",
 			"OP", op.String(),
 			"MAR", vm.Mem.MAR,
 			"MDR", vm.Mem.MDR,
 		)
+
+		op.FetchOperands()
 	}
 }
 

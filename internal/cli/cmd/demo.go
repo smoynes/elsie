@@ -84,6 +84,13 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 		Orig: 0x3000,
 		Code: []vm.Word{
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapHALT))),
 		},
 	}
@@ -103,7 +110,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	go func() {
 		logger.Info("Starting display")
 
-		timer := time.NewTicker(800 * time.Millisecond)
+		timer := time.NewTicker(80 * time.Millisecond)
 		defer timer.Stop()
 
 		for {
@@ -128,7 +135,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 		case errors.Is(err, context.DeadlineExceeded):
 			logger.Warn("Demo timeout")
 			return
-		default:
+		case err != nil:
 			logger.Error(err.Error())
 		}
 	}()
