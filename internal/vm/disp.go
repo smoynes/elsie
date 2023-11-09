@@ -161,12 +161,11 @@ func (driver *DisplayDriver) Init(vm *LC3, addrs []Word) {
 
 // Read gets the status of the display device. Reading any other address returns an error.
 func (driver *DisplayDriver) Read(addr Word) (Word, error) {
-	switch addr { //golint:exhaustive
-	case driver.statusAddr:
+	if addr == driver.statusAddr {
 		return Word(driver.handle.device.DSR()), nil
-	case driver.dataAddr:
+	} else if addr == driver.dataAddr {
 		return Word(driver.handle.device.Read()), nil
-	default:
+	} else {
 		return Word(0xdea1), fmt.Errorf("read: %w: %s:%s", ErrNoDevice, addr, driver)
 	}
 }
@@ -180,14 +179,13 @@ func (driver *DisplayDriver) InterruptRequested() bool {
 
 // Write sets the data register of the display device. Writing any other address returns an error.
 func (driver *DisplayDriver) Write(addr Word, value Register) error {
-	switch addr {
-	case driver.dataAddr:
+	if addr == driver.dataAddr {
 		driver.handle.device.Write(value)
 		return nil
-	case driver.statusAddr:
+	} else if addr == driver.statusAddr {
 		driver.handle.device.SetDSR(value)
 		return nil
-	default:
+	} else {
 		return fmt.Errorf("write: %w: %s:%s", ErrNoDevice, addr, driver)
 	}
 }
