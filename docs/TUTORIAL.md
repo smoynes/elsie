@@ -2,13 +2,13 @@
 
 In this tutorial you will learn how to:
 
-  - install 𝙴𝙻𝚂𝙸𝙴;
+  - install ELSIE;
   - executing a hard-coded demo.
   - running a simple program;
   - translate a program from LC3ASM assembly language to machine language;
   - run the resulting program.
 
-## Installing 𝙴𝙻𝚂𝙸𝙴 ##
+## Installing ELSIE ##
 
 You will need Go version 1.21, or greater, installed:
 
@@ -25,7 +25,7 @@ $ go version
 go version go1.21.4 darwin/amd64
 ```
 
-With Go installed, you can now download, build, and install 𝙴𝙻𝚂𝙸𝙴. Run:
+With Go installed, you can now download, build, and install ELSIE. Run:
 
 ```console
 $ go install github.com/smoynes/elsie
@@ -36,7 +36,7 @@ Say hello:
 ```console
 $ elsie
 
-𝙴𝙻𝚂𝙸𝙴 is a virtual machine and programming tool for the LC-3 educational computer.
+ELSIE is a virtual machine and programming tool for the LC-3 educational computer.
 
 Usage:
 
@@ -55,8 +55,7 @@ exit status 1
 
 ## Running the demo ##
 
-𝙴𝙻𝚂𝙸𝙴 includes a silly, hard-coded demo. You can run it with the demo command:
-
+ELSIE includes a silly, hard-coded demo. You can run it with the demo command.
 You should see a few characters printed. This is what success looks like:
 
 ```console
@@ -64,10 +63,12 @@ $ elsie demo
 ⍤⍤
 ```
 
-It's not much but it's an honest program.
+It's not much but it's an honest program. The demo initialize the machine, does
+some basic I/O with system calls, and halts the machine. It is not much, but it
+is an honest program.
 
-You can also run the demo with additional logging enabled. You should see logs
-for machine startup and its state after executing each instruction.
+You can also run the demo with additional logging enabled. You will see logs for
+machine startup and its state after executing each instruction.
 
 ```console
 $ elsie demo -log
