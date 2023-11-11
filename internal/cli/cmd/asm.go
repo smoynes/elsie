@@ -31,7 +31,7 @@ func (assembler) Description() string {
 
 func (assembler) Usage(out io.Writer) error {
 	var err error
-	_, err = fmt.Fprintln(out, `asm [-o file.out] file.asm
+	_, err = fmt.Fprintln(out, `asm [-o file.o] file.asm
 
 Assemble source into object code.`)
 
