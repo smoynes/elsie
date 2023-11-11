@@ -21,8 +21,8 @@ func Demo() cli.Command {
 }
 
 type demo struct {
+	log   bool
 	debug bool
-	quiet bool
 }
 
 func (demo) Description() string {
@@ -32,9 +32,9 @@ func (demo) Description() string {
 func (d demo) Usage(out io.Writer) error {
 	var err error
 	_, err = fmt.Fprintln(out, `
-demo [ -debug | -quiet ]
+demo [ -log | -debug ]
 
-Run demonstration program while displaying VM state.`)
+Run demonstration program.`)
 
 	return err
 }
@@ -42,8 +42,8 @@ Run demonstration program while displaying VM state.`)
 func (d *demo) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("demo", flag.ExitOnError)
 
-	fs.BoolVar(&d.debug, "debug", false, "enable debug logging")
-	fs.BoolVar(&d.quiet, "quiet", false, "enable quiet output, machine display only")
+	fs.BoolVar(&d.log, "log", false, "log execution state")
+	fs.BoolVar(&d.debug, "debug", false, "verbose execution state")
 
 	return fs
 }
@@ -55,12 +55,13 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	ctx, cancelTimeout := context.WithTimeout(ctx, 5*time.Second)
 	defer cancelTimeout()
 
-	if d.quiet {
-		log.LogLevel.Set(log.Error)
-	}
-
-	if d.debug {
+	switch {
+	case d.debug == true:
 		log.LogLevel.Set(log.Debug)
+	case d.log == true:
+		log.LogLevel.Set(log.Info)
+	default:
+		log.LogLevel.Set(log.Error)
 	}
 
 	logger := log.NewFormattedLogger(os.Stdout)
@@ -86,6 +87,14 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 	code := vm.ObjectCode{
 		Orig: 0x3000,
 		Code: []vm.Word{
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
