@@ -1,9 +1,9 @@
-                       ELSIE: A Pedagogical LC-3 Emulator
+                       𝙴𝙻𝚂𝙸𝙴: A Pedagogical LC-3 Emulator
 ================================================================================
 
             The path is made in the walking of it. -- Zhuangzi
 
-This is  ELSIE, an exploration  of the LC-3: a  little computer that  is simple,
+This is  𝙴𝙻𝚂𝙸𝙴, an exploration  of the LC-3: a  little computer that  is simple,
 comprehensive, and imaginary.
 
 The project includes:
@@ -16,8 +16,8 @@ The project includes:
  - many unnecessary words by your author; and
  - maybe, more to come…
 
-As a technical  project, ELSIE is not  useful: it isn't complete  and it doesn't
-work. In  those terms, it  is not good software.  To the author,  however, ELSIE
+As a technical  project, 𝙴𝙻𝚂𝙸𝙴 is not  useful: it isn't complete  and it doesn't
+work. In  those terms, it  is not good software.  To the author,  however, 𝙴𝙻𝚂𝙸𝙴
 feels more like a story, a performance,  or maybe even a convalescence. As such,
 it is software useful for more than mere utility and is essential.
 
@@ -62,7 +62,7 @@ enough to write programs.
        Project Goals
 -----------------------------
 
-ELSIE is not novel: hardware simulators already exist for the LC-3 architecture,
+𝙴𝙻𝚂𝙸𝙴 is not novel: hardware simulators already exist for the LC-3 architecture,
 of course. The textbook publishers provide  one and there are many others freely
 available online.[1]  This one is  admittedly a  mere reinvention of  the wheel.
 That said, the gift the design and engineering process affords is that sometimes
@@ -136,6 +136,6 @@ This work is dedicated to the MCM/70[2] and its pioneering designers.
 
 -----------------------------
 
-ELSIE © 2023 by Scott Moynes is licensed under CC BY-SA 4.0.
+𝙴𝙻𝚂𝙸𝙴 © 2023 by Scott Moynes is licensed under CC BY-SA 4.0.
 See LICENCE.txt for terms. Send your lawyers here:
 https://creativecommons.org/licenses/by-sa/4.0/?ref=chooser-v1
