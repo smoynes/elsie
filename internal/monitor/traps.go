@@ -53,6 +53,7 @@ var TrapHalt = Routine{
 //   - Table:   0x0000
 //   - Vector:  0x21
 //   - Handler: 0x0420
+//   - Input:   R0, character to display.
 //
 // Adapted from Fig. 9.22, 3/e.
 var TrapOut = Routine{
@@ -147,7 +148,7 @@ var TrapPuts = Routine{
 		"DDR":    0x0435,
 	},
 	Code: []asm.Operation{
-		// Push R0,R1 onto the stack.
+		// Push R0, R1 onto the stack.
 		/*0x0460*/
 		&asm.ADD{DR: "R6", SR1: "R6", LITERAL: 0xffff},
 		&asm.STR{SR1: "R0", SR2: "R6"},
