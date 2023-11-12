@@ -91,7 +91,19 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 		Code: []vm.Word{
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.LEA, 0x0002)),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapPUTS))),
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapHALT))),
+			vm.Word('\n'),
+			vm.Word('t'),
+			vm.Word('h'),
+			vm.Word('a'),
+			vm.Word('n'),
+			vm.Word('k'),
+			vm.Word('s'),
+			vm.Word('!'),
+			vm.Word('\n'),
+			vm.Word(0x0000),
 		},
 	}
 
@@ -141,10 +153,13 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 
 	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		logger.Error("Demo timeout!")
+		return 2
+	} else if errors.Is(err, context.Canceled) {
+		logger.Info("Demo completed")
+		return 0
 	} else if err != nil {
 		logger.Error("Demo error!", "ERR", err)
-	} else {
-		logger.Info("Demo completed")
+		return 2
 	}
 
 	return 0

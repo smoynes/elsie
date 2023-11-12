@@ -362,7 +362,6 @@ func (op *lea) Decode(vm *LC3) {
 func (op *lea) Execute() {
 	op.vm.REG[op.dr] = Register(op.vm.PC)
 	op.vm.REG[op.dr].Offset(op.offset)
-
 }
 
 // ST: Store word in memory.
