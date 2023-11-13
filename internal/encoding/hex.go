@@ -1,6 +1,19 @@
-// Package encoding includes implementations of encoding.TextMarshaler and encoding.TextUnmarshaler for
-// binary object code. It uses Intel Hex as a defacto standard.
-package encoding // import github.com/smoynes/elsie/internal/encoding
+// Package encoding includes implementations of encoding.TextMarshaler and encoding.TextUnmarshaler
+// to encode and decode binary object code. It is based on Intel Hex file-encoding.
+//
+// Each file is composed of lines composed of a prefix, length, address, type, (optional data) and a
+// checksum. In shorthand:
+//
+//	:LLAAAATT[DD...]CC
+//	0123456789
+//
+// See [Grammar] for a formal grammar.
+//
+// # Bugs
+//
+// This is not a complete implementation Intel Hex encoding; it is for internal use, only. It
+// supports minimal record types, specifically just the data and end-of-file record types.
+package encoding
 
 import (
 	"bufio"
@@ -9,77 +22,129 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"io"
 
 	"github.com/smoynes/elsie/internal/vm"
 )
 
-// HexEncoding implements marshalling and unmarshalling of Intel Hex files.
+const Grammar = `
+file  = { line } ;
+line  = ':' len addr data check nl ;
+len   = byte ;
+addr  = byte byte ;
+data  = { byte }
+byte  = hex hex ;
+hex   = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9'
+      | 'a' | 'b' | 'c' | 'd' | 'e' | 'f' | 'A' | 'B' | 'C' | 'D' | 'E' | 'F' ;
+nl    = '\n' ;
+`
+
+// HexEncoding implements marshalling and unmarshalling of ELSIE binaries as Intel Hex files.
 type HexEncoding struct {
-	code *vm.ObjectCode
+	code []vm.ObjectCode
 }
 
-func (h HexEncoding) Code() vm.ObjectCode {
-	code := vm.ObjectCode{}
-	if h.code != nil {
-		code = *h.code // copy
-	}
-
-	return code
+// Code returns the collected object code.
+func (h HexEncoding) Code() []vm.ObjectCode {
+	return h.code
 }
 
 func (h *HexEncoding) MarshalText() ([]byte, error) {
-	return nil, errors.New("not implemented")
+	return nil, errors.New("not implemented... yet!")
 }
 
 func (h *HexEncoding) UnmarshalText(bs []byte) error {
-	buf := bufio.NewReader(bytes.NewReader(bs))
-	code := []vm.ObjectCode(nil)
+	line := bufio.NewScanner(bytes.NewReader(bs))
 
-	for { // iterate over lines in buffer
-
+	for line.Scan() {
 		var (
-			recLen  int8   // Number of bytes in data field; excludes address, type, checksum fields.
-			recAddr uint16 // Record address.
+			rec []byte = line.Bytes() //nolint:stylecheck
+
+			recLen   byte    // Number of bytes in data field; excludes address, type, checksum fields.
+			recAddr  uint16  // Record address.
+			recKind  kind    // Record type.
+			recCheck byte    // Expected checksum.
+			check    byte    // Accumulated checksum.
+			dec      [4]byte // Decode buffer.
 		)
 
-		// First, look for leading ':'
-		if prefix, err := buf.ReadByte(); err == io.EOF {
+		if len(rec) == 0 {
 			break
-		} else if err != nil {
-			return err
-		} else if prefix == '\n' {
+		} else if token := rec[0]; token == '\n' {
 			continue
-		} else if prefix != ':' {
-			return fmt.Errorf("%w: line does not start with ':'",
-				invalidEncodingErr)
+		} else if token != ':' {
+			return fmt.Errorf("%w: line does not start with ':'", errInvalidHex)
 		}
 
-		// Next, read two hexadecimal bytes.
-		var countBytes [2]byte
-		if _, err := io.ReadFull(buf, countBytes[:]); err != nil {
-			return err
+		if _, err := hex.Decode(dec[:1], rec[1:3]); err != nil {
+			return fmt.Errorf("%w: len:%s", errInvalidHex, err.Error())
+		} else {
+			recLen = dec[0]
 		}
 
-		// Decode hex bytes into a byte value.
-		if _, err := hex.Decode(countBytes[:1], countBytes[:]); err != nil {
-			return fmt.Errorf("%w: %s", invalidEncodingErr, err)
+		check += dec[0]
+
+		if _, err := hex.Decode(dec[:2], rec[3:7]); err != nil {
+			return fmt.Errorf("%w: addr: %s", errInvalidHex, err.Error())
+		} else {
+			recAddr = binary.BigEndian.Uint16(dec[:2])
 		}
 
-		// Convert the byte into an integer containing the record length.
-		err := binary.Read(bytes.NewReader(countBytes[:1]), binary.BigEndian, &recLen)
-		if err != nil {
-			return fmt.Errorf("%w: %s", invalidEncodingErr, err)
+		check += dec[0] + dec[1]
+
+		if _, err := hex.Decode(dec[:1], rec[7:9]); err != nil {
+			return fmt.Errorf("%w: type: %s", errInvalidHex, err.Error())
+		} else {
+			recKind = kind(dec[0])
 		}
 
-		// Eat to end of line. (?)
-		if _, err := buf.ReadBytes('\n'); err == io.EOF {
+		check += dec[0]
+
+		if _, err := hex.Decode(dec[:1], rec[len(rec)-2:]); err != nil {
+			return fmt.Errorf("%w: check: %s", errInvalidHex, err.Error())
+		} else {
+			recCheck = dec[0]
+		}
+
+		if recLen%2 != 0 {
+			return fmt.Errorf("%w: odd data length", errInvalidHex)
+		} else if recKind == kindData && recLen > 0 {
+			hexData := make([]byte, recLen)
+
+			if _, err := hex.Decode(hexData, rec[9:9+recLen*2]); err != nil {
+				return fmt.Errorf("%w: data: %s", errInvalidHex, err.Error())
+			}
+
+			code := make([]vm.Word, recLen/2)
+			for i := byte(0); i < recLen/2; i++ {
+				code[i] = vm.Word(hexData[2*i])<<8 | vm.Word(hexData[2*i+1])
+				check += hexData[2*i]
+				check += hexData[2*i+1]
+			}
+
+			check = 1 + ^check
+			if check != recCheck {
+				return fmt.Errorf("%w: checksum invalid: %02x != %02x",
+					errInvalidHex, check, recCheck)
+			}
+
+			h.code = append(h.code, vm.ObjectCode{
+				Orig: vm.Word(recAddr),
+				Code: code,
+			})
+		} else if recKind == kindEOF {
+			check = 1 + ^check
+			if check != recCheck {
+				return fmt.Errorf("%w: checksum invalid: %02x != %02x",
+					errInvalidHex, check, recCheck)
+			}
 			break
+		} else {
+			return fmt.Errorf("%w: unexpected record type: %d", errInvalidHex, recKind)
 		}
 	}
 
-	if len(code) == 0 {
-		return emptyErr
+	if len(h.code) == 0 {
+		return errEmpty
 	}
 
 	return nil
@@ -90,10 +155,8 @@ func (h *HexEncoding) UnmarshalText(bs []byte) error {
 type kind byte
 
 const (
-	kindData        kind = 0
-	kindEOF         kind = 1
-	kindSegmentAddr kind = 2
-	kindLinearAddr  kind = 4
+	kindData kind = 0
+	kindEOF  kind = 1
 )
 
 type decodingError struct{}
@@ -113,9 +176,9 @@ func (de *decodingError) Is(err error) bool {
 }
 
 var (
-	// DecodingErr is a wrapped error that is returned when decoding fails.
-	DecodingErr = &decodingError{}
+	// ErrDecode is a wrapped error that is returned when decoding fails.
+	ErrDecode = &decodingError{}
 
-	emptyErr           = fmt.Errorf("%w: no data decoded", DecodingErr)
-	invalidEncodingErr = fmt.Errorf("%w: invalid encoding", DecodingErr)
+	errEmpty      = fmt.Errorf("%w: no data decoded", ErrDecode)
+	errInvalidHex = fmt.Errorf("%w: invalid encoding", ErrDecode)
 )
