@@ -17,9 +17,9 @@ var TrapHalt = Routine{
 	Orig:   0x0520,
 	Symbols: asm.SymbolTable{
 		"RETRY":       0x0521,
-		"HALTMESSAGE": 0x0526,
-		"MCR":         0x052c,
-		"MASK":        0x052d,
+		"MCR":         0x0526,
+		"MASK":        0x0527,
+		"HALTMESSAGE": 0x0528,
 	},
 	Code: []asm.Operation{
 		// Print a message. Alert the media.
@@ -42,9 +42,9 @@ var TrapHalt = Routine{
 		},
 
 		// Routine data.
-		/* 0x0527 + 6 */ &asm.STRINGZ{LITERAL: "HALT!"}, // HALTMESSAGE.
-		/* 0x052d */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // I/O address of MCR.
-		/* 0x052e */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
+		/* 0x0527 */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // I/O address of MCR.
+		/* 0x0528 */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
+		/* 0x0529 */ &asm.STRINGZ{LITERAL: "\n\nMACHINE HALTED!\n\n"},
 	},
 }
 
@@ -53,6 +53,7 @@ var TrapHalt = Routine{
 //   - Table:   0x0000
 //   - Vector:  0x21
 //   - Handler: 0x0420
+//   - Input:   R0, character to display.
 //
 // Adapted from Fig. 9.22, 3/e.
 var TrapOut = Routine{
@@ -141,13 +142,13 @@ var TrapPuts = Routine{
 	Vector: vm.TrapTable + vm.Word(vm.TrapPUTS),
 	Orig:   0x0460,
 	Symbols: asm.SymbolTable{
-		"LOOP":   0x0465,
+		"LOOP":   0x0464,
 		"RETURN": 0x046a,
 		"DSR":    0x0429,
 		"DDR":    0x0435,
 	},
 	Code: []asm.Operation{
-		// Push R0,R1 onto the stack.
+		// Push R0, R1 onto the stack.
 		/*0x0460*/
 		&asm.ADD{DR: "R6", SR1: "R6", LITERAL: 0xffff},
 		&asm.STR{SR1: "R0", SR2: "R6"},
@@ -181,7 +182,7 @@ var TrapPuts = Routine{
 		&asm.RTI{},
 
 		// Trap-scoped variables.
-		/*0x0438 */ &asm.FILL{LITERAL: uint16(vm.DSRAddr)}, // display status-, and
-		/*0x0439 */ &asm.FILL{LITERAL: uint16(vm.DDRAddr)}, // data-registers.
+		/*0x046f */ &asm.FILL{LITERAL: uint16(vm.DSRAddr)}, // display status-, and
+		/*0x0470 */ &asm.FILL{LITERAL: uint16(vm.DDRAddr)}, // data-registers.
 	},
 }

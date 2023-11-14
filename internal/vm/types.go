@@ -60,7 +60,8 @@ func (r Register) String() string {
 
 // Offset adds an offset value to a register. The offset is taken as a
 func (r *Register) Offset(offset Word) {
-	*r = Register(Word(*r) + offset)
+	val := Word(*r) + offset
+	*r = Register(val)
 }
 
 // Instruction is a value that encodes a single CPU operation and is stored in a special purpose

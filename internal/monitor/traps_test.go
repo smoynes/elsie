@@ -276,8 +276,8 @@ func TestTrap_Puts(tt *testing.T) {
 	}
 
 	for i := range vals {
-		if vals[i] != 0x0021 {
-			t.Errorf("vals[%d] != 0x0021, got: %04X", i, vals[i])
+		if vals[i] != 0x0021+uint16(i) {
+			t.Errorf("vals[%d] != 0x0022, got: %04x", i, vals[i])
 		}
 	}
 }

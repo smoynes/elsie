@@ -1,25 +1,26 @@
-                       ELSIE: A Pedagogical LC-3 Emulator
+                       𝔼𝕃𝕊𝕀𝔼: A Pedagogical LC-3 Emulator
 ================================================================================
 
             The path is made in the walking of it. -- Zhuangzi
 
-This is  ELSIE, an exploration  of the LC-3: a  little computer that  is simple,
-comprehensive, and imaginary.
+This is 𝔼𝕃𝕊𝕀𝔼, an exploration of the  LC-3: a little computer that is simple and
+imaginary.
 
 The project includes:
 
- - a virtual machine, that executes instructions;
- - an assembler, for translating from LCASM source to machine code;
- - a loader, that puts programs into memory;
- - a system monitor or BIOS, that implements system calls;
- - virtual devices for display and keyboard I/O;
+ - a virtual machine that executes instructions;
+ - an assembler for translating LCASM source to machine code;
+ - a loader that puts programs into memory;
+ - a system monitor that implements system calls;
+ - virtual devices  for display and keyboard I/O;
  - many unnecessary words by your author; and
  - maybe, more to come…
 
-As a technical  project, ELSIE is not  useful: it isn't complete  and it doesn't
-work. In  those terms, it  is not good software.  To the author,  however, ELSIE
-feels more like a story, a performance,  or maybe even a convalescence. As such,
-it is software useful for more than mere utility and is essential.
+As a technical  project, 𝔼𝕃𝕊𝕀𝔼 is not  useful: it isn't complete  and it doesn't
+work. In  those terms,  it is  not good  software. However,  to the  author, the
+project  is not  intended to  be solely  utilitarian --  it is  also a  story, a
+performance, or maybe even a trail through  a cozy wood. As such, it is software
+that is essential and invaluable.
 
 -----------------------------
          Background
@@ -41,12 +42,11 @@ The LC-3 instruction set and architecture includes:
   - an instruction set compact enough to fit on a single page.
 
 Far  from an  abstract machine,  the text  begins with  transistors and  digital
-logic. From there,  it builds upon the  titular bits and bytes  and describes in
-detail   the   entire   computer   architecture   including   the   control-unit
-state-machine,  data and  I/O paths.  It is  fascinating. As  far as  I know,  a
-complete implementation has never been physically  built but, I can imagine, the
-text  will be  invaluable when  humanity has  to recreate  computers from  first
-principles.
+logic. From there,  it builds upon the  titular bits and bytes  and describes an
+entire computer architecture in detail including the control-unit state-machine,
+data  and  I/O  paths.  It  is  fascinating.  As  far  as  I  know,  a  complete
+implementation has never been physically built but, I can imagine, the text will
+be invaluable when humanity has to recreate computers from first principles.
 
 While similar  in many respects to  the x86 or  ARM ISAs, the LC-3  is radically
 simpler  in almost  every  way.  Unlike the  sprawling  x86,  with thousands  of
@@ -62,7 +62,7 @@ enough to write programs.
        Project Goals
 -----------------------------
 
-ELSIE is not novel: hardware simulators already exist for the LC-3 architecture,
+𝔼𝕃𝕊𝕀𝔼 is not novel: hardware simulators already exist for the LC-3 architecture,
 of course. The textbook publishers provide  one and there are many others freely
 available online.[1]  This one is  admittedly a  mere reinvention of  the wheel.
 That said, the gift the design and engineering process affords is that sometimes
@@ -136,6 +136,6 @@ This work is dedicated to the MCM/70[2] and its pioneering designers.
 
 -----------------------------
 
-ELSIE © 2023 by Scott Moynes is licensed under CC BY-SA 4.0.
+𝔼𝕃𝕊𝕀𝔼 © 2023 by Scott Moynes is licensed under CC BY-SA 4.0.
 See LICENCE.txt for terms. Send your lawyers here:
 https://creativecommons.org/licenses/by-sa/4.0/?ref=chooser-v1

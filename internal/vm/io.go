@@ -139,12 +139,12 @@ func (mmio MMIO) PSR() ProcessorStatus {
 }
 
 // DDR returns the value of the display data register, if it has been mapped.
-func (mmio MMIO) DDR() rune {
-	ddr := rune('⍝')
+func (mmio MMIO) DDR() Register {
+	ddr := Register('⍝')
 
 	if dev := mmio.devs[DDRAddr]; dev != nil {
 		val := dev.(*DisplayDriver)
-		ddr = rune(val.handle.device.ddr)
+		ddr = val.handle.device.ddr
 	}
 
 	return ddr

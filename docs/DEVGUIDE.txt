@@ -51,10 +51,10 @@ ELSIE has the following dependencies:
   - optionally, golangci-lint to check Go coding style.
 
 As a learning tool, ELSIE has a design goal that its development should simple
-and easy. To that end, dependencies are restricted to only tools, packages, and
+and easy. To that end, dependencies are restricted to tools, packages, and
 methods that are supported by the Go Development Team. This includes Go and its
-standard library, of course, but also includes modules in the "golang.org/x"
-namespace, modules for dependency management, and simple text file formats.
+standard library, of course, but also modules in the "golang.org/x" namespace,
+using modules for dependency management, and simple text file formats.
 
 Each design decision that introduces a dependency adds complexity, limits
 portability, and requires another skill or trivial knowledge from future
@@ -63,9 +63,7 @@ makes things unexpectedly more difficult over longer time scales. So, we limit
 ourselves to essential tools only. Notably, this excludes some very common and
 standard tools like make, shell and YAML.
 
-Go is not perfect, nor are its developer's or corporate sponsors infallible; far
-from it in fact. However, by acknowledging its flaws and yet embracing
-minimalism and Normhaus design, we make space for essential understanding and
-creativity to form and we build things that have a better chance of standing the
-tests of time. So long as Go is maintained, we can expect some motivated people
-to be able to fix its problems.
+My acknowledging its flaws and embracing minimalism and Normhaus design, we make
+space for essential understanding and creativity to form and we build things
+that have a better chance of standing the tests of time. So long as Go is
+maintained, we can expect some motivated people to be able to fix its problems.

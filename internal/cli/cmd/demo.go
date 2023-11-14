@@ -15,14 +15,15 @@ import (
 	"github.com/smoynes/elsie/internal/vm"
 )
 
-// Demo is a demonstration command.
+// Demo is a demonstration command. It serves as a smoke test for the VM and an example for
+// developers.
 func Demo() cli.Command {
 	return new(demo)
 }
 
 type demo struct {
+	log   bool
 	debug bool
-	quiet bool
 }
 
 func (demo) Description() string {
@@ -32,9 +33,9 @@ func (demo) Description() string {
 func (d demo) Usage(out io.Writer) error {
 	var err error
 	_, err = fmt.Fprintln(out, `
-demo [ -debug | -quiet ]
+demo [ -log | -debug ]
 
-Run demonstration program while displaying VM state.`)
+Run demonstration program.`)
 
 	return err
 }
@@ -42,59 +43,67 @@ Run demonstration program while displaying VM state.`)
 func (d *demo) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("demo", flag.ExitOnError)
 
-	fs.BoolVar(&d.debug, "debug", false, "enable debug logging")
-	fs.BoolVar(&d.quiet, "quiet", false, "enable quiet output, machine display only")
+	fs.BoolVar(&d.log, "log", false, "log execution state")
+	fs.BoolVar(&d.debug, "debug", false, "verbose execution state")
 
 	return fs
 }
 
 func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logger) int {
+	// When the context is cancelled the machine will stop running.
 	ctx, done := context.WithCancel(ctx)
 	defer done()
 
+	// We expect it to take much less than 1 second to run the demo. If it takes much longer,
+	// something is wrong.
 	ctx, cancelTimeout := context.WithTimeout(ctx, 5*time.Second)
 	defer cancelTimeout()
 
-	if d.quiet {
-		log.LogLevel.Set(log.Error)
-	}
-
-	if d.debug {
-		log.LogLevel.Set(log.Debug)
-	}
-
-	logger := log.NewFormattedLogger(os.Stdout)
-	log.SetDefault(logger)
-	log.DefaultLogger = func() *log.Logger {
-		return logger
-	}
+	// For the demo, we log to the error stream.
+	logger := d.configureLogger(os.Stderr)
 
 	logger.Info("Initializing machine")
 
+	// Use a channel to send displayed values to a background thread.
 	dispCh := make(chan uint16)
+
+	// Create virtual machine.
 	machine := vm.New(
+		// Use default BIOS.
+		monitor.WithDefaultSystemImage(),
+
+		// Log using the configured logger.
 		vm.WithLogger(logger),
+
+		// Write displayed values to the display channel.
 		vm.WithDisplayListener(func(displayed uint16) {
 			dispCh <- displayed
 		}),
-		monitor.WithDefaultSystemImage(),
 	)
 
 	logger.Info("Loading program")
 
+	// Load the demo program.
 	loader := vm.NewLoader(machine)
+	machine.REG[vm.R0] = 0x2364 // ⍤
 	code := vm.ObjectCode{
 		Orig: 0x3000,
 		Code: []vm.Word{
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
-			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
-			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
-			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
-			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
-			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
-			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+			vm.Word(vm.NewInstruction(vm.LEA, 0x0002)),
+			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapPUTS))),
 			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapHALT))),
+			vm.Word('\n'),
+			vm.Word('t'),
+			vm.Word('h'),
+			vm.Word('a'),
+			vm.Word('n'),
+			vm.Word('k'),
+			vm.Word('s'),
+			vm.Word('!'),
+			vm.Word('\n'),
+			vm.Word(0x0000),
 		},
 	}
 
@@ -103,13 +112,7 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 		return 2
 	}
 
-	machine.REG[vm.R0] = 0x2364
-
-	if _, err := loader.Load(code); err != nil {
-		logger.Error("error loading code:", err)
-		return 2
-	}
-
+	// Start a background thread to displays each character after a brief delay.
 	go func() {
 		logger.Info("Starting display")
 
@@ -121,11 +124,10 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 			case disp := <-dispCh:
 				r := rune(disp)
 				fmt.Printf("%c", r)
+				<-timer.C
 			case <-ctx.Done():
 				return
 			}
-
-			<-timer.C
 		}
 	}()
 
@@ -149,7 +151,35 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 
 	close(dispCh)
 
-	logger.Info("Demo completed")
+	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		logger.Error("Demo timeout!")
+		return 2
+	} else if errors.Is(err, context.Canceled) {
+		logger.Info("Demo completed")
+		return 0
+	} else if err != nil {
+		logger.Error("Demo error!", "ERR", err)
+		return 2
+	}
 
 	return 0
+}
+
+func (d demo) configureLogger(out io.Writer) *log.Logger {
+	logger := log.NewFormattedLogger(out)
+	log.SetDefault(logger)
+	log.DefaultLogger = func() *log.Logger {
+		return logger
+	}
+
+	switch {
+	case d.debug == true:
+		log.LogLevel.Set(log.Debug)
+	case d.log == true:
+		log.LogLevel.Set(log.Info)
+	default:
+		log.LogLevel.Set(log.Error)
+	}
+
+	return logger
 }
