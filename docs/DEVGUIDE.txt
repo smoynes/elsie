@@ -1,7 +1,7 @@
         Development Guide
 =================================
 
-This document describes how to develop ELSIE.
+This document describes how to develop 𝔼𝕃𝕊𝕀𝔼.
 
 Go version 1.21 is required. In general, standard Go tooling is used to build,
 install, manage dependencies, etc. The following commands complete a single
@@ -42,7 +42,7 @@ To compile a binary for another platform, e.g. my Raspberry Pi Model B:
         Dependencies
 -----------------------------
 
-ELSIE has the following dependencies:
+𝔼𝕃𝕊𝕀𝔼 has the following dependencies:
 
   - Go, the programming language and its tools.
   - golang.org/x/tools/cmd/stringer to generate debug strings for constant
@@ -50,7 +50,7 @@ ELSIE has the following dependencies:
   - optionally, Docker to build container images.
   - optionally, golangci-lint to check Go coding style.
 
-As a learning tool, ELSIE has a design goal that its development should simple
+As a learning tool, 𝔼𝕃𝕊𝕀𝔼 has a design goal that its development should simple
 and easy. To that end, dependencies are restricted to tools, packages, and
 methods that are supported by the Go Development Team. This includes Go and its
 standard library, of course, but also modules in the "golang.org/x" namespace,

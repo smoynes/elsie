@@ -270,7 +270,7 @@ func (cr *ControlRegister) Put(val Register) {
 }
 
 func (cr *ControlRegister) device() string {
-	return "MCR(ELSIE LC-3 SIMULATOR)"
+	return "MCR(𝔼𝕃𝕊𝕀𝔼 LC-3 SIMULATOR)"
 }
 
 type (

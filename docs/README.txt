@@ -9,7 +9,7 @@ imaginary.
 The project includes:
 
  - a virtual machine that executes instructions;
- - an assembler for translating LCASM source to machine code;
+ - an assembler for translating LC3ASM source to machine code;
  - a loader that puts programs into memory;
  - a system monitor that implements system calls;
  - virtual devices  for display and keyboard I/O;

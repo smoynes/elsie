@@ -1,4 +1,4 @@
-// ELSIE is a virtual machine and programming tool for the LC-3 educational computer.
+// 𝔼𝕃𝕊𝕀𝔼 is a virtual machine and programming tool for the LC-3 educational computer.
 //
 // # Usage
 //
