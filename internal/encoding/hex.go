@@ -49,8 +49,11 @@ func (h HexEncoding) Code() []vm.ObjectCode {
 
 func (h *HexEncoding) MarshalText() ([]byte, error) {
 	var (
-		buf   bytes.Buffer
-		check byte
+		buf   bytes.Buffer // Buffered output.
+		check byte         // Checksum accumulator.
+		val   [2]byte      // Value to encode.
+
+		hexEnc = hex.NewEncoder(&buf) // Translates output to hex.
 	)
 
 	for i := range h.code {
@@ -58,27 +61,16 @@ func (h *HexEncoding) MarshalText() ([]byte, error) {
 
 		_ = buf.WriteByte(':')
 
-		var val [2]byte
-
 		l := len(code.Code)
 		val[0] = byte(l * 2)
+		_, _ = hexEnc.Write(val[:1])
 		check += val[0]
-
-		hex := hex.NewEncoder(&buf)
-		_, err := hex.Write(val[:1])
-		if err != nil {
-			return buf.Bytes(), err
-		}
 
 		val[0] = byte(code.Orig >> 8)
 		val[1] = byte(code.Orig & 0x00ff)
+		_, _ = hexEnc.Write(val[:])
 		check += val[0]
 		check += val[1]
-
-		_, err = hex.Write(val[:])
-		if err != nil {
-			return buf.Bytes(), err
-		}
 
 		buf.WriteByte('0')
 		buf.WriteByte('0')
@@ -86,17 +78,13 @@ func (h *HexEncoding) MarshalText() ([]byte, error) {
 		for _, word := range code.Code {
 			val[0] = byte(word & 0xff00 >> 8)
 			val[1] = byte(word & 0x00ff)
-			_, err = hex.Write(val[:])
-			if err != nil {
-				return buf.Bytes(), err
-			}
+			_, _ = hexEnc.Write(val[:])
 			check += val[0]
 			check += val[1]
-
 		}
 
 		val[0] = 1 + ^check
-		_, _ = hex.Write(val[:1])
+		_, _ = hexEnc.Write(val[:1])
 
 		buf.WriteByte('\n')
 	}
