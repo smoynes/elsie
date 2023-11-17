@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/hex"
-	"errors"
 	"fmt"
 
 	"github.com/smoynes/elsie/internal/vm"
@@ -49,7 +48,61 @@ func (h HexEncoding) Code() []vm.ObjectCode {
 }
 
 func (h *HexEncoding) MarshalText() ([]byte, error) {
-	return nil, errors.New("not implemented... yet!")
+	var buf bytes.Buffer
+	var check byte
+
+	for i := range h.code {
+		code := h.code[i]
+
+		//a := uint16(code.Orig)
+		_ = buf.WriteByte(':')
+
+		var val [2]byte
+
+		l := len(code.Code)
+		val[0] = byte(l * 2)
+		check += val[0]
+
+		hex := hex.NewEncoder(&buf)
+		_, err := hex.Write(val[:1])
+		if err != nil {
+			return buf.Bytes(), err
+		}
+
+		val[0] = byte(code.Orig >> 8)
+		val[1] = byte(code.Orig & 0x00ff)
+		check += val[0]
+		check += val[1]
+
+		_, err = hex.Write(val[:])
+		if err != nil {
+			return buf.Bytes(), err
+		}
+
+		buf.WriteByte('0')
+		buf.WriteByte('0')
+
+		for _, word := range code.Code {
+			val[0] = byte(word & 0xff00 >> 8)
+			val[1] = byte(word & 0x00ff)
+			_, err = hex.Write(val[:])
+			if err != nil {
+				return buf.Bytes(), err
+			}
+			check += val[0]
+			check += val[1]
+
+		}
+
+		val[0] = 1 + ^check
+		_, _ = hex.Write(val[:1])
+
+		buf.WriteByte('\n')
+	}
+
+	buf.Write([]byte(":00000001ff\n"))
+
+	return buf.Bytes(), nil
 }
 
 func (h *HexEncoding) UnmarshalText(bs []byte) error {

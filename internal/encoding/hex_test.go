@@ -15,9 +15,9 @@ var (
 )
 
 type unmarshalTestCase struct {
-	name, input, inputFilename string
+	name, input string
 
-	expectCodes int // count of collected code
+	expectCodes int
 	expectErr   error
 }
 
@@ -26,10 +26,9 @@ func TestHexEncoder_UnmarshalText(t *testing.T) {
 
 	tcs := []unmarshalTestCase{
 		{
-			name:          "empty",
-			input:         "",
-			inputFilename: "",
-			expectErr:     errEmpty,
+			name:      "empty",
+			input:     "",
+			expectErr: errEmpty,
 		},
 		{
 			name:      "eof record",
@@ -170,8 +169,76 @@ func TestHexEncoder_UnmarshalText(t *testing.T) {
 	}
 }
 
+type marshalTestCase struct {
+	name  string
+	input []vm.ObjectCode
+
+	expectOutput string
+	expectErr    error
+}
+
+func TestHexEncoder_MarshalText(t *testing.T) {
+	t.Parallel()
+
+	tcs := []marshalTestCase{
+		{
+			name:         "nil",
+			input:        nil,
+			expectOutput: ":00000001ff\n",
+		},
+		{
+			name: "fixed string",
+			input: []vm.ObjectCode{
+				{
+					Orig: vm.Word(0x2462),
+					Code: []vm.Word{
+						0x464c, 0x5549, 0x4420, 0x5052, 0x4f46, 0x494c, 0x4500, 0x464c,
+					},
+				},
+			},
+			expectOutput: ":10246200464c5549442050524f46494c4500464c33\n:00000001ff\n",
+		},
+	}
+
+	for _, tc := range tcs {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			output, err := marshal(tc)
+
+			t.Logf("have: %+v, got: %q, err: %v", tc.input, output, err)
+
+			switch {
+			case tc.expectErr != nil && err != nil:
+				if !errors.Is(err, tc.expectErr) {
+					t.Errorf("Unexpected error: got: %s, want: %s",
+						err.Error(), tc.expectErr.Error())
+				}
+			case tc.expectErr != nil && err == nil:
+				t.Errorf("Expected error: %s", tc.expectErr.Error())
+			case tc.expectErr == nil && err != nil:
+				t.Errorf("Unexpected error: got: %v", err)
+			default:
+				if tc.expectOutput != output {
+					t.Errorf("got: %q, want: %q", output, tc.expectOutput)
+				}
+			}
+
+		})
+	}
+}
+
+func marshal(tc marshalTestCase) (string, error) {
+	encoder := HexEncoding{
+		code: tc.input,
+	}
+	out, err := encoder.MarshalText()
+
+	return string(out), err
+}
+
 func unmarshal(tc unmarshalTestCase) ([]vm.ObjectCode, error) {
-	// TODO: unmarshal from file
 	decoder := HexEncoding{}
 	err := decoder.UnmarshalText([]byte(tc.input))
 
