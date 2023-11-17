@@ -48,13 +48,14 @@ func (h HexEncoding) Code() []vm.ObjectCode {
 }
 
 func (h *HexEncoding) MarshalText() ([]byte, error) {
-	var buf bytes.Buffer
-	var check byte
+	var (
+		buf   bytes.Buffer
+		check byte
+	)
 
 	for i := range h.code {
 		code := h.code[i]
 
-		//a := uint16(code.Orig)
 		_ = buf.WriteByte(':')
 
 		var val [2]byte
