@@ -111,6 +111,30 @@ $ elsie demo -log
 
 ## Writing a program ##
 
-_Watch this space.__
+While a hard-coded demo is impressive, it is also deeply unsatisfying. It is not
+enough to interpret a pointless, pre-written program -- we also want to write
+our own pointless programs for our machine to interpret.
+
+𝔼𝕃𝕊𝕀𝔼 includes a translator that lets us write programs in a simple assembly
+dialect called LC3ASM. Later, we will see how we can load and execute our
+programs.
+
+```asm
+.ORIG x3000
+  ST R1,SAVER1
+  LD R1,COUNT
+LOOP BRz EXIT
+  ADD R1,R1,#-1
+  BR LOOP
+EXIT LD R1,SAVER1
+    HALT
+COUNT .FILL 10
+SAVER1 .DW x0000
+.END
+```
+
+```console
+$ elsie asm COUNTDOWN.asm
+```
 
 <!-- -*- coding: utf-8-auto -*- -->

@@ -11,20 +11,18 @@
 LOOP:
     BRz     EXIT                ; If counter is zero, exit program.
     ADD     R1,R1,#-1           ; Decrement counter.
-    BRnzp   LOOP                ; Loop
+    BR      LOOP                ; Loop, again.
 
     ;;
-    ;;  Exit program.
+    ;;  Exit program
     ;;
 EXIT:
-    LD      R1,SAVER1
+    LD      R1,SAVER1           ; Restore R1 from stored
     HALT
 
     ;;
-    ;; Program data
+    ;; Static data
     ;;
-COUNT:                          ;
-    .FILL   10
-
+COUNT .FILL   10
 SAVER1 .DW x0000
     .END
