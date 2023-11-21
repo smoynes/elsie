@@ -75,6 +75,10 @@ func TestAssembler_Gold(tt *testing.T) {
 			input:       t.inputStream("parser6.asm"),
 			expectedHex: t.expectOutput("parser6.hex"),
 		},
+		{
+			input:       t.inputStream("parser7.asm"),
+			expectedHex: t.expectOutput("parser7.hex"),
+		},
 	}
 
 	for i, tc := range tcs {
