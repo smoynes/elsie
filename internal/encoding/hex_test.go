@@ -231,7 +231,7 @@ func TestHexEncoder_MarshalText(t *testing.T) {
 
 func marshal(tc marshalTestCase) (string, error) {
 	encoder := HexEncoding{
-		code: tc.input,
+		Code: tc.input,
 	}
 	out, err := encoder.MarshalText()
 
@@ -242,5 +242,5 @@ func unmarshal(tc unmarshalTestCase) ([]vm.ObjectCode, error) {
 	decoder := HexEncoding{}
 	err := decoder.UnmarshalText([]byte(tc.input))
 
-	return decoder.Code(), err
+	return decoder.Code, err
 }

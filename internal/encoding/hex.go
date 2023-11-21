@@ -5,7 +5,7 @@
 // checksum. In shorthand:
 //
 //	:LLAAAATT[DD...]CC
-//	0123456789
+//	012345678 90...
 //
 // See [Grammar] for a formal grammar.
 //
@@ -39,12 +39,7 @@ nl    = '\n' ;
 
 // HexEncoding implements marshalling and unmarshalling of ELSIE binaries as Intel Hex files.
 type HexEncoding struct {
-	code []vm.ObjectCode
-}
-
-// Code returns the collected object code.
-func (h HexEncoding) Code() []vm.ObjectCode {
-	return h.code
+	Code []vm.ObjectCode
 }
 
 func (h *HexEncoding) MarshalText() ([]byte, error) {
@@ -56,8 +51,8 @@ func (h *HexEncoding) MarshalText() ([]byte, error) {
 		hexEnc = hex.NewEncoder(&buf) // Translates output to hex.
 	)
 
-	for i := range h.code {
-		code := h.code[i]
+	for i := range h.Code {
+		code := h.Code[i]
 
 		_ = buf.WriteByte(':')
 
@@ -169,7 +164,7 @@ func (h *HexEncoding) UnmarshalText(bs []byte) error {
 					errInvalidHex, check, recCheck)
 			}
 
-			h.code = append(h.code, vm.ObjectCode{
+			h.Code = append(h.Code, vm.ObjectCode{
 				Orig: vm.Word(recAddr),
 				Code: code,
 			})
@@ -185,7 +180,7 @@ func (h *HexEncoding) UnmarshalText(bs []byte) error {
 		}
 	}
 
-	if len(h.code) == 0 {
+	if len(h.Code) == 0 {
 		return errEmpty
 	}
 
