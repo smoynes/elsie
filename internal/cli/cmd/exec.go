@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/smoynes/elsie/internal/cli"
+	"github.com/smoynes/elsie/internal/encoding"
 	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/monitor"
 	"github.com/smoynes/elsie/internal/vm"
@@ -47,15 +48,22 @@ func (ex *executor) FlagSet() *cli.FlagSet {
 }
 
 // Run executes the program.
-func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer,
-	logger *log.Logger,
+func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, logger *log.Logger,
 ) int {
 	log.LogLevel.Set(ex.logLevel)
+
+	// Code translated is encoded in a hex-based encoding.
+	hex := encoding.HexEncoding{}
 
 	code, err := ex.loadCode(args[0])
 	if err != nil {
 		logger.Error("Error loading code", "err", err)
-		return 1
+		return -1
+	}
+
+	if err = hex.wUnmarshalText(code); err != nil {
+		logger.Error(err.Error())
+		return -2
 	}
 
 	logger.Debug("Initializing machine")
@@ -65,11 +73,16 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer,
 	)
 
 	loader := vm.NewLoader(machine)
-	count, err := loader.Load(code)
+	count := uint16(0)
 
-	if err != nil {
-		logger.Error(err.Error())
-		return 1
+	for i := range hex.Code {
+		n, err := loader.Load(hex.Code[i])
+		count += n
+
+		if err != nil {
+			logger.Error(err.Error())
+			return 1
+		}
 	}
 
 	logger.Debug("Loaded program", "file", args[0], "loaded", count)
@@ -84,7 +97,7 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer,
 	return 0
 }
 
-func (ex executor) loadCode(fn string) (code vm.ObjectCode, err error) {
+func (ex executor) loadCode(fn string) (program []byte, err error) {
 	ex.log.Debug("Loading executable", "file", fn)
 
 	file, err := os.Open(fn)
@@ -92,16 +105,13 @@ func (ex executor) loadCode(fn string) (code vm.ObjectCode, err error) {
 		return
 	}
 
-	program, err := io.ReadAll(file)
+	program, err = io.ReadAll(file)
 	if err != nil {
 		ex.log.Error(err.Error())
 		return
 	}
 
-	_, err = code.Read(program)
-	if err != nil {
-		return
-	}
+	ex.log.Debug("Loaded file", "bytes", len(program))
 
-	return code, nil
+	return program, nil
 }

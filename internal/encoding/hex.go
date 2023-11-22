@@ -89,8 +89,11 @@ func (h *HexEncoding) MarshalText() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (h *HexEncoding) UnmarshalText(bs []byte) error {
-	line := bufio.NewScanner(bytes.NewReader(bs))
+// UnmarshalText decodes hex-encoded text-data. It accepts all files produced by MarshalText,
+// ignoring case. This method may be repeated to accumulate object code. However, the buf argument
+// must contain complete records: partial files and re-entrant unmarshalling are not supported.
+func (h *HexEncoding) UnmarshalText(buf []byte) error {
+	line := bufio.NewScanner(bytes.NewReader(buf))
 
 	for line.Scan() {
 		var (
