@@ -9,23 +9,23 @@ import (
 	"io"
 
 	"github.com/smoynes/elsie/internal/encoding"
-	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/vm"
 )
 
-// Generator controls the code generation pass of the assembler. The generator starts at the
-// beginning of the parsed-syntax table, generates code for each operation, and then writes the
-// bytes to the output (usually, a file).
+// Generator controls the code generation pass of the assembler and translates source code into byte code.
+//
+// The generator starts at the beginning of the parsed-syntax table, generates code for each
+// operation, and then writes the generated code to the output (usually, a file). Use Encode to
+// write as hex-encoded ASCII files or use WriteTo write binary object-code to a buffer.
 //
 // During the generation pass, any syntax or semantic errors that prevent generating machine code
-// are immediately returned from WriteTo. The errors are wrapped SyntaxErrors and may be tested and
-// retrieved using the errors package.
+// are immediately returned. The errors are wrapped in SyntaxErrors and may be tested and retrieved
+// using the errors package.
 type Generator struct {
 	pc       uint16
 	symbols  SymbolTable
 	syntax   SyntaxTable
 	encoding encoding.HexEncoding
-	log      *log.Logger
 }
 
 // NewGenerator creates a code generator using the given symbol and syntax tables.
@@ -35,14 +35,11 @@ func NewGenerator(symbols SymbolTable, syntax SyntaxTable) *Generator {
 		symbols:  symbols,
 		syntax:   syntax,
 		encoding: encoding.HexEncoding{},
-		log:      log.DefaultLogger(),
 	}
 }
 
-// Encode generates object code and encodes it as an object code file.
+// Encode generates object code and encodes it as hex-encoded ASCII object code.
 func (gen *Generator) Encode() ([]byte, error) {
-	gen.log.Debug("encoding", "count", len(gen.syntax), "symbols", len(gen.symbols))
-
 	if len(gen.syntax) == 0 {
 		return nil, nil
 	}
@@ -55,10 +52,8 @@ func (gen *Generator) Encode() ([]byte, error) {
 
 	// We expect the .ORIG directive to be the first operation in the syntax table.
 	if orig, ok := origin(gen.syntax[0]); ok {
-		gen.log.Debug("object offset", "ORIG", fmt.Sprintf("%0#4x", orig.LITERAL))
 		gen.pc = orig.LITERAL
 		obj.Orig = vm.Word(orig.LITERAL)
-
 	} else {
 		return nil, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
 	}
@@ -113,7 +108,6 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 	// first operation in the syntax table.
 	if orig, ok := origin(gen.syntax[0]); ok {
 		gen.pc = orig.LITERAL
-		gen.log.Debug("Wrote object header", "ORIG", fmt.Sprintf("%0#4x", orig.LITERAL))
 	} else {
 		return 0, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
 	}
