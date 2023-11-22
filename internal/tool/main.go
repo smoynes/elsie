@@ -11,6 +11,8 @@ import (
 	"os"
 	"os/exec"
 	path "path/filepath"
+	"runtime"
+	"strings"
 )
 
 var usage = `go run internal/tool <COMMAND>
@@ -104,7 +106,11 @@ func deps() error {
 }
 
 func dockerBuild() error {
-	docker := exec.Command("docker", "build", "-t", "smoynes/elsie", ".")
+	docker := exec.Command("docker", "build",
+		"-t", "smoynes/elsie",
+		"--build-arg", "GOLANG_VERSION="+strings.TrimPrefix(runtime.Version(), "go"),
+		".",
+	)
 	out, err := docker.StderrPipe()
 
 	if err != nil {
