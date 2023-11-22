@@ -50,7 +50,8 @@ func (gen *Generator) Encode() ([]byte, error) {
 		err   error
 	)
 
-	// We expect the .ORIG directive to be the first operation in the syntax table.
+	// We expect the .ORIG directive to be the first operation in the syntax table. TODO: We should
+	// be able to support multiple origins if the encoder does.
 	if orig, ok := origin(gen.syntax[0]); ok {
 		gen.pc = orig.LITERAL
 		obj.Orig = vm.Word(orig.LITERAL)
@@ -58,11 +59,14 @@ func (gen *Generator) Encode() ([]byte, error) {
 		return nil, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
 	}
 
-	for _, op := range gen.syntax {
+	for i, op := range gen.syntax {
 		if op == nil {
 			continue
-		} else if _, ok := origin(op); ok {
+		} else if _, ok := origin(op); i == 0 {
 			continue
+		} else if ok {
+			err = errors.New(".ORIG directive may only be the first operation")
+			break
 		}
 
 		genWords, genErr := op.Generate(gen.symbols, gen.pc+1)
@@ -72,9 +76,7 @@ func (gen *Generator) Encode() ([]byte, error) {
 			break
 		}
 
-		for i := range genWords {
-			obj.Code = append(obj.Code, vm.Word(genWords[i]))
-		}
+		obj.Code = append(obj.Code, genWords...)
 
 		gen.pc += uint16(len(genWords))
 		count += int64(len(genWords) * 2)
@@ -93,16 +95,16 @@ func (gen *Generator) Encode() ([]byte, error) {
 	return b, nil
 }
 
-// WriteTo writes generated machine code to an output stream.
+// WriteTo writes generated binary machine-code to an output stream. It implements io.WriteTo.
 func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
+	if len(gen.syntax) == 0 {
+		return 0, nil
+	}
+
 	var (
 		count int64
 		err   error
 	)
-
-	if len(gen.syntax) == 0 {
-		return 0, nil
-	}
 
 	// Write the origin offset as the leader of the object file. The .ORIG directive should be the
 	// first operation in the syntax table.

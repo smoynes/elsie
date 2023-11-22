@@ -156,9 +156,9 @@ func TestAssembler_Gold(tt *testing.T) {
 
 				b := out.Bytes()
 
-				for i := 0; i <= len(b) && i <= len(expected); i++ {
+				for i := 0; i < len(b) && i < len(expected); i++ {
 					if b[i] != expected[i] {
-						t.Errorf("\tindex: %0#4x: %0#2x != %0#2x (%[2]q != %[3]q)", i, b[i], expected[i])
+						t.Errorf("\tindex: %d: %0#2x != %0#2x (%[2]q != %[3]q)", i, b[i], expected[i])
 					}
 				}
 			}
