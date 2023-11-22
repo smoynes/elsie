@@ -86,8 +86,8 @@ func (i *Instruction) Operand(operand uint16) {
 	*i |= Instruction(operand) & 0x0fff
 }
 
-func (i Instruction) Encode() uint16 {
-	return uint16(i)
+func (i Instruction) Encode() Word {
+	return Word(i)
 }
 
 // Opcode returns the instruction opcode which is stored in the top four bits of the instruction.

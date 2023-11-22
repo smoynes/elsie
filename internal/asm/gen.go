@@ -39,69 +39,6 @@ func NewGenerator(symbols SymbolTable, syntax SyntaxTable) *Generator {
 	}
 }
 
-// WriteTo writes generated machine code to an output stream. // TODO: encode output
-func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
-	var (
-		generated []uint16
-		count     int64
-		err       error
-	)
-
-	if len(gen.syntax) == 0 {
-		return 0, nil
-	}
-
-	// Write the origin offset as the leader of the object file. The .ORIG directive should be the
-	// first operation in the syntax table. However, operations may be wrapped, so we unwrap to the
-	// base case, first.
-	if orig, ok := unwrap(gen.syntax[0]).(*ORIG); ok {
-		gen.pc = orig.LITERAL
-		gen.log.Debug("Wrote object header", "ORIG", fmt.Sprintf("%0#4x", orig.LITERAL))
-	} else {
-		return 0, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
-	}
-
-	for i, code := range gen.syntax {
-		if code == nil {
-			continue
-		} else if _, ok := (unwrap(code)).(*ORIG); ok && i != 0 {
-			err = errors.New(".ORIG directive may only be the first operation")
-			break
-		}
-
-		generated, err = code.Generate(gen.symbols, gen.pc)
-
-		if err != nil {
-			// If code generation caused an error, we try to get the source of the operation and
-			// covert annotate the error with the source code annotation.
-			if src, ok := code.(*SourceInfo); ok {
-				err = &SyntaxError{
-					File: src.Filename,
-					Loc:  gen.pc,
-					Pos:  src.Pos,
-					Line: src.Line,
-					Err:  err,
-				}
-			}
-
-			break
-		}
-
-		if err = binary.Write(out, binary.BigEndian, generated); err != nil {
-			break
-		}
-
-		gen.pc += uint16(len(generated))
-		count += int64(len(generated) * 2)
-	}
-
-	if err != nil {
-		return count, fmt.Errorf("gen: %w", err)
-	}
-
-	return count, nil
-}
-
 // Encode generates object code and encodes it as an object code file.
 func (gen *Generator) Encode() ([]byte, error) {
 	gen.log.Debug("encoding", "count", len(gen.syntax), "symbols", len(gen.symbols))
@@ -159,6 +96,56 @@ func (gen *Generator) Encode() ([]byte, error) {
 	}
 
 	return b, nil
+}
+
+// WriteTo writes generated machine code to an output stream.
+func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
+	var (
+		count int64
+		err   error
+	)
+
+	if len(gen.syntax) == 0 {
+		return 0, nil
+	}
+
+	// Write the origin offset as the leader of the object file. The .ORIG directive should be the
+	// first operation in the syntax table.
+	if orig, ok := origin(gen.syntax[0]); ok {
+		gen.pc = orig.LITERAL
+		gen.log.Debug("Wrote object header", "ORIG", fmt.Sprintf("%0#4x", orig.LITERAL))
+	} else {
+		return 0, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
+	}
+
+	for i, oper := range gen.syntax {
+		if oper == nil {
+			continue
+		} else if _, ok := origin(oper); ok && i != 0 {
+			err = errors.New(".ORIG directive may only be the first operation")
+			break
+		}
+
+		generated, genErr := oper.Generate(gen.symbols, gen.pc) // TODO: should this be pc + 1
+
+		if err != nil {
+			err = gen.annotate(oper, genErr)
+			break
+		}
+
+		if err = binary.Write(out, binary.BigEndian, generated); err != nil {
+			break
+		}
+
+		gen.pc += uint16(len(generated))
+		count += int64(len(generated) * 2)
+	}
+
+	if err != nil {
+		return count, fmt.Errorf("gen: %w", err)
+	}
+
+	return count, nil
 }
 
 // annotate wraps errors with source code information.

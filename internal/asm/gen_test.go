@@ -5,9 +5,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"testing"
-	"unicode/utf16"
 
 	. "github.com/smoynes/elsie/internal/asm"
+	"github.com/smoynes/elsie/internal/vm"
 )
 
 type generatorHarness struct {
@@ -16,8 +16,8 @@ type generatorHarness struct {
 
 type generateCase struct {
 	oper     Operation
-	want     uint16   // A single code point.
-	wantCode []uint16 // Multiple code points.
+	want     vm.Word   // A single code point.
+	wantCode []vm.Word // Multiple code points.
 	wantErr  error
 }
 
@@ -486,16 +486,18 @@ func TestSTRINGZ_Generate(tt *testing.T) {
 
 	tcs := []generateCase{
 		{
-			oper:     &STRINGZ{LITERAL: "Hello, there!"},
-			wantCode: utf16.Encode([]rune("Hello, there!\x00")),
+			oper: &STRINGZ{LITERAL: "Hello, there!"},
+			wantCode: []vm.Word{
+				'H', 'e', 'l', 'l', 'o', ',', ' ',
+				't', 'h', 'e', 'r', 'e', '!', 0},
 		},
 		{
 			oper:     &STRINGZ{LITERAL: ""},
-			wantCode: []uint16{0x0000},
+			wantCode: []vm.Word{0x0000},
 		},
 		{
 			oper:     &STRINGZ{LITERAL: "⍤"},
-			wantCode: append(utf16.Encode([]rune{'⍤'}), 0x0000),
+			wantCode: []vm.Word{'⍤', 0},
 		},
 	}
 
