@@ -1,5 +1,7 @@
 package vm
 
+// loader.go holds an object loader.
+
 import (
 	"bytes"
 	"encoding/binary"
@@ -8,8 +10,6 @@ import (
 
 	"github.com/smoynes/elsie/internal/log"
 )
-
-// loader.go holds an object loader.
 
 // Loader takes object code and loads it into the machine's memory.
 type Loader struct {
@@ -73,7 +73,7 @@ type ObjectCode struct {
 }
 
 // Read loads an object from bytes.
-func (obj *ObjectCode) Read(b []byte) (int, error) {
+func (obj *ObjectCode) read(b []byte) (int, error) {
 	var count int
 
 	if len(b) < 2 {

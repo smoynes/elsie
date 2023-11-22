@@ -15,6 +15,7 @@ import (
 
 	. "github.com/smoynes/elsie/internal/asm"
 	"github.com/smoynes/elsie/internal/log"
+	"github.com/smoynes/elsie/internal/vm"
 )
 
 func init() {
@@ -83,7 +84,7 @@ func (fake *fakeInstruction) Parse(oper string, opers []string) error {
 	return nil
 }
 
-func (fake *fakeInstruction) Generate(sym SymbolTable, loc uint16) ([]uint16, error) {
+func (fake *fakeInstruction) Generate(sym SymbolTable, loc uint16) ([]vm.Word, error) {
 	return nil, nil
 }
 

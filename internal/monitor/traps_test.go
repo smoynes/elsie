@@ -68,7 +68,7 @@ func TestTrap_Halt(tt *testing.T) {
 	code := vm.ObjectCode{
 		Orig: 0x3000,
 		Code: []vm.Word{
-			vm.Word(vm.NewInstruction(vm.TRAP, 0x25).Encode()),
+			vm.NewInstruction(vm.TRAP, 0x25).Encode(),
 		},
 	}
 
@@ -143,9 +143,7 @@ func TestTrap_Out(tt *testing.T) {
 	code := vm.ObjectCode{
 		Orig: 0x3000,
 		Code: []vm.Word{
-			vm.Word(vm.NewInstruction(
-				vm.TRAP, uint16(vm.TrapOUT)).Encode(),
-			),
+			vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT)).Encode(),
 		},
 	}
 
@@ -227,9 +225,8 @@ func TestTrap_Puts(tt *testing.T) {
 	code := vm.ObjectCode{
 		Orig: 0x3000,
 		Code: []vm.Word{
-			vm.Word(vm.NewInstruction(
+			vm.NewInstruction(
 				vm.TRAP, uint16(vm.TrapPUTS)).Encode(),
-			),
 		},
 	}
 

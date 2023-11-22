@@ -3,6 +3,7 @@ package asm_test
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"io"
 	"log/slog"
 	"os"
@@ -53,8 +54,9 @@ func (t *assemblerHarness) logger() *log.Logger {
 }
 
 type goldTestCase struct {
-	input    io.ReadCloser
-	expected io.ReadCloser
+	input       io.ReadCloser
+	expected    io.ReadCloser
+	expectedHex io.ReadCloser
 }
 
 func TestAssembler_Gold(tt *testing.T) {
@@ -69,47 +71,101 @@ func TestAssembler_Gold(tt *testing.T) {
 			input:    t.inputStream("parser7.asm"),
 			expected: t.expectOutput("parser7.out"),
 		},
+		{
+			input:       t.inputStream("parser6.asm"),
+			expectedHex: t.expectOutput("parser6.hex"),
+		},
+		{
+			input:       t.inputStream("parser7.asm"),
+			expectedHex: t.expectOutput("parser7.hex"),
+		},
+		{
+			input:       t.inputStream("parser9.asm"),
+			expectedHex: t.expectOutput("parser9.hex"),
+		},
 	}
 
-	for _, tc := range tcs {
+	for i, tc := range tcs {
 		tc := tc
 
-		parser := asm.NewParser(t.logger())
-		parser.Parse(tc.input)
-
-		if parser.Err() != nil {
-			t.Error(parser.Err())
+		var name string
+		if fn, ok := tc.expected.(interface{ Name() string }); ok {
+			name = fmt.Sprintf("Test %s #%d", fn.Name(), i)
+		} else if fn, ok := tc.expectedHex.(interface{ Name() string }); ok {
+			name = fmt.Sprintf("Test %s #%d", fn.Name(), i)
+		} else {
+			name = fmt.Sprintf("Test #%d", i)
 		}
 
-		syntax := parser.Syntax()
-		symbols := parser.Symbols()
+		t.Run(name, func(tt *testing.T) {
+			t := assemblerHarness{tt}
+			parser := asm.NewParser(t.logger())
+			parser.Parse(tc.input)
 
-		out := new(bytes.Buffer)
+			if parser.Err() != nil {
+				t.Error(parser.Err())
+			}
 
-		generator := asm.NewGenerator(symbols, syntax)
-		count, err := generator.WriteTo(out)
+			syntax := parser.Syntax()
+			symbols := parser.Symbols()
 
-		t.Logf("Wrote %d bytes", count)
+			generator := asm.NewGenerator(symbols, syntax)
 
-		if err != nil {
-			t.Error(err)
-		}
+			var (
+				out   bytes.Buffer
+				count int64
+				err   error
+			)
 
-		expect, err := io.ReadAll(tc.expected)
-		if err != nil {
-			t.Error(err)
-		}
+			if tc.expectedHex == nil {
+				count, err = generator.WriteTo(&out)
+			} else {
+				bs, err := generator.Encode()
+				if err != nil {
+					t.Error(err.Error())
+					return
+				}
+				c, err := out.Write(bs)
+				if err != nil {
+					t.Error(err.Error())
+					return
+				}
+				count = int64(c)
+			}
 
-		if bytes.Compare(expect, out.Bytes()) != 0 {
-			t.Error("bytes not equal")
+			t.Logf("Wrote %d bytes", count)
 
-			b := out.Bytes()
+			if err != nil {
+				t.Error(err)
+			}
 
-			for i := 0; i <= len(b); i++ {
-				if b[i] != expect[i] {
-					t.Errorf("Bytes not equal: index: %0#4x: %0#2x != %0#2x", i, b[i], expect[i])
+			var expected []byte
+
+			if tc.expected != nil {
+				expected, err = io.ReadAll(tc.expected)
+				if err != nil {
+					t.Error(err)
+					return
+				}
+			} else if tc.expectedHex != nil {
+				expected, err = io.ReadAll(tc.expectedHex)
+				if err != nil {
+					t.Error(nil)
+					return
 				}
 			}
-		}
+
+			if bytes.Compare(expected, out.Bytes()) != 0 {
+				t.Error("bytes not equal:")
+
+				b := out.Bytes()
+
+				for i := 0; i < len(b) && i < len(expected); i++ {
+					if b[i] != expected[i] {
+						t.Errorf("\tindex: %d: %0#2x != %0#2x (%[2]q != %[3]q)", i, b[i], expected[i])
+					}
+				}
+			}
+		})
 	}
 }

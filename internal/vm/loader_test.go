@@ -1,4 +1,4 @@
-package vm_test
+package vm
 
 import (
 	"errors"
@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/smoynes/elsie/internal/log"
-	. "github.com/smoynes/elsie/internal/vm"
 )
 
 type loaderHarness struct {
@@ -199,8 +198,8 @@ func TestObjectCode(t *testing.T) {
 		expObject: ObjectCode{
 			Orig: Word(0x4000),
 			Code: []Word{
-				Word(Instruction(0x1234).Encode()),
-				Word(Instruction(0x5678).Encode()),
+				Instruction(0x1234).Encode(),
+				Instruction(0x5678).Encode(),
 			},
 		},
 	}, {
@@ -217,7 +216,7 @@ func TestObjectCode(t *testing.T) {
 			t.Parallel()
 
 			obj := ObjectCode{}
-			read, err := obj.Read(tc.bytes)
+			read, err := obj.read(tc.bytes)
 
 			if read != tc.expRead {
 				t.Error("unexpected read count", "want:", tc.expRead, "got:", read)

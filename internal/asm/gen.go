@@ -8,89 +8,138 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/smoynes/elsie/internal/log"
+	"github.com/smoynes/elsie/internal/encoding"
 	"github.com/smoynes/elsie/internal/vm"
 )
 
-// Generator controls the code generation pass of the assembler. The generator starts at the
-// beginning of the parsed-syntax table, generates code for each operation, and then writes the
-// bytes to the output (usually, a file).
+// Generator controls the code generation pass of the assembler and translates source code into byte code.
+//
+// The generator starts at the beginning of the parsed-syntax table, generates code for each
+// operation, and then writes the generated code to the output (usually, a file). Use Encode to
+// write as hex-encoded ASCII files or use WriteTo write binary object-code to a buffer.
 //
 // During the generation pass, any syntax or semantic errors that prevent generating machine code
-// are immediately returned from WriteTo. The errors are wrapped SyntaxErrors and may be tested and
-// retrieved using the errors package.
+// are immediately returned. The errors are wrapped in SyntaxErrors and may be tested and retrieved
+// using the errors package.
 type Generator struct {
-	pc      uint16
-	symbols SymbolTable
-	syntax  SyntaxTable
-
-	log *log.Logger
+	pc       uint16
+	symbols  SymbolTable
+	syntax   SyntaxTable
+	encoding encoding.HexEncoding
 }
 
 // NewGenerator creates a code generator using the given symbol and syntax tables.
 func NewGenerator(symbols SymbolTable, syntax SyntaxTable) *Generator {
 	return &Generator{
-		pc:      0x0000,
-		symbols: symbols,
-		syntax:  syntax,
-		log:     log.DefaultLogger(),
+		pc:       0x0000,
+		symbols:  symbols,
+		syntax:   syntax,
+		encoding: encoding.HexEncoding{},
 	}
 }
 
-// WriteTo writes generated machine code to an output stream.
-func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
+// Encode generates object code and encodes it as hex-encoded ASCII object code.
+//
+// Multiple sections are supported if the symbol table has multiple ORIG directives.
+func (gen *Generator) Encode() ([]byte, error) {
+	if len(gen.syntax) == 0 {
+		return nil, nil
+	}
+
 	var (
-		encoded []uint16
-		count   int64
-		err     error
+		obj   vm.ObjectCode
+		count int64
+		err   error
 	)
 
+	// We expect the .ORIG directive to be the first operation in the syntax table. TODO: We should
+	// be able to support multiple origins if the encoder does.
+	if _, ok := origin(gen.syntax[0]); !ok {
+		return nil, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
+	}
+
+	for _, op := range gen.syntax {
+		if op == nil {
+			continue
+		} else if orig, ok := origin(op); ok {
+			if obj.Code != nil {
+				gen.encoding.Code = append(gen.encoding.Code, obj)
+			}
+
+			gen.pc = orig.LITERAL
+			obj = vm.ObjectCode{Orig: vm.Word(gen.pc)}
+
+			continue // We don't need to generate code.
+		}
+
+		genWords, genErr := op.Generate(gen.symbols, gen.pc+1)
+
+		if genErr != nil {
+			err = gen.annotate(op, genErr)
+			break
+		}
+
+		obj.Code = append(obj.Code, genWords...)
+
+		gen.pc += uint16(len(genWords))
+		count += int64(len(genWords) * 2)
+	}
+
+	if err != nil {
+		return nil, fmt.Errorf("gen: %w", err)
+	}
+
+	gen.encoding.Code = append(gen.encoding.Code, obj)
+
+	if b, err := gen.encoding.MarshalText(); err != nil {
+		return nil, fmt.Errorf("gen: %w", err)
+	} else {
+		return b, nil
+	}
+}
+
+// WriteTo writes generated binary machine-code to an output stream. It implements io.WriteTo.
+//
+// Unlinke Encode, WriteTo does not support writing more than a single section of code.
+func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 	if len(gen.syntax) == 0 {
 		return 0, nil
 	}
 
+	var (
+		count int64
+		err   error
+	)
+
 	// Write the origin offset as the leader of the object file. The .ORIG directive should be the
-	// first operation in the syntax table. However, operations may be wrapped, so we unwrap to the
-	// base case, first.
-	if orig, ok := unwrap(gen.syntax[0]).(*ORIG); ok {
+	// first operation in the syntax table.
+	if orig, ok := origin(gen.syntax[0]); ok {
 		gen.pc = orig.LITERAL
-		gen.log.Debug("Wrote object header", "ORIG", fmt.Sprintf("%0#4x", orig.LITERAL))
 	} else {
 		return 0, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
 	}
 
-	for i, code := range gen.syntax {
-		if code == nil {
+	for i, oper := range gen.syntax {
+		if oper == nil {
 			continue
-		} else if _, ok := (unwrap(code)).(*ORIG); ok && i != 0 {
+		} else if _, ok := origin(oper); ok && i != 0 {
 			err = errors.New(".ORIG directive may only be the first operation")
 			break
 		}
 
-		encoded, err = code.Generate(gen.symbols, gen.pc)
+		generated, genErr := oper.Generate(gen.symbols, gen.pc) // TODO: should this be pc + 1
 
 		if err != nil {
-			// If code generation caused an error, we try to get the source of the operation and
-			// covert annotate the error with the source code annotation.
-			if src, ok := code.(*SourceInfo); ok {
-				err = &SyntaxError{
-					File: src.Filename,
-					Loc:  gen.pc,
-					Pos:  src.Pos,
-					Line: src.Line,
-					Err:  err,
-				}
-			}
-
+			err = gen.annotate(oper, genErr)
 			break
 		}
 
-		if err = binary.Write(out, binary.BigEndian, encoded); err != nil {
+		if err = binary.Write(out, binary.BigEndian, generated); err != nil {
 			break
 		}
 
-		gen.pc += uint16(len(encoded))
-		count += int64(len(encoded) * 2)
+		gen.pc += uint16(len(generated))
+		count += int64(len(generated) * 2)
 	}
 
 	if err != nil {
@@ -100,22 +149,22 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 	return count, nil
 }
 
-// Encode generates operations encoded as word values. Unlike WriteTo, Encode does not handle
-// directives, just instruction and data values.
-func (gen *Generator) Encode() ([]vm.Word, error) {
-	encoded := make([]vm.Word, 0, len(gen.syntax))
-
-	for _, val := range gen.syntax {
-		if code, err := val.Generate(gen.symbols, gen.pc); err != nil {
-			return nil, fmt.Errorf("gen: %w", err)
-		} else if len(code) != 0 {
-			panic(code)
-		} else {
-			encoded = append(encoded, vm.Word(code[0]))
+// annotate wraps errors with source code information.
+func (gen *Generator) annotate(code Operation, err error) error {
+	if err == nil {
+		return nil
+	} else if src, ok := code.(*SourceInfo); ok {
+		err := &SyntaxError{
+			File: src.Filename,
+			Loc:  gen.pc,
+			Pos:  src.Pos,
+			Line: src.Line,
+			Err:  err,
 		}
+		return err
+	} else {
+		return nil
 	}
-
-	return encoded, nil
 }
 
 // unwrap returns the base operation from possibly wrapped operation.
@@ -127,4 +176,10 @@ func unwrap(oper Operation) Operation {
 			return oper
 		}
 	}
+}
+
+// origin unwraps and returns an .ORIG directive.
+func origin(oper Operation) (orig *ORIG, ok bool) {
+	orig, ok = unwrap(oper).(*ORIG)
+	return
 }

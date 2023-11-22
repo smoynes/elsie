@@ -121,7 +121,7 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 			}
 
 			for i := range encoded {
-				obj.Code = append(obj.Code, vm.Word(encoded[i]))
+				obj.Code = append(obj.Code, encoded[i])
 			}
 
 			pc += 1
@@ -162,7 +162,7 @@ func Generate(routine Routine) (vm.ObjectCode, error) {
 			return obj, fmt.Errorf("generate: %s: %w", oper, err)
 		} else {
 			for i := range encoded {
-				obj.Code = append(obj.Code, vm.Word(encoded[i]))
+				obj.Code = append(obj.Code, encoded[i])
 			}
 		}
 	}

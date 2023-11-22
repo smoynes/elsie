@@ -248,7 +248,7 @@ type Operation interface {
 
 	// Generate encodes an operation as machine code. Using the values from Parse, the operation is
 	// converted to one (or more) words.
-	Generate(symbols SymbolTable, pc uint16) ([]uint16, error)
+	Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error)
 }
 
 // SourceInfo wraps an operation to annotate it with parser metadata.
