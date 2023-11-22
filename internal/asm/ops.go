@@ -1121,12 +1121,13 @@ func (s *STRINGZ) ParseString(opcode string, val string) error {
 }
 
 func (s STRINGZ) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
-	encoded := utf16.Encode([]rune(s.LITERAL))
-	encoded = append(encoded, 0)
+	encoded := append(utf16.Encode([]rune(s.LITERAL)), 0)
 	code := make([]vm.Word, len(encoded))
+
 	for i := range encoded {
 		code[i] = vm.Word(encoded[i])
 	}
+
 	return code, nil
 }
 

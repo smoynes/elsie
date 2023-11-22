@@ -199,8 +199,8 @@ func TestObjectCode(t *testing.T) {
 		expObject: ObjectCode{
 			Orig: Word(0x4000),
 			Code: []Word{
-				Word(Instruction(0x1234).Encode()),
-				Word(Instruction(0x5678).Encode()),
+				Instruction(0x1234).Encode(),
+				Instruction(0x5678).Encode(),
 			},
 		},
 	}, {

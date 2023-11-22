@@ -87,12 +87,12 @@ func (gen *Generator) Encode() ([]byte, error) {
 	}
 
 	gen.encoding.Code = append(gen.encoding.Code, obj)
-	b, err := gen.encoding.MarshalText()
-	if err != nil {
-		return nil, fmt.Errorf("gen: %w", err)
-	}
 
-	return b, nil
+	if b, err := gen.encoding.MarshalText(); err != nil {
+		return nil, fmt.Errorf("gen: %w", err)
+	} else {
+		return b, nil
+	}
 }
 
 // WriteTo writes generated binary machine-code to an output stream. It implements io.WriteTo.
