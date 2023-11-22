@@ -106,9 +106,12 @@ func deps() error {
 }
 
 func dockerBuild() error {
+	goVersion := strings.TrimPrefix(runtime.Version(), "go")
+
+	//nolint:gosec
 	docker := exec.Command("docker", "build",
 		"-t", "smoynes/elsie",
-		"--build-arg", "GOLANG_VERSION="+strings.TrimPrefix(runtime.Version(), "go"),
+		"--build-arg", "GOLANG_VERSION="+goVersion,
 		".",
 	)
 	out, err := docker.StderrPipe()
