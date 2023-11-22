@@ -57,7 +57,13 @@ func (h *HexEncoding) MarshalText() ([]byte, error) {
 		_ = buf.WriteByte(':')
 
 		l := len(code.Code)
+
+		if l*2 > 0xff {
+			panic("object code too long")
+		}
+
 		val[0] = byte(l * 2)
+
 		_, _ = hexEnc.Write(val[:1])
 		check += val[0]
 

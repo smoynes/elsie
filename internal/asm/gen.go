@@ -39,6 +39,8 @@ func NewGenerator(symbols SymbolTable, syntax SyntaxTable) *Generator {
 }
 
 // Encode generates object code and encodes it as hex-encoded ASCII object code.
+//
+// Multiple sections are supported if the symbol table has multiple ORIG directives.
 func (gen *Generator) Encode() ([]byte, error) {
 	if len(gen.syntax) == 0 {
 		return nil, nil
@@ -52,21 +54,22 @@ func (gen *Generator) Encode() ([]byte, error) {
 
 	// We expect the .ORIG directive to be the first operation in the syntax table. TODO: We should
 	// be able to support multiple origins if the encoder does.
-	if orig, ok := origin(gen.syntax[0]); ok {
-		gen.pc = orig.LITERAL
-		obj.Orig = vm.Word(orig.LITERAL)
-	} else {
+	if _, ok := origin(gen.syntax[0]); !ok {
 		return nil, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
 	}
 
-	for i, op := range gen.syntax {
+	for _, op := range gen.syntax {
 		if op == nil {
 			continue
-		} else if _, ok := origin(op); i == 0 {
-			continue
-		} else if ok {
-			err = errors.New(".ORIG directive may only be the first operation")
-			break
+		} else if orig, ok := origin(op); ok {
+			if obj.Code != nil {
+				gen.encoding.Code = append(gen.encoding.Code, obj)
+			}
+
+			gen.pc = orig.LITERAL
+			obj = vm.ObjectCode{Orig: vm.Word(gen.pc)}
+
+			continue // We don't need to generate code.
 		}
 
 		genWords, genErr := op.Generate(gen.symbols, gen.pc+1)
@@ -96,6 +99,8 @@ func (gen *Generator) Encode() ([]byte, error) {
 }
 
 // WriteTo writes generated binary machine-code to an output stream. It implements io.WriteTo.
+//
+// Unlinke Encode, WriteTo does not support writing more than a single section of code.
 func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 	if len(gen.syntax) == 0 {
 		return 0, nil

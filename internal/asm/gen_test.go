@@ -556,12 +556,67 @@ func Test_CaseInsensitiveLabels(tt *testing.T) {
 	tcs := []generateCase{
 		{oper: &JSR{OFFSET: 0x00ff}, want: 0x48ff},
 		{oper: &JSR{OFFSET: 0xffff}, want: 0x4bff},
-		{oper: &JSR{SYMBOL: "label"}, want: 0x4fff},
-		{oper: &JSR{SYMBOL: "there"}, want: 0x49ff},
-		{oper: &JSR{SYMBOL: "back"}, want: 0x4800},
-		{oper: &JSR{SYMBOL: "wayback"}, wantErr: &OffsetRangeError{Offset: 0xf7ff}},
-		{oper: &JSR{SYMBOL: "overthere"}, wantErr: &OffsetRangeError{Offset: 0x0800}},
+		{oper: &JSR{SYMBOL: "lAbEl"}, want: 0x4fff},
+		{oper: &JSR{SYMBOL: "thErE"}, want: 0x49ff},
+		{oper: &JSR{SYMBOL: "bAck"}, want: 0x4800},
+		{oper: &JSR{SYMBOL: "wAybAck"}, wantErr: &OffsetRangeError{Offset: 0xf7ff}},
+		{oper: &JSR{SYMBOL: "ovErthEre"}, wantErr: &OffsetRangeError{Offset: 0x0800}},
 	}
 
 	t.Run(pc, symbols, tcs)
+}
+
+func TestORIG_Generate(tt *testing.T) {
+	t := generatorHarness{tt}
+
+	tcs := []generateCase{
+		{
+			oper:     &ORIG{LITERAL: 0x3000},
+			wantCode: []vm.Word{0x3000},
+		},
+		{
+			oper:     &ORIG{LITERAL: 0x0030},
+			wantCode: []vm.Word{0x0030},
+		},
+	}
+
+	pc := uint16(0x3000)
+	symbols := SymbolTable{}
+
+	for tc := range tcs {
+		op := tcs[tc].oper
+		wantCode := tcs[tc].wantCode
+
+		code, err := op.Generate(symbols, pc)
+		if err != nil {
+			t.Fatalf("unexpected error: %#v", err)
+		}
+
+		if code == nil {
+			t.Error("invalid machine code")
+		}
+
+		// Convert []uint16 to []byte...
+		codeBuffer := new(bytes.Buffer)
+		err = binary.Write(codeBuffer, binary.BigEndian, code)
+
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		wantBytes := new(bytes.Buffer)
+		err = binary.Write(wantBytes, binary.BigEndian, wantCode)
+
+		if err != nil {
+			t.Error(err)
+			return
+		}
+
+		if bytes.Compare(codeBuffer.Bytes(), wantBytes.Bytes()) != 0 {
+			t.Error("code differs")
+			t.Errorf("%s", codeBuffer.Bytes())
+			t.Errorf("%s", wantBytes.Bytes())
+		}
+	}
 }

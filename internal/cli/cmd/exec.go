@@ -126,6 +126,7 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 		case err != nil:
 			logger.Error(err.Error())
 			cancel(err)
+
 			return
 		default:
 			cancel(context.Canceled)
