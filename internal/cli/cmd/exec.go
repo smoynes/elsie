@@ -55,17 +55,10 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 	log.LogLevel.Set(ex.logLevel)
 
 	// Code translated is encoded in a hex-based encoding.
-	hex := encoding.HexEncoding{}
-
 	code, err := ex.loadCode(args[0])
 	if err != nil {
 		logger.Error("Error loading code", "err", err)
 		return -1
-	}
-
-	if err = hex.UnmarshalText(code); err != nil {
-		logger.Error(err.Error())
-		return -2
 	}
 
 	ctx, cancel := context.WithCancelCause(ctx)
@@ -89,8 +82,8 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 	loader := vm.NewLoader(machine)
 	count := uint16(0)
 
-	for i := range hex.Code {
-		n, err := loader.Load(hex.Code[i])
+	for i := range code {
+		n, err := loader.Load(code[i])
 		count += n
 
 		if err != nil {
@@ -152,21 +145,28 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 	}
 }
 
-func (ex executor) loadCode(fn string) (program []byte, err error) {
+func (ex executor) loadCode(fn string) ([]vm.ObjectCode, error) {
 	ex.log.Debug("Loading executable", "file", fn)
 
 	file, err := os.Open(fn)
 	if err != nil {
-		return
+		return nil, err
 	}
 
-	program, err = io.ReadAll(file)
+	code, err := io.ReadAll(file)
 	if err != nil {
 		ex.log.Error(err.Error())
-		return
+		return nil, err
 	}
 
-	ex.log.Debug("Loaded file", "bytes", len(program))
+	ex.log.Debug("Loaded file", "bytes", len(code))
 
-	return program, nil
+	hex := encoding.HexEncoding{}
+
+	if err = hex.UnmarshalText(code); err != nil {
+		ex.log.Error(err.Error())
+		return nil, err
+	}
+
+	return hex.Code, nil
 }
