@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/smoynes/elsie/internal/cli"
 	"github.com/smoynes/elsie/internal/encoding"
@@ -61,15 +63,27 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 		return -1
 	}
 
-	if err = hex.wUnmarshalText(code); err != nil {
+	if err = hex.UnmarshalText(code); err != nil {
 		logger.Error(err.Error())
 		return -2
 	}
 
+	ctx, cancel := context.WithCancelCause(ctx)
+	defer cancel(context.Canceled)
+
+	ctx, cancelTimeout := context.WithTimeout(ctx, 10*time.Second)
+	defer cancelTimeout()
+
 	logger.Debug("Initializing machine")
+
+	dispCh := make(chan rune, 1)
+
 	machine := vm.New(
 		vm.WithLogger(logger),
 		monitor.WithDefaultSystemImage(),
+		vm.WithDisplayListener(func(displayed uint16) {
+			dispCh <- rune(displayed)
+		}),
 	)
 
 	loader := vm.NewLoader(machine)
@@ -85,16 +99,56 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 		}
 	}
 
+	go func() {
+		logger.Debug("Starting display")
+
+		for {
+			select {
+			case disp := <-dispCh:
+				fmt.Printf("%c", disp)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
 	logger.Debug("Loaded program", "file", args[0], "loaded", count)
-	logger.Debug("Starting machine")
 
-	err = machine.Run(ctx)
-	if err != nil {
-		logger.Error(err.Error())
-		return 2 // Exec error
+	go func(cancel context.CancelCauseFunc) {
+		logger.Info("Starting machine")
+
+		err := machine.Run(ctx)
+
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			logger.Warn("Demo timeout")
+			return
+		case err != nil:
+			logger.Error(err.Error())
+			cancel(err)
+			return
+		default:
+			cancel(context.Canceled)
+		}
+	}(cancel)
+
+	<-ctx.Done()
+
+	close(dispCh)
+
+	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
+		logger.Error("Exec timeout!")
+		return 2
+	} else if errors.Is(err, context.Canceled) {
+		logger.Info("Program completed")
+		return 0
+	} else if err != nil {
+		logger.Error("Program error", "ERR", err)
+		return 2
+	} else {
+		logger.Info("Terminated")
+		return 0
 	}
-
-	return 0
 }
 
 func (ex executor) loadCode(fn string) (program []byte, err error) {
