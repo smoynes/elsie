@@ -1,8 +1,8 @@
 /*
 Package asm implements a simple assembler for the machine.
 
-The assembler generates LC-3 machine code from LCASM assembly language, an unnecessary dialect
-that extends the Patt and Patel's with a few developer-friendly niceties.
+The assembler generates LC-3 machine code from LC3ASM assembly language, an unnecessary dialect that
+extends the Patt and Patel's with a few developer-friendly niceties.
 
 	LABEL   AND R3,R3,R2
 	        AND R1,R1,#-1
@@ -42,7 +42,7 @@ import (
 	"github.com/smoynes/elsie/internal/vm"
 )
 
-// Grammar declares the syntax of LCASM in EBNF (with some liberties).
+// Grammar declares the syntax of LC3ASM in EBNF (with some liberties).
 var Grammar = (`
 program      = { line } ;
 line         = ';' comment

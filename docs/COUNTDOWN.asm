@@ -2,7 +2,6 @@
 ;;; Inputs: R0 is the address of counter.
 
     .ORIG   x3000               ; Start at the beginning of user-space memory.
-    ST      R1,SAVER1           ; Set aside the R1 for the counter value.
     LD      R1,COUNT            ; Load the counter value from the pointer.
 
     ;;
@@ -11,20 +10,24 @@
 LOOP:
     BRz     EXIT                ; If counter is zero, exit program.
     ADD     R1,R1,#-1           ; Decrement counter.
-    BRnzp   LOOP                ; Loop
+    ADD     R0,R1,#xf           ; Add 0x30 to counter and store in R0.
+    ADD     R0,R0,#xf           ;
+    ADD     R0,R0,#xf           ;
+    ADD     R0,R0,#x3           ;
+    TRAP    x21                 ; TRAP:  OUT.
+    AND     R1,R1,R1            ; Logical check R1 for zero.
+    BR      LOOP                ; Loop, again.
 
     ;;
-    ;;  Exit program.
+    ;;  Exit program
     ;;
 EXIT:
-    LD      R1,SAVER1
     HALT
 
     ;;
-    ;; Program data
+    ;; Static data
     ;;
-COUNT:                          ;
-    .FILL   10
+COUNT:
+    .FILL   10                  ; Constant to countdown.
 
-SAVER1 .DW x0000
     .END

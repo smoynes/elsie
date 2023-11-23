@@ -32,8 +32,7 @@ func (demo) Description() string {
 
 func (d demo) Usage(out io.Writer) error {
 	var err error
-	_, err = fmt.Fprintln(out, `
-demo [ -log | -debug ]
+	_, err = fmt.Fprintln(out, `demo [ -log | -debug ]
 
 Run demonstration program.`)
 
@@ -83,28 +82,30 @@ func (d demo) Run(ctx context.Context, args []string, out io.Writer, _ *log.Logg
 
 	logger.Info("Loading program")
 
-	// Load the demo program.
+	demoCode := []vm.Word{
+		vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+		vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
+		vm.Word(vm.NewInstruction(vm.LEA, 0x0002)),
+		vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapPUTS))),
+		vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapHALT))),
+		vm.Word('\n'),
+		vm.Word('T'), vm.Word('h'), vm.Word('a'), vm.Word('n'), vm.Word('k'),
+		vm.Word(' '),
+		vm.Word('y'), vm.Word('o'), vm.Word('u'),
+		vm.Word(' '),
+		vm.Word('f'), vm.Word('o'), vm.Word('r'),
+		vm.Word(' '),
+		vm.Word('d'), vm.Word('e'), vm.Word('m'), vm.Word('o'), vm.Word('i'), vm.Word('n'), vm.Word('g'),
+		vm.Word('!'),
+		vm.Word('\n'),
+		vm.Word(0x0000),
+	}
+
 	loader := vm.NewLoader(machine)
 	machine.REG[vm.R0] = 0x2364 // ⍤
 	code := vm.ObjectCode{
 		Orig: 0x3000,
-		Code: []vm.Word{
-			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
-			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT))),
-			vm.Word(vm.NewInstruction(vm.LEA, 0x0002)),
-			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapPUTS))),
-			vm.Word(vm.NewInstruction(vm.TRAP, uint16(vm.TrapHALT))),
-			vm.Word('\n'),
-			vm.Word('t'),
-			vm.Word('h'),
-			vm.Word('a'),
-			vm.Word('n'),
-			vm.Word('k'),
-			vm.Word('s'),
-			vm.Word('!'),
-			vm.Word('\n'),
-			vm.Word(0x0000),
-		},
+		Code: demoCode,
 	}
 
 	if _, err := loader.Load(code); err != nil {

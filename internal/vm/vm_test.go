@@ -314,6 +314,39 @@ func TestInstructions(tt *testing.T) {
 		}
 	})
 
+	tt.Run("ADDIMM zeroed", func(tt *testing.T) {
+		var (
+			t   = NewTestHarness(tt)
+			cpu = t.Make()
+		)
+
+		_ = cpu.Mem.store(Word(cpu.PC), 0b0001_000_000_1_00000|(-9&0x1f))
+		cpu.REG[R0] = 9
+
+		err := cpu.Step()
+		if err != nil {
+			t.Error(err)
+		}
+
+		if op := cpu.IR.Opcode(); op != ADD {
+			t.Errorf("instr: %s, want: %04b, got: %04b",
+				cpu.IR, AND, op)
+		}
+
+		oper := cpu.Decode()
+		t.Logf("oper: %#+v", oper)
+
+		if cpu.REG[R0] != 0x0000 {
+			t.Errorf("r0 incorrect, want: %s, got: %s",
+				Register(0x0000), cpu.REG[R0])
+		}
+
+		if !cpu.PSR.Zero() {
+			t.Errorf("cond incorrect, want: %s, got: %s",
+				StatusNegative, cpu.PSR)
+		}
+	})
+
 	tt.Run("LD", func(tt *testing.T) {
 		var (
 			t   = NewTestHarness(tt)
