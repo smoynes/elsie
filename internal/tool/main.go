@@ -112,6 +112,7 @@ func dockerBuild() error {
 	docker := exec.Command("docker", "build",
 		"-t", "smoynes/elsie",
 		"--build-arg", "GOLANG_VERSION="+goVersion,
+		"-f", "internal/tool/Dockerfile",
 		".",
 	)
 	out, err := docker.StderrPipe()
