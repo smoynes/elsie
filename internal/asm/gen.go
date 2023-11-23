@@ -16,7 +16,7 @@ import (
 //
 // The generator starts at the beginning of the parsed-syntax table, generates code for each
 // operation, and then writes the generated code to the output (usually, a file). Use Encode to
-// write as hex-encoded ASCII files or use WriteTo write binary object-code to a buffer.
+// write as hex-encoded ASCII files or use WriteTo write to binary object-code to a buffer.
 //
 // During the generation pass, any syntax or semantic errors that prevent generating machine code
 // are immediately returned. The errors are wrapped in SyntaxErrors and may be tested and retrieved

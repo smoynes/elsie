@@ -56,10 +56,10 @@ Commands:`)
 
 	for _, cmd := range h.cmd {
 		fs := cmd.FlagSet()
-		fmt.Fprintf(out, "  %-20s %s\n", fs.Name(), cmd.Description())
+		fmt.Fprintf(out, "        %-8s %s\n", fs.Name(), cmd.Description())
 	}
 
-	fmt.Fprintf(out, "  %-20s %s\n", h.FlagSet().Name(), h.Description())
+	fmt.Fprintf(out, "        %-8s %s\n", h.FlagSet().Name(), h.Description())
 	fmt.Fprintln(out)
 	fmt.Fprintln(out, "Use `elsie help <command>` to get help for a command.")
 

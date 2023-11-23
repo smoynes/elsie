@@ -22,6 +22,7 @@ func Assembler() cli.Command {
 }
 
 type assembler struct {
+	log    bool
 	debug  bool
 	output string
 }
@@ -41,6 +42,7 @@ Assemble source into object code.`)
 
 func (a *assembler) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("asm", flag.ExitOnError)
+	fs.BoolVar(&a.log, "log", false, "enable logging")
 	fs.BoolVar(&a.debug, "debug", false, "enable debug logging")
 	fs.StringVar(&a.output, "o", "a.o", "output `filename`")
 
@@ -49,7 +51,9 @@ func (a *assembler) FlagSet() *cli.FlagSet {
 
 // Run calls the assembler to assemble the assembly.
 func (a *assembler) Run(ctx context.Context, args []string, stdout io.Writer, logger *log.Logger) int {
-	if a.debug {
+	if a.log {
+		log.LogLevel.Set(log.Info)
+	} else if a.debug {
 		log.LogLevel.Set(log.Debug)
 	}
 
@@ -65,14 +69,15 @@ func (a *assembler) Run(ctx context.Context, args []string, stdout io.Writer, lo
 			return 1
 		}
 
+		logger.Info("Parsing source", "file", fn)
 		parser.Parse(f)
-	}
 
-	logger.Debug("Parsed source",
-		"symbols", parser.Symbols().Count(),
-		"size", parser.Syntax().Size(),
-		"err", parser.Err(),
-	)
+		logger.Debug("Parsed source",
+			"symbols", parser.Symbols().Count(),
+			"size", parser.Syntax().Size(),
+			"err", parser.Err(),
+		)
+	}
 
 	if parser.Err() != nil {
 		logger.Error("Parse error", "err", parser.Err())
@@ -89,10 +94,9 @@ func (a *assembler) Run(ctx context.Context, args []string, stdout io.Writer, lo
 	symbols := parser.Symbols()
 	syntax := parser.Syntax()
 	generator := asm.NewGenerator(symbols, syntax)
+	buf := bufio.NewWriter(out)
 
 	logger.Debug("Writing object", "file", a.output)
-
-	buf := bufio.NewWriter(out)
 
 	objCode, err := generator.Encode()
 	if err != nil {
@@ -106,12 +110,14 @@ func (a *assembler) Run(ctx context.Context, args []string, stdout io.Writer, lo
 		return -1
 	}
 
+	logger.Debug("Wrote object", "file", a.output, "size", wrote)
+
 	if err := buf.Flush(); err != nil {
 		logger.Error("I/O error", "out", a.output, "err", err)
 		return -1
 	}
 
-	logger.Debug("Compiled object",
+	logger.Info("Compiled object",
 		"out", a.output,
 		"size", wrote,
 		"symbols", symbols.Count(),
