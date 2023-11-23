@@ -198,7 +198,10 @@ func (op *addImm) Decode(vm *LC3) {
 }
 
 func (op *addImm) Execute() {
-	op.vm.REG[op.dr] = Register(int16(op.vm.REG[op.sr]) + int16(op.lit))
+	operand := int16(op.vm.REG[op.sr])
+	lit := int16(op.lit)
+
+	op.vm.REG[op.dr] = Register(operand + lit)
 	op.vm.PSR.Set(op.vm.REG[op.dr])
 }
 

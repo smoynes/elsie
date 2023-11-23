@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log/slog"
 	"os"
 	"time"
 
@@ -18,13 +17,17 @@ import (
 )
 
 func Executor() cli.Command {
-	exec := &executor{log: log.DefaultLogger()}
+	exec := &executor{
+		log:      log.DefaultLogger(),
+		logLevel: log.Error,
+	}
+
 	return exec
 }
 
 type executor struct {
-	logLevel slog.Level
 	log      *log.Logger
+	logLevel log.Level
 }
 
 func (executor) Description() string {
@@ -42,6 +45,7 @@ Runs an executable in the emulator.`)
 
 func (ex *executor) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("exec", flag.ExitOnError)
+
 	fs.Func("loglevel", "set log `level`", func(s string) error {
 		return ex.logLevel.UnmarshalText([]byte(s))
 	})
