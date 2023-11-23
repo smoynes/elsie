@@ -3,9 +3,10 @@
 In this tutorial you will learn how to:
 
   - install 𝔼𝕃𝕊𝕀𝔼;
-  - run a hard-coded demo.
+  - run a hard-coded demo;
   - execute a simple program;
-  - translate a program from LC3ASM assembly language to machine language; and
+  - translate a program from <tt>LC3ASM</tt> assembly language to machine
+    language; and
   - execute the resulting program.
 
 ## Installation ##
@@ -116,25 +117,53 @@ enough to interpret a pointless, pre-written program -- we also want to write
 our own pointless programs for our machine to interpret.
 
 𝔼𝕃𝕊𝕀𝔼 includes a translator that lets us write programs in a simple assembly
-dialect called LC3ASM. Later, we will see how we can load and execute our
-programs.
+dialect called <tt>LC3ASM</tt>. We will use the `elsie asm` command to run the
+assembler and produce machine code. Later, we will execute the program.
+
+First save a file named `example.asm`
 
 ```asm
-.ORIG x3000
-  ST R1,SAVER1
-  LD R1,COUNT
-LOOP BRz EXIT
-  ADD R1,R1,#-1
-  BR LOOP
-EXIT LD R1,SAVER1
-    HALT
-COUNT .FILL 10
-SAVER1 .DW x0000
-.END
+      .ORIG x3000
+      LD   R1,COUNT
+      LD   R2,ASCII
+LOOP  BRz  EXIT
+      ADD  R0,R2,R1
+      TRAP x21
+      ADD  R1,R1,#-1
+      BR   LOOP
+EXIT  HALT
+COUNT .DW  5
+ASCII .DW  48
+      .END
 ```
 
+We'll look at the code in detail later -- for now, we'll run the assembler on
+it:
+
 ```console
-$ elsie asm COUNTDOWN.asm
+$ elsie asm example.asm
 ```
+
+No output is produced if successful. You may see error messages if you copied
+the code incorrectly. The output is stored in a file called `a.o`, for lack of a
+better default. It's contents should look like:
+
+```
+:143000002207240704041081f021127f0ffbf02500050030d9
+:00000001ff
+```
+
+As you might be able to guess, the machine code is encoded as bytes in something
+hexadecimal-y. This is all that is needed to be executed.
+
+```console
+$ elsie exec a.o
+54321
+
+MACHINE HALTED!
+
+```
+
+Consider me suitably whelmed.
 
 <!-- -*- coding: utf-8-auto -*- -->
