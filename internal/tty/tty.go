@@ -23,7 +23,7 @@ import (
 // interrupts to be enabled. Likewise, writes to the display device are output on the terminal.
 //
 // [1]: See: tty(4), termios(4).
-// [2]: These systems, themselves, emulating electromecahnical teletype devices, of course.
+// [2]: These systems, themselves, emulating electro-mechanical teletype devices, of course.
 type Console struct {
 	in    *os.File
 	out   *term.Terminal
