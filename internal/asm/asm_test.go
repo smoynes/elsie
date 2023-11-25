@@ -3,6 +3,7 @@ package asm_test
 import (
 	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -53,16 +54,103 @@ func (t *assemblerHarness) logger() *log.Logger {
 	)
 }
 
-type goldTestCase struct {
-	input       io.ReadCloser
-	expected    io.ReadCloser
-	expectedHex io.ReadCloser
+type asmTestCase struct {
+	input         io.Reader
+	inputBytes    []byte
+	expected      io.Reader
+	expectedHex   io.Reader
+	expectedSlice []byte
+	expectedErr   error
+}
+
+func (tc *asmTestCase) Run(t *assemblerHarness) {
+	t.Helper()
+
+	parser := asm.NewParser(t.logger())
+
+	if tc.input != nil {
+		parser.Parse(tc.input)
+	} else {
+		parser.Parse(bytes.NewReader(tc.inputBytes))
+	}
+
+	if parser.Err() != nil {
+		t.Error(parser.Err())
+	}
+
+	syntax := parser.Syntax()
+	symbols := parser.Symbols()
+	generator := asm.NewGenerator(symbols, syntax)
+
+	var (
+		out   bytes.Buffer
+		count int64
+		err   error
+	)
+
+	if tc.expectedHex == nil {
+		count, err = generator.WriteTo(&out)
+	} else {
+		bs, err := generator.Encode()
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+		c, err := out.Write(bs)
+		if err != nil {
+			t.Error(err.Error())
+			return
+		}
+		count = int64(c)
+	}
+
+	t.Logf("Wrote %d bytes", count)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	var expected []byte
+
+	if tc.expected != nil {
+		expected, err = io.ReadAll(tc.expected)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	} else if tc.expectedHex != nil {
+		expected, err = io.ReadAll(tc.expectedHex)
+		if err != nil {
+			t.Error(nil)
+			return
+		}
+	} else if tc.expectedSlice != nil {
+		expected = tc.expectedSlice
+	}
+
+	if bytes.Compare(expected, out.Bytes()) != 0 {
+		t.Error("bytes not equal:")
+
+		b := out.Bytes()
+
+		for i := 0; i < len(b) && i < len(expected); i++ {
+			if b[i] != expected[i] {
+				t.Errorf("\tindex: %d: %0#2x != %0#2x (%[2]q != %[3]q)", i, b[i], expected[i])
+			}
+		}
+	}
+
+	if tc.expectedErr != nil {
+		if !errors.Is(err, tc.expectedErr) {
+			t.Errorf("expected err: %[1]s (%+[1]v), got: %[2]s (%+[2]v)", tc.expectedErr, err)
+		}
+	}
 }
 
 func TestAssembler_Gold(tt *testing.T) {
 	t := assemblerHarness{tt}
 
-	tcs := []goldTestCase{
+	tcs := []asmTestCase{
 		{
 			input:    t.inputStream("parser6.asm"),
 			expected: t.expectOutput("parser6.out"),
@@ -99,73 +187,26 @@ func TestAssembler_Gold(tt *testing.T) {
 
 		t.Run(name, func(tt *testing.T) {
 			t := assemblerHarness{tt}
-			parser := asm.NewParser(t.logger())
-			parser.Parse(tc.input)
+			tc.Run(&t)
+		})
+	}
+}
 
-			if parser.Err() != nil {
-				t.Error(parser.Err())
-			}
+func TestAssembler_EdgeCases(tt *testing.T) {
+	tcs := map[string]asmTestCase{
+		"nil": {
+			input:         nil,
+			expectedSlice: nil,
+			expectedErr:   nil,
+		},
+	}
 
-			syntax := parser.Syntax()
-			symbols := parser.Symbols()
+	for name, tc := range tcs {
+		tc := tc
 
-			generator := asm.NewGenerator(symbols, syntax)
-
-			var (
-				out   bytes.Buffer
-				count int64
-				err   error
-			)
-
-			if tc.expectedHex == nil {
-				count, err = generator.WriteTo(&out)
-			} else {
-				bs, err := generator.Encode()
-				if err != nil {
-					t.Error(err.Error())
-					return
-				}
-				c, err := out.Write(bs)
-				if err != nil {
-					t.Error(err.Error())
-					return
-				}
-				count = int64(c)
-			}
-
-			t.Logf("Wrote %d bytes", count)
-
-			if err != nil {
-				t.Error(err)
-			}
-
-			var expected []byte
-
-			if tc.expected != nil {
-				expected, err = io.ReadAll(tc.expected)
-				if err != nil {
-					t.Error(err)
-					return
-				}
-			} else if tc.expectedHex != nil {
-				expected, err = io.ReadAll(tc.expectedHex)
-				if err != nil {
-					t.Error(nil)
-					return
-				}
-			}
-
-			if bytes.Compare(expected, out.Bytes()) != 0 {
-				t.Error("bytes not equal:")
-
-				b := out.Bytes()
-
-				for i := 0; i < len(b) && i < len(expected); i++ {
-					if b[i] != expected[i] {
-						t.Errorf("\tindex: %d: %0#2x != %0#2x (%[2]q != %[3]q)", i, b[i], expected[i])
-					}
-				}
-			}
+		tt.Run(name, func(tt *testing.T) {
+			t := assemblerHarness{tt}
+			tc.Run(&t)
 		})
 	}
 }
