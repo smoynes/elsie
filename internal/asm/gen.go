@@ -52,10 +52,9 @@ func (gen *Generator) Encode() ([]byte, error) {
 		err   error
 	)
 
-	// We expect the .ORIG directive to be the first operation in the syntax table. TODO: We should
-	// be able to support multiple origins if the encoder does.
+	// We expect the .ORIG directive to be the first operation in the syntax table.
 	if _, ok := origin(gen.syntax[0]); !ok {
-		return nil, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
+		return nil, fmt.Errorf("%w: .ORIG must be first operation; was: %T", GeneratorError, gen.syntax[0])
 	}
 
 	for _, op := range gen.syntax {
@@ -86,13 +85,13 @@ func (gen *Generator) Encode() ([]byte, error) {
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("gen: %w", err)
+		return nil, fmt.Errorf("%w: %s", GeneratorError, err)
 	}
 
 	gen.encoding.Code = append(gen.encoding.Code, obj)
 
 	if b, err := gen.encoding.MarshalText(); err != nil {
-		return nil, fmt.Errorf("gen: %w", err)
+		return nil, fmt.Errorf("%w: %s", GeneratorError, err)
 	} else {
 		return b, nil
 	}
@@ -116,14 +115,14 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 	if orig, ok := origin(gen.syntax[0]); ok {
 		gen.pc = orig.LITERAL
 	} else {
-		return 0, fmt.Errorf(".ORIG should be first operation; was: %T", gen.syntax[0])
+		return 0, fmt.Errorf("%w: .ORIG must be first operation; was: %T", GeneratorError, gen.syntax[0])
 	}
 
 	for i, oper := range gen.syntax {
 		if oper == nil {
 			continue
 		} else if _, ok := origin(oper); ok && i != 0 {
-			err = errors.New(".ORIG directive may only be the first operation")
+			err = fmt.Errorf("%w: .ORIG directive may only be the first operation", GeneratorError)
 			break
 		}
 
@@ -143,11 +142,13 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 	}
 
 	if err != nil {
-		return count, fmt.Errorf("gen: %w", err)
+		return count, fmt.Errorf("%w: %s", GeneratorError, err)
 	}
 
 	return count, nil
 }
+
+var GeneratorError = errors.New("generator error")
 
 // annotate wraps errors with source code information.
 func (gen *Generator) annotate(code Operation, err error) error {
@@ -161,7 +162,7 @@ func (gen *Generator) annotate(code Operation, err error) error {
 			Line: src.Line,
 			Err:  err,
 		}
-		return err
+		return fmt.Errorf("%w: %w", GeneratorError, err)
 	} else {
 		return nil
 	}
