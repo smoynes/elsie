@@ -1,25 +1,29 @@
-// Package tool defines very naive scripts for development tasks. These are not intended to be
-// portable and simply replace rote commands with tasks. Think of them as executable screenplays.
-// Just like shell, it is a miracle when these scripts work at all.
+// Package tool defines very naive scripts for development tasks. These are not
+// intended to be portable but instead simply replace rote commands with tasks.
+// Think of them as executable screenplays. Just like shell, it is a miracle
+// these scripts work at all.
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	path "path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
 var usage = `go run internal/tool <COMMAND>
 
 Commands:
 
-- deps       checks build dependencies: (stringer, docker, golangci-lint)
+- deps       installs development dependencies: stringer, golangci-lint
 - container  builds docker image: smoynes/elsie
 - lint       check style with golangci-lint
 `
@@ -33,7 +37,7 @@ func main() {
 
 	switch {
 	case len(args) == 2 && os.Args[1] == "deps":
-		if err := deps(); err != nil {
+		if err := installDeps(); err != nil {
 			log.Fatal(err)
 		}
 	case len(args) == 2 && os.Args[1] == "container":
@@ -83,33 +87,107 @@ func projectWorkingDirectory() error {
 	return nil
 }
 
-func deps() error {
-	if stringer, err := exec.LookPath("stringer"); err != nil {
-		return fmt.Errorf("stringer (required): %w", err)
+func installDeps() error {
+	var goCmd string
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	if path, err := exec.LookPath("go"); err != nil {
+		return fmt.Errorf("go (required): %w", err)
 	} else {
-		fmt.Println("stringer (required):", stringer)
+		goCmd = path
+
+		println("go (required):", goCmd)
+
+		if err := runDep(ctx, goCmd, "version"); err != nil {
+			return err
+		}
+	}
+
+	if stringer, err := exec.LookPath("stringer"); err != nil {
+		println("installing stringer")
+		println("go install -v golang.org/x/tools/cmd/stringer@latest")
+
+		if err := runDep(ctx, goCmd, "install", "-v", "golang.org/x/tools/cmd/stringer@latest"); err != nil {
+			return fmt.Errorf("go install stringer: %w", err)
+		}
+
+	} else {
+		println("stringer (required):", stringer)
 	}
 
 	if linter, err := exec.LookPath("golangci-lint"); err != nil {
-		return fmt.Errorf("golangci-lint (optional): %w", err)
+		println("installing golangci-lint")
+
+		// ugh
+		var installBin string
+
+		if installBinEnv, ok := os.LookupEnv("INSTALLBIN"); ok {
+			installBin = installBinEnv
+		} else if goBin, ok := os.LookupEnv("GOBIN"); ok {
+			installBin = goBin
+		} else if goPath, ok := os.LookupEnv("GOPATH"); ok {
+			installBin = filepath.Join(goPath, "bin")
+		} else {
+			println("golangci-lint: install dir not found. Set INSTALLBIN in your in environment")
+			return fmt.Errorf("golangci-lint: unknown install path")
+		}
+
+		println("sh", "-c", "\"curl -sSfL "+
+			"https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh"+
+			" | sh -s -- -b '"+installBin+"' v1.55.2\"")
+
+		err = runDep(ctx, "sh", "-c",
+			"curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh "+
+				"| sh -s -- -b '"+installBin+"' v1.55.2")
+		if err != nil {
+			return err
+		}
+
+		return nil
 	} else {
-		fmt.Println("golangci-lint (optional):", linter)
+		println("golangci-lint (optional):", linter)
+		err = runDep(ctx, linter, "version")
+		if err != nil {
+			return err
+		}
 	}
 
 	if docker, err := exec.LookPath("docker"); err != nil {
-		return fmt.Errorf("docker (optional): version: %w", err)
+		println("docker (optional):", err.Error())
 	} else {
-		fmt.Println("docker (optional):", docker)
+		println("docker (optional):", docker)
+		err = runDep(ctx, docker, "version")
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func runDep(ctx context.Context, cmd string, args ...string) error {
+	c := exec.CommandContext(ctx, cmd, args...)
+	out, err := c.CombinedOutput()
+
+	println(string(out))
+
+	if err != nil {
+		return err
 	}
 
 	return nil
 }
 
 func dockerBuild() error {
+	ctx, done := context.WithTimeout(context.Background(), 5*time.Second)
+	defer done()
+
 	goVersion := strings.TrimPrefix(runtime.Version(), "go")
 
 	//nolint:gosec
-	docker := exec.Command("docker", "build",
+	docker := exec.CommandContext(ctx, "docker", "build",
 		"-t", "smoynes/elsie",
 		"--build-arg", "GOLANG_VERSION="+goVersion,
 		"-f", "internal/tool/Dockerfile",
@@ -125,7 +203,7 @@ func dockerBuild() error {
 		return fmt.Errorf("docker: build: %w", err)
 	}
 
-	fmt.Println("docker build:")
+	println("docker build:")
 
 	for {
 		copied, err := io.Copy(os.Stdout, out)
