@@ -16,11 +16,12 @@ The project includes:
  - many unnecessary words by your author; and
  - maybe, more to come…
 
-As a technical  project, 𝔼𝕃𝕊𝕀𝔼 is not  useful: it isn't complete  and it doesn't
-work. In  those terms,  it is  not good  software. However,  to the  author, the
-project  is not  intended to  be solely  utilitarian --  it is  also a  story, a
-performance, or maybe even a trail through  a cozy wood. As such, it is software
-that is essential and invaluable.
+As a technical project, 𝔼𝕃𝕊𝕀𝔼 is not  useful: it isn't complete and doesn't work
+well. In  those terms,  it is not  good software. However,  for the  author, the
+project is  not really  intended to  be useful to  others in  utilitarian terms.
+Rather,  it  is  meant  to  as  an exercise  in  learning  more  about  computer
+architecture,  systems programming,  and oneself.  As such,  it is  more like  a
+story, a performance, or a trail through the woods and is essential.
 
 -----------------------------
          Background
@@ -64,29 +65,27 @@ enough to write programs.
 
 𝔼𝕃𝕊𝕀𝔼 is not novel: hardware simulators already exist for the LC-3 architecture,
 of course. The textbook publishers provide  one and there are many others freely
-available online.[1]  This one is  admittedly a  mere reinvention of  the wheel.
-That said, the gift the design and engineering process affords is that sometimes
-it reveals  something fundamental  about either  our world  or ourselves.  So, I
-think, it is worth retreading the path.
+available online. This  one is admittedly a mere reinvention  of the wheel. That
+said, the gift the design and engineering  process affords is that it can reveal
+something  fundamental about  either  our world  or ourselves.  So  it is  worth
+retreading the path.
 
 Personally,  there remain  many  Computer  Things that  baffle  me. Despite  ten
 thousand hours  of computing, I  still feel  lost when it  comes to some  of the
 rudiments of the field:
 
   - computer architecture;
-  - assembly programming;
   - operating systems;
+  - assembly programming; and,
   - computing history.
 
 I had a thought that a good way to  learn about these topics was to get my boots
 dirty  and learn  the  basics by  building  simple things.  This  project is  an
-artifact of my process.
-
-It is  to be hoped  that by trying  my hand at the  old methods, by  holding the
-master craftsman's  tools, by building something  both cute and useless,  I will
-gain a  better understanding  of the  essence of computing.  If nothing  else is
-achieved  than learning  a bit,  exploring some  ideas, and  hearing a  few good
-stories, it will have been worth it.
+artifact of  my process. It  is to be  hoped that by trying  my hand at  the old
+methods,  by holding  the  craftsman's  tools, by  building  something cute  and
+useless, I will gain a better understanding of the essence of computing. Yet, if
+nothing else is achieved than learning  a bit, exploring some ideas, and hearing
+a few good stories, it will have been worth it.
 
 -----------------------------
        Get in Touch
@@ -114,25 +113,17 @@ and to embody _Shokunin Kishitsu_ (職人気質), the artisan's spirit.
 -----------------------------
 
 This work is dedicated to the MCM/70[2] and its pioneering designers.
+<https://en.wikipedia.org/wiki/MCM/70>
 
 -----------------------------
         Documentation
 -----------------------------
 
-- TUTORIAL.md          A trailhead for users.
+- TUTORIAL.md          A trailhead for users -- start here.
 - DEVGUIDE.txt         Development guidebook.
 - RESOURCE.txt         Inspirational references.
 - LICENCE.txt          Terms of use.
 - CODE_OF_CONDUCT.txt  Behave yourself.
-
------------------------------
-         Footnotes
------------------------------
-
-[1]: You can find references to other tools and a few useful resources in
-     docs/RESOURCES.txt.
-
-[2]: https://en.wikipedia.org/wiki/MCM/70
 
 -----------------------------
 
