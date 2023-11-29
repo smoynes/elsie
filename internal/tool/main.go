@@ -12,7 +12,6 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	path "path/filepath"
 	"runtime"
 	"strings"
@@ -112,7 +111,6 @@ func installDeps() error {
 		if err := runDep(ctx, goCmd, "install", "-v", "golang.org/x/tools/cmd/stringer@latest"); err != nil {
 			return fmt.Errorf("go install stringer: %w", err)
 		}
-
 	} else {
 		println("stringer (required):", stringer)
 	}
@@ -128,7 +126,7 @@ func installDeps() error {
 		} else if goBin, ok := os.LookupEnv("GOBIN"); ok {
 			installBin = goBin
 		} else if goPath, ok := os.LookupEnv("GOPATH"); ok {
-			installBin = filepath.Join(goPath, "bin")
+			installBin = path.Join(goPath, "bin")
 		} else {
 			println("golangci-lint: install dir not found. Set INSTALLBIN in your in environment")
 			return fmt.Errorf("golangci-lint: unknown install path")
