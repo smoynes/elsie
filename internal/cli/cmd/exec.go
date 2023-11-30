@@ -13,6 +13,7 @@ import (
 	"github.com/smoynes/elsie/internal/encoding"
 	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/monitor"
+	"github.com/smoynes/elsie/internal/tty"
 	"github.com/smoynes/elsie/internal/vm"
 )
 
@@ -79,11 +80,15 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 	)
 
 	if ex.debug != "" {
-		if logFile, err = os.OpenFile(ex.debug, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); err != nil {
+		logLevel = log.Debug
+
+		if logFile, err = os.OpenFile(ex.debug, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0o600); err != nil {
 			err = fmt.Errorf("%s: %w", ex.debug, err)
 		}
 	} else if ex.log != "" {
-		if logFile, err = os.OpenFile(ex.log, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644); err != nil {
+		logLevel = log.Info
+
+		if logFile, err = os.OpenFile(ex.log, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0o600); err != nil {
 			err = fmt.Errorf("%s: %w", ex.log, err)
 		}
 	}
@@ -95,19 +100,23 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 		return -1
 	}
 
-	defer logFile.Close()
-
+	ex.logger = log.NewFormattedLogger(logFile)
+	log.SetDefault(ex.logger)
 	log.LogLevel.Set(logLevel)
-	ex.logger = log.NewFormattedLogger(os.Stderr)
-	ex.logger.Debug("Initializing machine")
 
-	dispCh := make(chan rune, 1)
+	ex.logger.Debug("Initializing machine")
+	logger.Debug("Initializing machine")
+
+	console, err := tty.NewConsole(os.Stdin, os.Stdout, os.Stderr)
+	if err != nil {
+		ex.logger.Error(err.Error())
+		return 1
+	}
+
 	machine := vm.New(
 		vm.WithLogger(ex.logger),
 		monitor.WithDefaultSystemImage(),
-		vm.WithDisplayListener(func(displayed uint16) {
-			dispCh <- rune(displayed)
-		}),
+		console.WithTerminal(ctx),
 	)
 
 	loader := vm.NewLoader(machine)
@@ -122,19 +131,6 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 			return 1
 		}
 	}
-
-	go func() {
-		ex.logger.Debug("Starting display")
-
-		for {
-			select {
-			case disp := <-dispCh:
-				fmt.Printf("%c", disp)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
 
 	ex.logger.Debug("Loaded program", "file", args[0], "loaded", count)
 
@@ -159,7 +155,7 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 
 	<-ctx.Done()
 
-	close(dispCh)
+	console.Restore()
 
 	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		ex.logger.Error("Execution timeout")

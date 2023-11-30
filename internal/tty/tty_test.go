@@ -32,14 +32,14 @@ func TestTerminal(tt *testing.T) {
 	t := testHarness{tt}
 	kbd := vm.NewKeyboard()
 	display := vm.NewDisplay()
-	_ = vm.NewDisplayDriver(display)
+	driver := vm.NewDisplayDriver(display)
 
 	display.Init(nil, nil)
 
 	ctx, cancel := t.Context()
 	defer cancel()
 
-	ctx, console, cancel := tty.WithConsole(ctx, kbd, display)
+	ctx, console, cancel := tty.ConsoleContext(ctx, kbd, driver)
 	defer cancel()
 
 	if err := context.Cause(ctx); errors.Is(err, tty.ErrNoTTY) {

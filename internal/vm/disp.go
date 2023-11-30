@@ -52,7 +52,6 @@ func (disp *Display) Write(data Register) {
 	// Clear ready flag.
 	disp.dsr &^= DisplayReady
 	disp.ddr = data
-
 }
 
 // Read returns the value of the display data register.

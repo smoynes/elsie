@@ -1,6 +1,7 @@
 package monitor
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -129,10 +130,15 @@ func TestTrap_Out(tt *testing.T) {
 	}
 
 	displayed := make(chan uint16, 10)
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
 	machine := vm.New(
 		WithSystemImage(&image),
 		vm.WithDisplayListener(func(out uint16) {
 			select {
+			case <-ctx.Done():
+				return
 			case displayed <- out:
 			}
 		}),
@@ -144,6 +150,7 @@ func TestTrap_Out(tt *testing.T) {
 		Orig: 0x3000,
 		Code: []vm.Word{
 			vm.NewInstruction(vm.TRAP, uint16(vm.TrapOUT)).Encode(),
+			vm.NewInstruction(vm.TRAP, uint16(vm.TrapHALT)).Encode(),
 		},
 	}
 
@@ -161,13 +168,16 @@ func TestTrap_Out(tt *testing.T) {
 		if err != nil {
 			t.Errorf("Step error %s", err)
 			break
-		} else if machine.PC > 0x3000 {
+		} else if machine.PC > 0x3001 {
+			t.Log("Stepped to user code")
 			break
 		} else if !machine.MCR.Running() {
+			t.Log("Machine stopped")
 			break
 		}
 	}
 
+	cancel()
 	close(displayed)
 
 	vals := make([]uint16, 0, len(displayed))

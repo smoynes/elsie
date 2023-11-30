@@ -7,23 +7,24 @@ import (
 	"os"
 	"time"
 
-	logl "github.com/smoynes/elsie/internal/log"
+	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/tty"
 	"github.com/smoynes/elsie/internal/vm"
 )
 
-var log = logl.DefaultLogger()
+var logger = log.DefaultLogger()
 
 func main() {
 	var (
-		ctx      = context.Background()
-		keyboard = vm.NewKeyboard()
-		display  = vm.NewDisplay()
+		ctx           = context.Background()
+		keyboard      = vm.NewKeyboard()
+		display       = vm.NewDisplay()
+		displayDriver = vm.NewDisplayDriver(display)
 	)
 
 	display.Init(nil, nil)
 
-	ctx, _, cancel := tty.WithConsole(ctx, keyboard, display)
+	ctx, _, cancel := tty.ConsoleContext(ctx, keyboard, displayDriver)
 	defer cancel()
 
 	poll := time.Tick(100 * time.Millisecond)
@@ -31,11 +32,11 @@ func main() {
 
 	select {
 	case <-ctx.Done():
-		log.Debug("cause", context.Cause(ctx))
+		logger.Debug("cause", context.Cause(ctx))
 	default:
 	}
 
-	log.Info("Polling keyboard. Type keys.")
+	logger.Info("Polling keyboard. Type keys.")
 
 	display.Write(vm.Register('\n'))
 
@@ -44,7 +45,7 @@ func main() {
 		case <-poll:
 			key, err := keyboard.Read(vm.KBDRAddr)
 			if err != nil {
-				log.Error(err.Error())
+				logger.Error(err.Error())
 				os.Exit(1)
 			}
 
@@ -57,9 +58,9 @@ func main() {
 		case <-ctx.Done():
 			if ctx.Err() != nil {
 				cause := context.Cause(ctx)
-				log.Error(cause.Error())
+				logger.Error(cause.Error())
 			} else {
-				log.Info("Done")
+				logger.Info("Done")
 			}
 		}
 	}
