@@ -2,6 +2,7 @@ package vm
 
 import (
 	"testing"
+	"time"
 )
 
 // Type assertions for expected devices.
@@ -105,9 +106,21 @@ func TestDisplayDriver(tt *testing.T) {
 		t.Errorf("write error: %s: %s", dataAddr, err)
 	}
 
-	if got, err := displayDriver.Read(statusAddr); err != nil {
-		t.Errorf("write error: %s: %s", dataAddr, err)
-	} else if got != Word(DisplayReady) {
-		t.Errorf("expected status: %s, got: %s", Word(DisplayReady), got)
+	var tried Word
+
+	for i := 0; i < 10; i++ {
+		time.Sleep(time.Millisecond)
+
+		if got, err := displayDriver.Read(statusAddr); err != nil {
+			t.Errorf("write error: %s: %s", dataAddr, err)
+			break
+		} else if got == Word(DisplayReady) {
+			tried = got
+			break
+		}
+	}
+
+	if tried != Word(DisplayReady) {
+		t.Errorf("expected status: %s, got: %s", Word(DisplayReady), tried)
 	}
 }

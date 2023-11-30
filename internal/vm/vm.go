@@ -66,15 +66,16 @@ func New(opts ...OptionFn) *LC3 {
 
 	vm.updateLogger(log.DefaultLogger())
 
-	// Run early init.
-	for _, fn := range opts {
-		fn(&vm, false)
-	}
-
 	err := vm.Mem.Devices.Map(devices)
 	if err != nil {
 		vm.log.Error(err.Error())
 		panic(err)
+	}
+
+	// Run early-init after mapping devices but before initializing them. This allows options to
+	// override or replace drivers before initialization and afterwards during late-init.
+	for _, fn := range opts {
+		fn(&vm, false)
 	}
 
 	vm.log.Debug("Configuring devices and drivers")
@@ -304,8 +305,7 @@ func WithDisplayListener(listener func(uint16)) OptionFn {
 	return func(vm *LC3, late bool) {
 		if late {
 			driver := vm.Mem.Devices.Get(DDRAddr).(*DisplayDriver)
-			display := driver.handle.device
-			display.Listen(listener)
+			driver.Listen(listener)
 		}
 	}
 }

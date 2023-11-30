@@ -13,21 +13,22 @@ import (
 	"github.com/smoynes/elsie/internal/encoding"
 	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/monitor"
+	"github.com/smoynes/elsie/internal/tty"
 	"github.com/smoynes/elsie/internal/vm"
 )
 
 func Executor() cli.Command {
 	exec := &executor{
-		log:      log.DefaultLogger(),
-		logLevel: log.Error,
+		logger: log.DefaultLogger(),
 	}
 
 	return exec
 }
 
 type executor struct {
-	log      *log.Logger
-	logLevel log.Level
+	logger *log.Logger // Log destination
+	log    string      // Log output path
+	debug  string      // Debug log path
 }
 
 func (executor) Description() string {
@@ -46,9 +47,8 @@ Runs an executable in the emulator.`)
 func (ex *executor) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("exec", flag.ExitOnError)
 
-	fs.Func("loglevel", "set log `level`", func(s string) error {
-		return ex.logLevel.UnmarshalText([]byte(s))
-	})
+	fs.StringVar(&ex.log, "log", "", "write log to `file`")
+	fs.StringVar(&ex.debug, "debug", "", "write debug log `file`")
 
 	return fs
 }
@@ -56,7 +56,10 @@ func (ex *executor) FlagSet() *cli.FlagSet {
 // Run executes the program.
 func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, logger *log.Logger,
 ) int {
-	log.LogLevel.Set(ex.logLevel)
+	if len(args) == 0 {
+		logger.Error("Missing object-code argument. Run elsie help exec for usage.")
+		return -1
+	}
 
 	// Code translated is encoded in a hex-based encoding.
 	code, err := ex.loadCode(args[0])
@@ -71,16 +74,49 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 	ctx, cancelTimeout := context.WithTimeout(ctx, 10*time.Second)
 	defer cancelTimeout()
 
+	var (
+		logFile  = os.Stderr
+		logLevel = log.Error
+	)
+
+	if ex.debug != "" {
+		logLevel = log.Debug
+
+		if logFile, err = os.OpenFile(ex.debug, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0o600); err != nil {
+			err = fmt.Errorf("%s: %w", ex.debug, err)
+		}
+	} else if ex.log != "" {
+		logLevel = log.Info
+
+		if logFile, err = os.OpenFile(ex.log, os.O_APPEND|os.O_CREATE|os.O_RDWR, 0o600); err != nil {
+			err = fmt.Errorf("%s: %w", ex.log, err)
+		}
+	}
+
+	if err != nil {
+		ex.logger.Error(err.Error())
+		logger.Error(err.Error())
+
+		return -1
+	}
+
+	ex.logger = log.NewFormattedLogger(logFile)
+	log.SetDefault(ex.logger)
+	log.LogLevel.Set(logLevel)
+
+	ex.logger.Debug("Initializing machine")
 	logger.Debug("Initializing machine")
 
-	dispCh := make(chan rune, 1)
+	console, err := tty.NewConsole(os.Stdin, os.Stdout, os.Stderr)
+	if err != nil {
+		ex.logger.Error(err.Error())
+		return 1
+	}
 
 	machine := vm.New(
-		vm.WithLogger(logger),
+		vm.WithLogger(ex.logger),
 		monitor.WithDefaultSystemImage(),
-		vm.WithDisplayListener(func(displayed uint16) {
-			dispCh <- rune(displayed)
-		}),
+		console.WithTerminal(ctx),
 	)
 
 	loader := vm.NewLoader(machine)
@@ -91,37 +127,24 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 		count += n
 
 		if err != nil {
-			logger.Error(err.Error())
+			ex.logger.Error(err.Error())
 			return 1
 		}
 	}
 
-	go func() {
-		logger.Debug("Starting display")
-
-		for {
-			select {
-			case disp := <-dispCh:
-				fmt.Printf("%c", disp)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	logger.Debug("Loaded program", "file", args[0], "loaded", count)
+	ex.logger.Debug("Loaded program", "file", args[0], "loaded", count)
 
 	go func(cancel context.CancelCauseFunc) {
-		logger.Info("Starting machine")
+		ex.logger.Info("Starting machine")
 
 		err := machine.Run(ctx)
 
 		switch {
 		case errors.Is(err, context.DeadlineExceeded):
-			logger.Warn("Demo timeout")
+			ex.logger.Warn("Exec timeout")
 			return
 		case err != nil:
-			logger.Error(err.Error())
+			ex.logger.Error(err.Error())
 			cancel(err)
 
 			return
@@ -132,25 +155,30 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 
 	<-ctx.Done()
 
-	close(dispCh)
+	console.Restore()
 
 	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
-		logger.Error("Exec timeout!")
+		ex.logger.Error("Execution timeout")
+		logger.Error("Execution timeout")
+
 		return 2
 	} else if errors.Is(err, context.Canceled) {
-		logger.Info("Program completed")
+		ex.logger.Debug("Program completed")
+		logger.Debug("Program completed")
 		return 0
 	} else if err != nil {
+		ex.logger.Error("Program error", "ERR", err)
 		logger.Error("Program error", "ERR", err)
 		return 2
 	} else {
+		ex.logger.Info("Terminated")
 		logger.Info("Terminated")
 		return 0
 	}
 }
 
 func (ex executor) loadCode(fn string) ([]vm.ObjectCode, error) {
-	ex.log.Debug("Loading executable", "file", fn)
+	ex.logger.Debug("Loading executable", "file", fn)
 
 	file, err := os.Open(fn)
 	if err != nil {
@@ -159,16 +187,16 @@ func (ex executor) loadCode(fn string) ([]vm.ObjectCode, error) {
 
 	code, err := io.ReadAll(file)
 	if err != nil {
-		ex.log.Error(err.Error())
+		ex.logger.Error(err.Error())
 		return nil, err
 	}
 
-	ex.log.Debug("Loaded file", "bytes", len(code))
+	ex.logger.Debug("Loaded file", "bytes", len(code))
 
 	hex := encoding.HexEncoding{}
 
 	if err = hex.UnmarshalText(code); err != nil {
-		ex.log.Error(err.Error())
+		ex.logger.Error(err.Error())
 		return nil, err
 	}
 

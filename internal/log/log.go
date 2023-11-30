@@ -16,16 +16,19 @@ import (
 )
 
 var (
+	// Logger is the global, default logger.
+	logger = NewFormattedLogger(os.Stderr)
+
 	// DefaultLogger returns the default, global logger. During application startup components can
 	// call DefaultLogger and cache the result. The default will not change at runtime.
-	DefaultLogger = func() *Logger { return NewFormattedLogger(os.Stderr) }
-
-	// SetDefault overrides the default log output.
-	SetDefault = slog.SetDefault
+	DefaultLogger = func() *Logger { return logger }
 
 	// LogLevel is a variable holding the log level. It can be changed at runtime.
 	LogLevel = &slog.LevelVar{}
 )
+
+// SetDefault overrides the default log output.
+func SetDefault(defaultLogger *Logger) { logger = defaultLogger }
 
 // NewFormattedLogger returns a logger that uses a Handler to format and write logs to a Writer.
 func NewFormattedLogger(out io.Writer) *Logger {

@@ -1,5 +1,7 @@
 package cmd
 
+// demo.go holds a demonstration command.
+
 import (
 	"context"
 	"errors"

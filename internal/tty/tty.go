@@ -39,9 +39,9 @@ type Console struct {
 // not supported by the console.
 var ErrNoTTY error = errors.New("console: not a TTY")
 
-// WithConsole creates a Console context with the standard streams. Calling cancel will restore the
+// ConsoleContext creates a Console context with the standard streams. Calling cancel will restore the
 // terminal state and release resources.
-func WithConsole(parent context.Context, keyboard *vm.Keyboard, display *vm.Display) (
+func ConsoleContext(parent context.Context, keyboard *vm.Keyboard, display *vm.DisplayDriver) (
 	context.Context, *Console, context.CancelFunc,
 ) {
 	ctx, cause := context.WithCancelCause(parent)
@@ -54,10 +54,36 @@ func WithConsole(parent context.Context, keyboard *vm.Keyboard, display *vm.Disp
 	}
 
 	go console.readTerminal(ctx, cause)
-	go console.updateKeyboard(ctx, keyboard)
-	go console.updateTerminal(ctx, display)
+	go console.updateKeyboard(ctx, keyboard, cause)
+	go console.updateTerminal(ctx, display, cause)
 
 	return ctx, console, console.Restore
+}
+
+func (c Console) WithTerminal(parent context.Context) vm.OptionFn {
+	ctx, cause := context.WithCancelCause(parent)
+
+	return func(machine *vm.LC3, late bool) {
+		if !late {
+			go c.readTerminal(ctx, cause)
+
+			kbd := machine.Mem.Devices.Get(vm.KBDRAddr)
+			if kbd == nil {
+				panic("keyboard not found")
+			} else if kbd, ok := kbd.(*vm.Keyboard); !ok {
+				panic(kbd)
+			} else {
+				go c.updateKeyboard(ctx, kbd, cause)
+			}
+
+			disp := machine.Mem.Devices.Get(vm.DDRAddr)
+			if disp, ok := disp.(*vm.DisplayDriver); !ok {
+				panic(disp)
+			} else {
+				go c.updateTerminal(ctx, disp, cause)
+			}
+		}
+	}
 }
 
 // NewConsole creates a Console using the provided streams. If the input stream is not a terminal,
@@ -160,7 +186,7 @@ func (c Console) readTerminal(ctx context.Context, cancel context.CancelCauseFun
 
 // updateKeyboard takes keys from the key channel and updates the keyboard device for each key. The
 // function blocks until the context is cancelled.
-func (c Console) updateKeyboard(ctx context.Context, kbd *vm.Keyboard) {
+func (c Console) updateKeyboard(ctx context.Context, kbd *vm.Keyboard, _ context.CancelCauseFunc) {
 	for { // you, a gift.
 		select {
 		case <-ctx.Done():
@@ -173,7 +199,7 @@ func (c Console) updateKeyboard(ctx context.Context, kbd *vm.Keyboard) {
 }
 
 // updateTerminal waits for writes to the display and outputs the display data to the terminal.
-func (c Console) updateTerminal(ctx context.Context, disp *vm.Display) {
+func (c Console) updateTerminal(ctx context.Context, disp *vm.DisplayDriver, cancel context.CancelCauseFunc) {
 	// Listen to the display device.
 	disp.Listen(
 		func(char uint16) {
@@ -190,8 +216,8 @@ func (c Console) updateTerminal(ctx context.Context, disp *vm.Display) {
 		select {
 		case char := <-c.termCh:
 			if _, err := fmt.Fprintf(c.out, "%c", char); err != nil {
-				// TODO: WHATDO?
-				panic(err)
+				cancel(err)
+				return
 			}
 		case <-ctx.Done():
 			return
