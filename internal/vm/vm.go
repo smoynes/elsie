@@ -304,8 +304,7 @@ func WithDisplayListener(listener func(uint16)) OptionFn {
 	return func(vm *LC3, late bool) {
 		if late {
 			driver := vm.Mem.Devices.Get(DDRAddr).(*DisplayDriver)
-			display := driver.handle.device
-			display.Listen(listener)
+			driver.Listen(listener)
 		}
 	}
 }
