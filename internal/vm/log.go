@@ -5,10 +5,11 @@ import (
 )
 
 // WithLogger is an option function that configures the VM to log to a particular logger.
-func WithLogger(log *log.Logger) OptionFn {
+func WithLogger(logger *log.Logger) OptionFn {
 	return func(vm *LC3, late bool) {
 		if !late {
-			vm.updateLogger(log)
+			log.SetDefault(logger)
+			vm.updateLogger(logger)
 		}
 	}
 }

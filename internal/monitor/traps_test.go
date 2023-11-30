@@ -58,7 +58,7 @@ func TestTrap_Halt(tt *testing.T) {
 		Symbols: map[string]uint16{},
 	}
 
-	image := SystemImage{log: t.Logger(), Symbols: nil, Traps: []Routine{TrapHalt, putsRoutine}}
+	image := SystemImage{logger: t.Logger(), Symbols: nil, Traps: []Routine{TrapHalt, putsRoutine}}
 
 	machine := vm.New(
 		WithSystemImage(&image),
@@ -121,7 +121,7 @@ func TestTrap_Out(tt *testing.T) {
 
 	// We want to test the trap in isolation, without any other traps loaded.
 	image := SystemImage{
-		log:     t.Logger(),
+		logger:  t.Logger(),
 		Symbols: nil,
 		Traps: []Routine{
 			TrapOut,
@@ -202,7 +202,7 @@ func TestTrap_Puts(tt *testing.T) {
 
 	// We want to test this trap with another.
 	image := SystemImage{
-		log:     t.Logger(),
+		logger:  t.Logger(),
 		Symbols: nil,
 		Traps: []Routine{
 			TrapPuts,

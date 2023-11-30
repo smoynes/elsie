@@ -25,7 +25,17 @@ func WithSystemImage(image *SystemImage) vm.OptionFn {
 // WithDefaultSystemImage initializes the machine with the default system image. You should probably
 // use this.
 func WithDefaultSystemImage() vm.OptionFn {
-	return WithSystemImage(NewSystemImage())
+	return func(machine *vm.LC3, late bool) {
+		if late {
+			logger := log.DefaultLogger()
+			image := NewSystemImage(logger)
+			loader := vm.NewLoader(machine)
+
+			if _, err := image.LoadTo(loader); err != nil {
+				panic(err) // TODO: return error
+			}
+		}
+	}
 }
 
 // SystemImage holds the initial state of memory for the machine. After construction, the image is
@@ -37,7 +47,7 @@ type SystemImage struct {
 	ISRs       []Routine       // Interrupt service routines are called from interrupt context.
 	Exceptions []Routine       // Exception handlers are called in response to program faults.
 
-	log *log.Logger
+	logger *log.Logger
 }
 
 // Routine represents a system-defined system handler. Each routine's code is stored at an origin
@@ -52,9 +62,7 @@ type Routine struct {
 
 // NewSystemImage creates a default system image including basic I/O system calls and exception
 // handlers.
-func NewSystemImage() *SystemImage {
-	logger := log.DefaultLogger()
-
+func NewSystemImage(logger *log.Logger) *SystemImage {
 	data := vm.ObjectCode{
 		Orig: 0x0500,
 		Code: []vm.Word{},
@@ -72,18 +80,18 @@ func NewSystemImage() *SystemImage {
 		},
 		ISRs:       []Routine{},
 		Exceptions: []Routine{},
-		log:        logger,
+		logger:     logger,
 	}
 }
 
 // LoadTo uses a loader to initialize the machine with the system image.
 func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
-	img.log.Debug("Loading trap handlers")
+	img.logger.Debug("Loading trap handlers")
 
 	count := uint16(0)
 
 	for _, trap := range img.Traps {
-		img.log.Debug("Generating code",
+		img.logger.Debug("Generating code",
 			"trap", trap.Name,
 			"orig", trap.Orig,
 			"symbols", len(trap.Symbols),
@@ -127,7 +135,7 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 			pc += 1
 		}
 
-		img.log.Debug("Loading vector",
+		img.logger.Debug("Loading vector",
 			"trap", trap.Name,
 			"orig", trap.Orig,
 			"symbols", len(trap.Symbols),
