@@ -6,25 +6,25 @@ import (
 )
 
 // Display is a logical device for outputting characters. It has a status register (DSR) and a data
-// register (DDR). A device driver controls the device and exposes output operations to the rest of
+// register (DDR). A device driver controls the display and exposes output operations to the rest of
 // the machine.
 //
 // When the machine writes to the display, the device automatically clears its interrupt-ready
-// status-flag to indicate the display buffer is full. The driver must set the flag after the write
-// is completely displayed. (Perhaps imagine there is a vsync or something the driver waits for.) In
-// the meantime, if the machine writes to the display before the device sets the ready flag, data is
-// overwritten and precious data could be lost. Don't do it! Instead, programs should poll until the
-// device is ready.
+// status-flag to indicate the display buffer is full. The driver must set the flag after the
+// character is completely displayed. (Imagine there is a vsync or something the driver waits for.)
+// In the meantime, if the machine writes to the display before the device sets the ready flag, data
+// is overwritten and precious data could be lost. Don't do it! Instead, programs should poll until
+// the device is ready.
 type Display struct {
 	// Display Status Register. The top two bits encode the interrupt-ready and enable flags. When
 	// IR is set, the display can receive another character for output.
 	//
-	//    | IR | IE |       |
-	//    +----+----+-------+
-	//    | 15 | 14 |13    0|
+	// 	| IR | IE |       |
+	// 	+----+----+-------+
+	// 	| 15 | 14 |13    0|
 	dsr Register
 
-	// Display Data Register. Its value is output as a character to every listener.
+	// Display Data Register
 	ddr Register
 }
 
@@ -33,7 +33,7 @@ func NewDisplay() *Display {
 	return &Display{}
 }
 
-// Display status register bit fields for ready and interrupt enabled.
+// Display status-register bit-fields for ready and interrupt-enabled flags.
 const (
 	DisplayReady   = Register(1 << 15) // Ready
 	DisplayEnabled = Register(1 << 14) // IE
@@ -41,13 +41,14 @@ const (
 
 func (disp Display) device() string { return "CRT(PHOSPHOR)" }
 
+// Init initializes the device.
 func (disp *Display) Init(_ *LC3, _ []Word) {
 	disp.dsr = DisplayReady // Born ready.
 	disp.ddr = 0x2368       // ⍨
 }
 
-// Write updates the display data register with the given data. It (briefly) clears the ready flag
-// until it notifies all listeners with the data. Then the ready flag is set again.
+// Write updates the display data register with the given data. It clears the ready flag and the
+// driver should set it after the data is successfully displayed.
 func (disp *Display) Write(data Register) {
 	// Clear ready flag.
 	disp.dsr &^= DisplayReady
@@ -78,7 +79,8 @@ func (disp *Display) String() string {
 
 // DisplayDriver is a driver for an extremely simple terminal display. It ensures mutually exclusive
 // access to the display hardware and maintains a list of listeners that are notified whenever a
-// character is output to the device.
+// character is output to the device. A listener should display the data from the virtual device to
+// the physical user.
 type DisplayDriver struct {
 	handle DeviceHandle[*Display, Display]
 
@@ -149,7 +151,8 @@ func (driver *DisplayDriver) InterruptRequested() bool {
 		driver.handle.device.DSR() == (DisplayReady|DisplayEnabled)
 }
 
-// Write sets the data register of the display device. Writing any other address returns an error.
+// Write sets the data or status registers of the display device. When the data register is written,
+// listeners are asynchronously notified.
 func (driver *DisplayDriver) Write(addr Word, value Register) error {
 	driver.mut.Lock()
 	defer driver.mut.Unlock()
@@ -164,33 +167,33 @@ func (driver *DisplayDriver) Write(addr Word, value Register) error {
 	}
 }
 
-func (driver *DisplayDriver) write(value Register) error {
-	driver.handle.device.Write(value)
-
-	go func() {
-		driver.notify(value)
-
-		// After notifying all listeners, the display is ready for more data. We notify the
-		// listeners asynchronously so callers should poll for readiness.
-		driver.mut.Lock()
-		driver.handle.device.dsr |= DisplayReady
-		driver.mut.Unlock()
-	}()
-
-	return nil
-}
-
 // Listen adds a display listener. Each time a character is displayed, all listeners are called
 // sequentially.
 func (driver *DisplayDriver) Listen(listener func(uint16)) {
 	driver.list = append(driver.list, listener)
 }
 
-// Notify wakes all listeners and tells them the good news: there is data to be seen!
-func (driver *DisplayDriver) notify(val Register) {
-	for _, fn := range driver.list {
-		fn(uint16(val))
-	}
+
+// write writes the value to the display device and asynchronously notifies the listeners of the
+// good news: there is data to be seen!
+func (driver *DisplayDriver) write(value Register) error {
+	device := driver.handle.device
+	device.Write(value)
+
+	// Asynchronously notify listeners of the write.
+	go func() {
+		for _, fn := range driver.list {
+			fn(uint16(value))
+		}
+
+		// After all notifications, we can set the ready flag.
+		driver.mut.Lock()
+		dsr := device.DSR()
+		device.SetDSR(dsr | DisplayReady)
+		driver.mut.Unlock()
+	}()
+
+	return nil
 }
 
 func (driver *DisplayDriver) String() string {
