@@ -28,6 +28,24 @@ const (
 	KeyboardEnable = Register(1 << 14) // IE
 )
 
+// WithKeyboard replaces the keyboard device during early device initialization by remapping the
+// device addresses to kbd.
+func WithKeyboard(kbd *Keyboard) OptionFn {
+	return func(vm *LC3, late bool) error {
+		if !late {
+			devices := map[Word]any{
+				KBSRAddr: kbd,
+				KBDRAddr: kbd,
+			}
+			err := vm.Mem.Devices.Map(devices)
+			if err != nil {
+				panic(err)
+			}
+		}
+		return nil
+	}
+}
+
 // NewKeyboard creates a new keyboard device and allocates resources
 func NewKeyboard() *Keyboard {
 	k := &Keyboard{

@@ -23,6 +23,9 @@ var (
 	// SetDefault overrides the default log output.
 	SetDefault = slog.SetDefault
 
+	// New creates a new logger with a non-nil handler.
+	New = slog.New
+
 	// LogLevel is a variable holding the log level. It can be changed at runtime.
 	LogLevel = &slog.LevelVar{}
 )

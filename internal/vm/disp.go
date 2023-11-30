@@ -38,6 +38,20 @@ type Display struct {
 	list []func(uint16)
 }
 
+// WithDisplay replaces the default display device driver.
+func WithDisplay(disp *DisplayDriver) OptionFn {
+	return func(vm *LC3, late bool) error {
+		if late {
+			devices := map[Word]any{
+				DSRAddr: disp,
+				DDRAddr: disp,
+			}
+			return vm.Mem.Devices.Map(devices)
+		}
+		return nil
+	}
+}
+
 // NewDisplay creates a display and allocates its resources.
 func NewDisplay() *Display {
 	return &Display{
@@ -127,8 +141,10 @@ func (disp *Display) notify() {
 }
 
 func (disp *Display) String() string {
-	disp.mut.Lock()
-	defer disp.mut.Unlock()
+	if disp.mut != nil {
+		disp.mut.Lock()
+		defer disp.mut.Unlock()
+	}
 
 	return fmt.Sprintf("Display(status:%s,data:%s)", disp.dsr, disp.ddr)
 }

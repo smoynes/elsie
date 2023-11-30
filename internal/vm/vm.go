@@ -66,15 +66,16 @@ func New(opts ...OptionFn) *LC3 {
 
 	vm.updateLogger(log.DefaultLogger())
 
-	// Run early init.
-	for _, fn := range opts {
-		fn(&vm, false)
-	}
-
 	err := vm.Mem.Devices.Map(devices)
 	if err != nil {
 		vm.log.Error(err.Error())
 		panic(err)
+	}
+
+	// Run early init after devices are mapped to give options the chance to reconfigure device
+	// mappings.
+	for _, fn := range opts {
+		fn(&vm, false)
 	}
 
 	vm.log.Debug("Configuring devices and drivers")
@@ -287,25 +288,28 @@ func (rf RegisterFile) LogValue() log.Value {
 }
 
 // An OptionFn is modifies the machine during initialization. The function is called twice:
-type OptionFn func(maching *LC3, late bool)
+type OptionFn func(maching *LC3, late bool) error
 
 // WithSystemContext initializes the machine to use system context, i.e. with system privileges and
 // stack.
 func WithSystemContext() OptionFn {
-	return func(vm *LC3, late bool) {
+	return func(vm *LC3, late bool) error {
 		vm.PSR &^= (StatusPrivilege & StatusUser)
 		vm.REG[SP] = vm.SSP
+		return nil
 	}
 }
 
 // WithDisplay is an option function that configures a callback that is called for displayed words.
 // It uses late initialization under the assumption startup output is not listened for.
 func WithDisplayListener(listener func(uint16)) OptionFn {
-	return func(vm *LC3, late bool) {
+	return func(vm *LC3, late bool) error {
 		if late {
 			driver := vm.Mem.Devices.Get(DDRAddr).(*DisplayDriver)
 			display := driver.handle.device
 			display.Listen(listener)
 		}
+
+		return nil
 	}
 }

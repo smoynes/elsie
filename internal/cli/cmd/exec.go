@@ -13,21 +13,22 @@ import (
 	"github.com/smoynes/elsie/internal/encoding"
 	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/monitor"
+	"github.com/smoynes/elsie/internal/tty"
 	"github.com/smoynes/elsie/internal/vm"
 )
 
 func Executor() cli.Command {
 	exec := &executor{
-		log:      log.DefaultLogger(),
-		logLevel: log.Error,
+		logger: log.DefaultLogger(),
 	}
 
 	return exec
 }
 
 type executor struct {
-	log      *log.Logger
-	logLevel log.Level
+	logger *log.Logger
+	log    string
+	debug  string
 }
 
 func (executor) Description() string {
@@ -46,9 +47,8 @@ Runs an executable in the emulator.`)
 func (ex *executor) FlagSet() *cli.FlagSet {
 	fs := flag.NewFlagSet("exec", flag.ExitOnError)
 
-	fs.Func("loglevel", "set log `level`", func(s string) error {
-		return ex.logLevel.UnmarshalText([]byte(s))
-	})
+	fs.StringVar(&ex.log, "log", "", "enable logging to `file``")
+	fs.StringVar(&ex.debug, "debug", "", "enable debug logging to `file`")
 
 	return fs
 }
@@ -56,9 +56,30 @@ func (ex *executor) FlagSet() *cli.FlagSet {
 // Run executes the program.
 func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, logger *log.Logger,
 ) int {
-	log.LogLevel.Set(ex.logLevel)
+	var (
+		err       error
+		logOutput *log.Logger
+	)
 
-	// Code translated is encoded in a hex-based encoding.
+	if ex.log != "" {
+		logOutput, err = createFileLogger(log.Info, ex.log)
+	} else if ex.debug != "" {
+		logOutput, err = createFileLogger(log.Debug, ex.debug)
+	} else {
+		log.LogLevel.Set(log.Error)
+		logOutput = logger
+	}
+
+	if err != nil {
+		logger.Error("Error opening log file", "err", err)
+		return -1
+	} else {
+		logger = logOutput
+	}
+
+	logger.Info("Starting machine")
+
+	// Translate from hex-based text-encoding to object-code sections.
 	code, err := ex.loadCode(args[0])
 	if err != nil {
 		logger.Error("Error loading code", "err", err)
@@ -73,14 +94,18 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 
 	logger.Debug("Initializing machine")
 
-	dispCh := make(chan rune, 1)
+	keyboard := vm.NewKeyboard()
+	display := vm.NewDisplay()
+	displayDriver := vm.NewDisplayDriver(display)
+
+	ctx, _, cancelConsole := tty.WithConsole(ctx, keyboard, display) // TODO: logging
+	defer cancelConsole()
 
 	machine := vm.New(
 		vm.WithLogger(logger),
 		monitor.WithDefaultSystemImage(),
-		vm.WithDisplayListener(func(displayed uint16) {
-			dispCh <- rune(displayed)
-		}),
+		vm.WithKeyboard(keyboard),
+		vm.WithDisplay(displayDriver),
 	)
 
 	loader := vm.NewLoader(machine)
@@ -96,19 +121,6 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 		}
 	}
 
-	go func() {
-		logger.Debug("Starting display")
-
-		for {
-			select {
-			case disp := <-dispCh:
-				fmt.Printf("%c", disp)
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
 	logger.Debug("Loaded program", "file", args[0], "loaded", count)
 
 	go func(cancel context.CancelCauseFunc) {
@@ -118,12 +130,9 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 
 		switch {
 		case errors.Is(err, context.DeadlineExceeded):
-			logger.Warn("Demo timeout")
 			return
 		case err != nil:
-			logger.Error(err.Error())
 			cancel(err)
-
 			return
 		default:
 			cancel(context.Canceled)
@@ -132,7 +141,8 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 
 	<-ctx.Done()
 
-	close(dispCh)
+	cancelConsole()
+	cancel(context.Canceled)
 
 	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		logger.Error("Exec timeout!")
@@ -143,6 +153,9 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 	} else if err != nil {
 		logger.Error("Program error", "ERR", err)
 		return 2
+	} else if perr := recover(); perr != nil {
+		logger.Error("Panic!", "err", perr)
+		return 2
 	} else {
 		logger.Info("Terminated")
 		return 0
@@ -150,7 +163,7 @@ func (ex *executor) Run(ctx context.Context, args []string, stdout io.Writer, lo
 }
 
 func (ex executor) loadCode(fn string) ([]vm.ObjectCode, error) {
-	ex.log.Debug("Loading executable", "file", fn)
+	ex.logger.Debug("Loading executable", "file", fn)
 
 	file, err := os.Open(fn)
 	if err != nil {
@@ -159,18 +172,33 @@ func (ex executor) loadCode(fn string) ([]vm.ObjectCode, error) {
 
 	code, err := io.ReadAll(file)
 	if err != nil {
-		ex.log.Error(err.Error())
+		ex.logger.Error(err.Error())
 		return nil, err
 	}
 
-	ex.log.Debug("Loaded file", "bytes", len(code))
+	ex.logger.Debug("Loaded file", "bytes", len(code))
 
 	hex := encoding.HexEncoding{}
 
 	if err = hex.UnmarshalText(code); err != nil {
-		ex.log.Error(err.Error())
+		ex.logger.Error(err.Error())
 		return nil, err
 	}
 
 	return hex.Code, nil
+}
+
+func createFileLogger(level log.Level, filename string) (*log.Logger, error) {
+	println("opening", filename)
+	file, err := os.OpenFile(filename, os.O_RDWR|os.O_SYNC|os.O_CREATE|os.O_APPEND, 0o660)
+	if err != nil {
+		return nil, err
+	}
+
+	handler := log.NewHandler(file)
+	logger := log.New(handler)
+	log.SetDefault(logger)
+	log.LogLevel.Set(level)
+
+	return log.DefaultLogger(), nil
 }

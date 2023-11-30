@@ -11,14 +11,15 @@ import (
 
 // WithSystemImage initializes the machine with a given image.
 func WithSystemImage(image *SystemImage) vm.OptionFn {
-	return func(machine *vm.LC3, late bool) {
+	return func(machine *vm.LC3, late bool) error {
 		if late {
 			loader := vm.NewLoader(machine)
+			_, err := image.LoadTo(loader)
 
-			if _, err := image.LoadTo(loader); err != nil {
-				panic(err) // TODO: return error
-			}
+			return err
 		}
+
+		return nil
 	}
 }
 
