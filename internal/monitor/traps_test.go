@@ -269,14 +269,17 @@ func TestTrap_Puts(tt *testing.T) {
 		if err != nil {
 			t.Errorf("Step error %s", err)
 			cancel()
+
 			break
 		} else if machine.PC > 0x3000 {
 			t.Logf("Instruction complete")
 			cancel()
+
 			break
 		} else if !machine.MCR.Running() {
 			t.Logf("Machine halted")
 			cancel()
+
 			break
 		}
 	}
