@@ -188,7 +188,7 @@ programs. However, in this case logs are sent to a file so the virtual machine
 display is not interrupted in the terminal.
 
 ```
-$ elsie exec -debug debug.log a.o
+$ elsie exec -log debug.log a.o
 54321
 
 MACHINE HALTED!
@@ -206,8 +206,12 @@ $ head debug.log
   FUNCTION : vm.(*LC3).Run
 ```
 
-The file will contain a log of machine being initialized and an execution trace
-for the program. For example:
+
+## Execution trace ##
+
+The debug log file will contain a log of machine being initialized and an
+execution trace for the program and is invaluable when debugging a program. For
+example, consider this log entry:
 
 ```
 TIMESTAMP : 2023-11-30T17:02:14.699469817-05:00
@@ -241,9 +245,9 @@ TIMESTAMP : 2023-11-30T17:02:14.699469817-05:00
          PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2362)}
 ```
 
-In this log entry we can find excruciating detail on the state of the virtual
-machine after the first instruction of our program was executed. The most
-important fields in the record are:
+Here we find excruciating detail on the state of the virtual machine after the
+first instruction of our program was executed. The most important fields in the
+record are:
 
 - **`PC`**: program counter -- a pointer to the next instruction to be
   executed.
@@ -253,16 +257,15 @@ important fields in the record are:
   priority and privilege levels.
 - **`REG`**: registers -- the contents of the general purpose registers.
 
-The remaining fields in the log record are system-level registers and
-information that we'll learn about later when we look at system traps and device
-I/O.
+(The remaining fields in the log record are system-level registers and that
+we'll learn about later when we look at system traps and device I/O.)
 
 Given the above, note the values for `PC`, `IR`, `PSR`, and 'R1':
 
 ```
  PC : 0x3001
  IR : 0x2207 (OP: LD)
-PSR : 0x0301 (N:false Z:false P: true PR:System PL:3)
+PSR : 0x0301 (N:false Z:false P:true PR:System PL:3)
 ...
  R1 : 0x0005
 ```
@@ -274,9 +277,27 @@ Also, consider the first two lines of our example program:
       LD   R1,COUNT
 ```
 
-The very first line is not an instruction: it is a directive. It tells the
-assembler at which address the next instruction is to be found. The second line
-is the first instruction that is executed by our program at address `0x3000` in
-memory: `LD R1,COUNT`.
+The very first line is a directive, not an instruction. Directives instruct the
+assembler how translate our program, rather than instructions for the virtual
+machine. It tells the assembler the address in memory at which the next
+instruction is to be found.
+
+The second line of the program is the first instruction that is executed by our
+program at address `0x3000` in memory: `LD R1,COUNT`. After execution, the `R1`
+register should contain the contents of the memory address labeled `COUNT`.
+Indeed! Towards the end of our program we see the line:
+
+```asm
+COUNT .DW  5
+```
+Which, after a bit of hand waving, is a directive that tells the assembler to
+store the value `5` in a memory address labeled count. Putting these pieces
+together,we see that after executing the first instruction:
+
+- `PC`, the address of the instruction to be executed, is `0x3001`;
+- `IR`, the previously executed instruction is `LD`;
+- `PSR`, the processor status, indicates the last value loaded was `P`, or
+  positive;
+- `R1`, the value loaded into the register is `5`.
 
 <!-- -*- coding: utf-8-auto -*- -->
