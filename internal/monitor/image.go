@@ -91,7 +91,7 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 	count := uint16(0)
 
 	for _, trap := range img.Traps {
-		img.logger.Debug("Generating code",
+		img.logger.Debug("Loading trap",
 			"trap", trap.Name,
 			"orig", trap.Orig,
 			"symbols", len(trap.Symbols),
