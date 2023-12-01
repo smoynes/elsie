@@ -169,7 +169,9 @@ hexadecimal-y. This is object code, or byte code as it is sometimes called. This
 is all that is needed to execute: 𝔼𝕃𝕊𝕀𝔼 loads this data into memory and begins
 executing instructions herein.
 
-To execute the object code:
+## Running a program ##
+
+To execute object code for a program, use the `exec` command:
 
 ```console
 $ elsie exec a.o
@@ -180,5 +182,101 @@ MACHINE HALTED!
 ```
 
 Consider me suitably whelmed.
+
+As with the `asm` command, you can optionally turn on logging when executing
+programs. However, in this case logs are sent to a file so the virtual machine
+display is not interrupted in the terminal.
+
+```
+$ elsie exec -debug debug.log a.o
+54321
+
+MACHINE HALTED!
+
+$ head debug.log
+ TIMESTAMP : 2023-11-30T17:02:14.698750312-05:00
+     LEVEL : INFO
+    SOURCE : exec.go:138
+  FUNCTION : cmd.(*executor).Run.func1
+   MESSAGE : Starting machine
+
+ TIMESTAMP : 2023-11-30T17:02:14.69924571-05:00
+     LEVEL : INFO
+    SOURCE : exec.go:20
+  FUNCTION : vm.(*LC3).Run
+```
+
+The file will contain a log of machine being initialized and an execution trace
+for the program. For example:
+
+```
+TIMESTAMP : 2023-11-30T17:02:14.699469817-05:00
+     LEVEL : INFO
+    SOURCE : exec.go:40
+  FUNCTION : vm.(*LC3).Run
+   MESSAGE : EXEC
+     STATE :
+          PC : 0x3001
+          IR : 0x2207 (OP: LD)
+         PSR : 0x0301 (N:false Z:false P:true PR:System PL:3)
+         USP : 0xfe00
+         SSP : 0x3000
+         MCR : 0x8000 (RUN)
+         MAR : 0x3008
+         MDR : 0x0005
+         DDR : 0x2368
+         DSR : 0x8000
+        KBDR : 0x2362
+        KBSR : 0x7fff
+       REG :
+          R0 : 0xffff
+          R1 : 0x0005
+          R2 : 0xfff0
+          R3 : 0xf000
+          R4 : 0xff00
+          R5 : 0x0f00
+          R6 : 0xfe00
+          R7 : 0x00f0
+       INT :
+         PL3 : ISR{0xff:Keyboard(status:0x7fff,data:0x2362)}
+```
+
+In this log entry we can find excruciating detail on the state of the virtual
+machine after the first instruction of our program was executed. The most
+important fields in the record are:
+
+- **`PC`**: program counter -- a pointer to the next instruction to be
+  executed.
+- **`IR`**: instruction register -- the value of the previously executed
+  instruction and its decoded operation name.
+- **`PSR`**: processor status register -- the control flags (or `NZP` statuses),
+  priority and privilege levels.
+- **`REG`**: registers -- the contents of the general purpose registers.
+
+The remaining fields in the log record are system-level registers and
+information that we'll learn about later when we look at system traps and device
+I/O.
+
+Given the above, note the values for `PC`, `IR`, `PSR`, and 'R1':
+
+```
+ PC : 0x3001
+ IR : 0x2207 (OP: LD)
+PSR : 0x0301 (N:false Z:false P: true PR:System PL:3)
+...
+ R1 : 0x0005
+```
+
+Also, consider the first two lines of our example program:
+
+```asm
+      .ORIG 0x3000
+      LD   R1,COUNT
+```
+
+The very first line is not an instruction: it is a directive. It tells the
+assembler at which address the next instruction is to be found. The second line
+is the first instruction that is executed by our program at address `0x3000` in
+memory: `LD R1,COUNT`.
 
 <!-- -*- coding: utf-8-auto -*- -->

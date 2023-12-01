@@ -173,7 +173,6 @@ func (driver *DisplayDriver) Listen(listener func(uint16)) {
 	driver.list = append(driver.list, listener)
 }
 
-
 // write writes the value to the display device and asynchronously notifies the listeners of the
 // good news: there is data to be seen!
 func (driver *DisplayDriver) write(value Register) error {
