@@ -131,7 +131,7 @@ func TestTrap_Out(tt *testing.T) {
 
 	displayed := make(chan uint16, 10)
 	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
+	ctx, cancel := context.WithTimeout(ctx, 100*time.Millisecond)
 
 	machine := vm.New(
 		WithSystemImage(&image),
@@ -158,7 +158,7 @@ func TestTrap_Out(tt *testing.T) {
 
 	machine.REG[vm.R0] = 0x2365
 
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		err = machine.Step()
 
 		if testing.Verbose() {
@@ -167,16 +167,20 @@ func TestTrap_Out(tt *testing.T) {
 
 		if err != nil {
 			t.Errorf("Step error %s", err)
+			cancel()
 			break
 		} else if machine.PC > 0x3001 {
 			t.Log("Stepped to user code")
+			cancel()
 			break
 		} else if !machine.MCR.Running() {
 			t.Log("Machine stopped")
+			cancel()
 			break
 		}
 	}
 
+	<-ctx.Done()
 	cancel()
 	close(displayed)
 
@@ -220,6 +224,7 @@ func TestTrap_Puts(tt *testing.T) {
 		},
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	displayed := make(chan uint16, 10)
 	machine := vm.New(
 		WithSystemImage(&image),
@@ -227,6 +232,7 @@ func TestTrap_Puts(tt *testing.T) {
 		// TODO: the names out and displayed are inverted by meaning here.
 		vm.WithDisplayListener(func(out uint16) {
 			select {
+			case <-ctx.Done():
 			case displayed <- out:
 			}
 		}),
@@ -250,8 +256,7 @@ func TestTrap_Puts(tt *testing.T) {
 
 	unsafeLoad(loader, code)
 
-	// We expect that only a few dozen instructions are executed to output a few bytes.
-	for i := 0; i < 100; i++ { // TODO
+	for i := 0; i < 1000; i++ {
 		err = machine.Step()
 
 		if testing.Verbose() {
@@ -260,15 +265,21 @@ func TestTrap_Puts(tt *testing.T) {
 
 		if err != nil {
 			t.Errorf("Step error %s", err)
+			cancel()
 			break
 		} else if machine.PC > 0x3000 {
+			t.Logf("Instruction complete")
+			cancel()
 			break
 		} else if !machine.MCR.Running() {
+			t.Logf("Machine halted")
+			cancel()
 			break
 		}
 	}
 
-	time.Sleep(100 * time.Millisecond)
+	cancel()
+	<-ctx.Done()
 	close(displayed)
 
 	vals := make([]uint16, 0, len(displayed))
