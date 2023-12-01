@@ -171,7 +171,7 @@ func TestTrap_Out(tt *testing.T) {
 
 			break
 		} else if machine.PC > 0x3001 {
-			t.Log("Stepped to user code")
+			t.Log("Instruction completed")
 			cancel()
 
 			break
@@ -183,8 +183,9 @@ func TestTrap_Out(tt *testing.T) {
 		}
 	}
 
-	<-ctx.Done()
 	cancel()
+	<-ctx.Done()
+	time.Sleep(time.Millisecond)
 	close(displayed)
 
 	vals := make([]uint16, 0, len(displayed))
@@ -227,7 +228,7 @@ func TestTrap_Puts(tt *testing.T) {
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	displayed := make(chan uint16, 10)
 	machine := vm.New(
 		WithSystemImage(&image),
@@ -286,6 +287,7 @@ func TestTrap_Puts(tt *testing.T) {
 
 	cancel()
 	<-ctx.Done()
+	time.Sleep(time.Millisecond)
 	close(displayed)
 
 	vals := make([]uint16, 0, len(displayed))
