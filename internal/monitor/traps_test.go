@@ -168,14 +168,17 @@ func TestTrap_Out(tt *testing.T) {
 		if err != nil {
 			t.Errorf("Step error %s", err)
 			cancel()
+
 			break
 		} else if machine.PC > 0x3001 {
 			t.Log("Stepped to user code")
 			cancel()
+
 			break
 		} else if !machine.MCR.Running() {
 			t.Log("Machine stopped")
 			cancel()
+
 			break
 		}
 	}
