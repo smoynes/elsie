@@ -3,7 +3,7 @@
 
             The path is made in the walking of it. -- Zhuangzi
 
-This is 𝔼𝕃𝕊𝕀𝔼, an exploration of the  LC-3: a little computer that is simple and
+This is 𝔼𝕃𝕊𝕀𝔼, an exploration of the  LC-3: a model computer that is small, simple, and
 imaginary.
 
 The project includes:
