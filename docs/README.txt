@@ -51,7 +51,7 @@ memory model, and over 40 years of history etched into silicon, the LC-3 remains
 a tractable system that is comprehensible by an individual.
 
 It is  a lot closer to  a PDP/7 machine than  anything you have in  your home or
-pocket. Nevertheless, it is still takes quite a lot of effort to understand well
+pocket. Nevertheless,  it still takes quite  a lot of effort  to understand well
 enough to write programs.
 
 -----------------------------
@@ -111,13 +111,6 @@ software engineer. As ever, I simply seek to understand the essence of computing
 and to embody _Shokunin Kishitsu_ (職人気質), the artisan's spirit.
 
 -----------------------------
-         Dedication
------------------------------
-
-This work is dedicated to the MCM/70[2] and its pioneering designers.
-<https://en.wikipedia.org/wiki/MCM/70>
-
------------------------------
         Documentation
 -----------------------------
 
@@ -126,6 +119,14 @@ This work is dedicated to the MCM/70[2] and its pioneering designers.
 - RESOURCE.txt         Inspirational references.
 - LICENCE.txt          Terms of use.
 - CODE_OF_CONDUCT.txt  Behave yourself.
+- README.txt           You are here.
+
+-----------------------------
+         Dedication
+-----------------------------
+
+This work is dedicated to the MCM/70 and its pioneering designers.
+<https://en.wikipedia.org/wiki/MCM/70>
 
 -----------------------------
 
