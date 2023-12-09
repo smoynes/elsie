@@ -35,13 +35,13 @@ The LC-3 instruction set and architecture (ISA) includes:
   - hard- and software interrupts; and
   - an instruction set compact enough to fit on a single page.
 
-Far from an abstract machine, the text begins with transistors and digital
-logic. From there, it builds upon the titular bits and bytes and describes an
+Far  from an  abstract machine,  the text  begins with  transistors and  digital
+logic. From there,  it builds upon the  titular bits and bytes  and describes an
 entire computer architecture in detail including the control-unit state-machine,
-data and I/O paths. Upon this computer, assembly, C and C++ programming
-languages are described. It is fascinating. As far as I know, a complete
-hardware implementation has never been physically built but, I can imagine, the
-text will be invaluable when humanity has to recreate computers from first
+data  and  I/O paths.  Upon  this  computer,  assembly,  C and  C++  programming
+languages  are described.  It  is fascinating.  As  far as  I  know, a  complete
+hardware implementation has never been physically  built but, I can imagine, the
+text  will be  invaluable when  humanity has  to recreate  computers from  first
 principles.
 
 While similar  in many respects to  the x86 or  ARM ISAs, the LC-3  is radically
