@@ -226,6 +226,7 @@ func (ae *acv) String() string {
 // Trap handler table and defined vectors in the table.
 const (
 	TrapTable = Word(0x0000) // TRAP (0x0000:0x00ff)
+	TrapGETC  = uint8(0x20)  // GETC
 	TrapOUT   = uint8(0x21)  // OUT
 	TrapPUTS  = uint8(0x22)  // PUTS
 	TrapHALT  = uint8(0x25)  // HALT

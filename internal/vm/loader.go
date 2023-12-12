@@ -54,7 +54,7 @@ func (l *Loader) Load(obj ObjectCode) (uint16, error) {
 
 // LoadVector stores the object and sets the vector-table entry to the object's origin address.
 func (l *Loader) LoadVector(vector Word, obj ObjectCode) (uint16, error) {
-	l.log.Debug("Loading vector", "vec", vector, "obj", obj)
+	l.log.Debug("Loading vector", "vec", vector, "orig", obj.Orig, "size", len(obj.Code))
 
 	if count, err := l.Load(obj); err != nil {
 		return count, err

@@ -5,6 +5,13 @@ import (
 	"github.com/smoynes/elsie/internal/vm"
 )
 
+var defaultImageTraps = []Routine{
+	TrapHalt,
+	TrapOut,
+	TrapPuts,
+	TrapGetc,
+}
+
 // TrapHalt is the system call to stop the machine.
 //   - Table:   0x0000
 //   - Vector:  0x25
@@ -184,5 +191,120 @@ var TrapPuts = Routine{
 		// Trap-scoped variables.
 		/*0x046f */ &asm.FILL{LITERAL: uint16(vm.DSRAddr)}, // display status-, and
 		/*0x0470 */ &asm.FILL{LITERAL: uint16(vm.DDRAddr)}, // data-registers.
+	},
+}
+
+// TrapGetc is the system call to prompt the user and wait for a character of input.
+//
+//   - Table: 0x0000
+//   - Vector: 0x20
+//   - Handler: 0x04a0
+//
+// Adapted from Fig. 9.15, 3/e. TODO: This does not disable interrupts.
+var TrapGetc = Routine{
+	Name:   "GETC",
+	Vector: vm.TrapTable + vm.Word(vm.TrapGETC),
+	Orig:   0x04a0,
+	Symbols: asm.SymbolTable{
+		"START":      0x04a0,
+		"LOOP":       0x04a8,
+		"INPUT":      0x04af,
+		"NEWLINE":    0x04ad,
+		"PROMPT":     0x04ae,
+		"WRITECHAR":  0x04af,
+		"READCHAR":   0x04b3,
+		"SAVEREG":    0x04b7,
+		"RESTOREREG": 0x04be,
+
+		"SAVER1": 0x04c5,
+		"SAVER2": 0x04c6,
+		"SAVER3": 0x04c7,
+		"SAVER4": 0x04c8,
+		"SAVER5": 0x04c9,
+		"SAVER6": 0x04ca,
+
+		"DSR":  0x04cb,
+		"DDR":  0x04cc,
+		"KBSR": 0x04cd,
+		"KBDR": 0x04ce,
+	},
+	Code: []asm.Operation{
+		&asm.JSR{SYMBOL: "SAVEREG"},
+		&asm.LEA{DR: "R1", SYMBOL: "PROMPT"},
+
+		/*LOOP:0x04a2*/
+		&asm.LDR{DR: "R2", SR: "R1", OFFSET: 0},   // Get next prompt character.
+		&asm.JSR{SYMBOL: "WRITECHAR"},             // Echo prompt character.
+		&asm.ADD{DR: "R1", SR1: "R1", LITERAL: 1}, // Increment prompt pointer.
+		&asm.BR{NZP: asm.CondNZP, SYMBOL: "LOOP"}, // Iterate to LOOP.
+
+		/*INPUT:0x04a6*/
+		&asm.JSR{SYMBOL: "READCHAR"},              // Get character input.
+		&asm.ADD{DR: "R2", SR1: "R0", LITERAL: 0}, // Move char for echo.
+		&asm.JSR{SYMBOL: "WRITECHAR"},             // Echo to monitor.
+
+		&asm.LD{DR: "R2", SYMBOL: "NEWLINE"},
+		&asm.JSR{SYMBOL: "WRITECHAR"},  // Echo newline.
+		&asm.JSR{SYMBOL: "RESTOREREG"}, // Restore registers.
+		&asm.RTI{},                     // Terminate trap routine.
+
+		/*NEWLINE:0x04ad*/
+		&asm.FILL{LITERAL: 0x000a},
+		/*PROMPT:0x04ae*/
+		&asm.STRINGZ{LITERAL: "\nInput a character> "},
+
+		/*WRITECHAR:0x04af*/
+		&asm.LDI{DR: "R3", SYMBOL: "DSR"},
+		&asm.BR{NZP: asm.CondZP, SYMBOL: "WRITECHAR"},
+		&asm.STI{SR: "R2", SYMBOL: "DDR"},
+		&asm.RET{},
+
+		/*READCHAR:0x04b3*/
+		&asm.LDI{DR: "R3", SYMBOL: "KBSR"},
+		&asm.BR{NZP: asm.CondZP, SYMBOL: "READCHAR"},
+		&asm.LDI{DR: "R0", SYMBOL: "KBDR"},
+		&asm.RET{},
+
+		/*SAVEREG:0x04b7*/
+		&asm.ST{SR: "R1", SYMBOL: "SAVER1"},
+		&asm.ST{SR: "R2", SYMBOL: "SAVER2"},
+		&asm.ST{SR: "R3", SYMBOL: "SAVER3"},
+		&asm.ST{SR: "R4", SYMBOL: "SAVER4"},
+		&asm.ST{SR: "R5", SYMBOL: "SAVER5"},
+		&asm.ST{SR: "R6", SYMBOL: "SAVER6"},
+		&asm.RET{},
+
+		/*RESTOREREG:0x04be*/
+		&asm.ST{SR: "R1", SYMBOL: "SAVER1"},
+		&asm.ST{SR: "R2", SYMBOL: "SAVER2"},
+		&asm.ST{SR: "R3", SYMBOL: "SAVER3"},
+		&asm.ST{SR: "R4", SYMBOL: "SAVER4"},
+		&asm.ST{SR: "R5", SYMBOL: "SAVER5"},
+		&asm.ST{SR: "R6", SYMBOL: "SAVER6"},
+		&asm.RET{},
+
+		// Stored register allocations.
+		/*SAVER1:0x04c5*/
+		&asm.BLKW{ALLOC: 0x0001},
+		/*SAVER2:0x04c6*/
+		&asm.BLKW{ALLOC: 0x0001},
+		/*SAVER3:0x04c7*/
+		&asm.BLKW{ALLOC: 0x0001},
+		/*SAVER4:0x04c8*/
+		&asm.BLKW{ALLOC: 0x0001},
+		/*SAVER5:0x04c9*/
+		&asm.BLKW{ALLOC: 0x0001},
+		/*SAVER6:0x04ca*/
+		&asm.BLKW{ALLOC: 0x0001},
+
+		// Address constants.
+		/*DSR:0x04cb*/
+		&asm.FILL{LITERAL: 0xfe02},
+		/*DDR:0x04cc*/
+		&asm.FILL{LITERAL: 0xfe04},
+		/*KBSR:0x04cd*/
+		&asm.FILL{LITERAL: 0xfe00},
+		/*DDR:0x04ce*/
+		&asm.FILL{LITERAL: 0xfe02},
 	},
 }

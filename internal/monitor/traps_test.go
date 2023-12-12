@@ -31,6 +31,78 @@ func (*trapHarness) Logger() *log.Logger {
 	return log.DefaultLogger()
 }
 
+func TestTrap_Getc(tt *testing.T) {
+	t := NewHarness(tt)
+
+	obj, err := Generate(TrapGetc)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	if len(obj.Code) < 10 {
+		t.Error("code way too short", len(obj.Code))
+		return
+	}
+
+	image := SystemImage{
+		logger:  t.Logger(),
+		Symbols: nil,
+		Traps:   []Routine{TrapGetc},
+	}
+
+	machine := vm.New(
+		WithSystemImage(&image),
+	)
+
+	// Now, we create code to execute the trap under test.
+	code := vm.ObjectCode{
+		Orig: 0x3000,
+		Code: []vm.Word{
+			vm.NewInstruction(vm.TRAP, 0x20).Encode(),
+			vm.NewInstruction(vm.TRAP, 0x25).Encode(),
+		},
+	}
+
+	loader := vm.NewLoader(machine)
+
+	unsafeLoad(loader, code)
+
+	ctx, cancel := context.WithTimeout(context.TODO(), 500*time.Millisecond)
+
+	go func() {
+		for {
+			err = machine.Run(ctx)
+
+			if testing.Verbose() {
+				t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)
+			}
+
+			if errors.Is(err, vm.ErrHalted) {
+				break
+			} else if !machine.MCR.Running() {
+				break
+			} else if err == context.DeadlineExceeded {
+				break
+			} else if err == context.Canceled {
+				break
+			} else if err != nil {
+				t.Error(err)
+				break
+			}
+		}
+	}()
+
+	<-ctx.Done()
+
+	cancel()
+
+	if err := ctx.Err(); err == context.DeadlineExceeded {
+		t.Errorf("Deadline expired")
+		return
+	}
+}
+
 func TestTrap_Halt(tt *testing.T) {
 	t := NewHarness(tt)
 
@@ -59,7 +131,13 @@ func TestTrap_Halt(tt *testing.T) {
 		Symbols: map[string]uint16{},
 	}
 
-	image := SystemImage{logger: t.Logger(), Symbols: nil, Traps: []Routine{TrapHalt, putsRoutine}}
+	image := SystemImage{
+		logger:  t.Logger(),
+		Symbols: nil,
+		Traps: []Routine{
+			TrapHalt,
+			putsRoutine,
+		}}
 
 	machine := vm.New(
 		WithSystemImage(&image),

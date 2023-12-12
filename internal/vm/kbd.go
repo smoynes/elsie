@@ -12,8 +12,8 @@ type Keyboard struct {
 	// used here with the use of channels in the Display device.
 	mut sync.Mutex
 
-	// intr signals waiters when keyboard interrupts are enabled.
-	intr *sync.Cond
+	// empty signals waiters when keyboard buffer is empty/
+	empty *sync.Cond
 
 	// Keyboard Status Register.
 	KBSR Register
@@ -35,7 +35,7 @@ func NewKeyboard() *Keyboard {
 		KBSR: 0x0000,
 		KBDR: Register(a[rand.Intn(len(a))]), //nolint:gosec
 	}
-	k.intr = sync.NewCond(&k.mut)
+	k.empty = sync.NewCond(&k.mut)
 
 	return k
 }
@@ -50,8 +50,6 @@ func (k *Keyboard) Init(vm *LC3, _ []Word) {
 	k.KBSR = ^KeyboardReady | KeyboardEnable // Enable interrupts, clear ready flag.
 	k.KBDR = Register(a[rand.Intn(len(a))])  //nolint:gosec
 	k.mut.Unlock()
-
-	k.intr.Broadcast()
 }
 
 // InterruptRequested returns true if the keyboard has requested interrupt and interrupts are
@@ -69,13 +67,15 @@ func (k *Keyboard) Read(addr Word) (Word, error) {
 	k.mut.Lock()
 	defer k.mut.Unlock()
 
-	if addr == KBSRAddr {
-		return Word(k.KBSR), nil
-	}
+	var val Word
 
-	val := Word(k.KBDR)
-	k.KBDR = 0x0000
-	k.KBSR = KeyboardReady | KeyboardEnable // ??
+	if addr == KBSRAddr {
+		val = Word(k.KBSR)
+	} else {
+		val = Word(k.KBDR)
+		k.KBDR = 0x0000
+		k.KBSR ^= KeyboardReady
+	}
 
 	return val, nil
 }
@@ -89,12 +89,7 @@ func (k *Keyboard) Write(addr Word, val Register) error {
 	k.mut.Lock()
 	defer k.mut.Unlock()
 
-	enabled := (k.KBSR&KeyboardEnable == 0) && (val&KeyboardEnable != 0)
 	k.KBSR = val
-
-	if enabled && (k.KBSR&KeyboardReady != 0) {
-		k.intr.Signal()
-	}
 
 	return nil
 }
@@ -105,13 +100,14 @@ func (k *Keyboard) Update(key uint16) {
 	k.mut.Lock()
 	defer k.mut.Unlock()
 
-	for !(k.KBSR&(KeyboardEnable & ^KeyboardReady) != 0) {
-		k.intr.Wait()
+	// Wait for keyboard buffer to be empty, ie. the ready flag is unset.
+	for k.KBSR&KeyboardReady != 0 {
+		k.empty.Wait()
 	}
 
 	k.KBDR = Register(key)
 	k.KBSR |= KeyboardReady // Data is ready.
-	k.intr.Signal()
+	k.empty.Broadcast()
 }
 
 func (k *Keyboard) String() string {

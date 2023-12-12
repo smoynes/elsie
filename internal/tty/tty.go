@@ -60,6 +60,7 @@ func ConsoleContext(parent context.Context, keyboard *vm.Keyboard, display *vm.D
 	return ctx, console, console.Restore
 }
 
+// WithTerminal returns an option function that configures the machine to use the console.
 func (c Console) WithTerminal(parent context.Context) vm.OptionFn {
 	ctx, cause := context.WithCancelCause(parent)
 
