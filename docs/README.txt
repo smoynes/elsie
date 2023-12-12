@@ -130,6 +130,6 @@ This work is dedicated to the MCM/70 and its pioneering designers.
 
 -----------------------------
 
-𝔼𝕃𝕊𝕀𝔼 © 2023 by Scott Moynes is licensed under CC BY-SA 4.0.
-See LICENCE.txt for terms. Send your lawyers here:
-https://creativecommons.org/licenses/by-sa/4.0/?ref=chooser-v1
+𝔼𝕃𝕊𝕀𝔼 © 2023 by Scott Moynes is licensed under CC BY-SA 4.0. See LICENCE.txt for
+terms. Send your lawyers here:
+<https://creativecommons.org/licenses/by-sa/4.0/?ref=chooser-v1>
