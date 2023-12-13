@@ -1,7 +1,28 @@
                                 Project Tracker
 ================================================================================
 
-      Simple tools for complex problems -- a text file is often all you need.
+      Simplicity and elegance are unpopular because they require hard
+      work and discipline to achieve and education to be appreciated.
+      The tools we use have a profound (and devious!) influence on our
+      thinking habits, and, therefore, on our thinking abilities.
+      -- Edsgar Dijkstra.
+
+
+-----------------------------
+           BIG IDEAS
+-----------------------------
+
+ I've thought about:
+
+  - running some programs written by others;
+  - building a simple compiler for high-level language that generates LC3ASM code;
+  - extending the ISA with new instructions, data types, or a math co-processor;
+  - adding new I/O devices tape storage, block storage, or network emulators and
+    adapters;
+  - expanding the operating system, with new system calls, a runtime library,
+    IPC services, or even a microkernel;
+  - concurrency and parallelism, _e.g._ co-operative sequential processes,
+    preemptive multitasking, multicore execution.
 
 -----------------------------
             TODO
@@ -11,25 +32,25 @@
   - [x] TRAP x21
   - [x] TRAP x23
   - [x] TRAP x25
+  - [ ] TRAP x20 GETC
   - [x] "linker", hex encoding
   - [ ] exception handlers
   - [ ] interrupt handlers
-- [ ] EXEC
-  - terminal I/O: keyboard, display
-  - debugger, repl
+- [ ] EXEC: - wire up terminal I/O:
 - [ ] REPL: step debugger shell
 - [ ] DOCS:
   - tutorial: WIP
     - [ ] assembly programming
   - [ ] development
-  - [ ] design: WIP
+  - [ ] design
 - [ ] ASM:
   - [ ] document grammar
   - directives:
     - [ ] .END
     - [ ] .EXTERNAL
+    - trap aliases: HALT, IN, PUTS, OUT
 - [ ] LINK: code linker
-- [ ] LOAD: load intel hex system images
+- [x] LOAD: load intel hex system images
 - [ ] TIMER: simple timer device
 - [ ] NEWLANG: interpreted language; threaded compiler
 - [ ] WEBASM: stellar portability
@@ -62,19 +83,3 @@
   - [x] service traps
   - [x] memory mapped I/O
   - [x] hardware interrupts
-
------------------------------
-           IDEAS
------------------------------
-
- I've thought about:
-
-  - running some programs written by others;
-  - building a simple compiler for high-level language;
-  - extending the ISA with new instructions, data types, or a math co-processor;
-  - adding new I/O devices tape storage, block storage, or network emulators and
-    adapters;
-  - expanding the operating system, with new system calls, a runtime library,
-    IPC services, or even a microkernel;
-  - concurrency and parallelism, _e.g._ co-operative sequential processes,
-    preemptive multitasking, multicore execution.
