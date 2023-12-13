@@ -5,7 +5,7 @@
       work and discipline to achieve and education to be appreciated.
       The tools we use have a profound (and devious!) influence on our
       thinking habits, and, therefore, on our thinking abilities.
-      -- Edsgar Dijkstra.
+      -- Edsger Dijkstra.
 
 
 -----------------------------
