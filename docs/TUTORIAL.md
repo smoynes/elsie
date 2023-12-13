@@ -249,18 +249,52 @@ Here we find excruciating detail on the state of the virtual machine after the
 first instruction of our program was executed. The most important fields in the
 record are:
 
-- **`PC`**: program counter -- a pointer to the next instruction to be
-  executed.
+- **`PC`**: program counter -- a pointer to the next instruction to be executed.
+  Its value is incremented whenever an instruction is executed.
 - **`IR`**: instruction register -- the value of the previously executed
   instruction and its decoded operation name.
-- **`PSR`**: processor status register -- the control flags (or `NZP` statuses),
+- **`PSR`**: processor status register -- the condition flags (or `NZP` bits),
   priority and privilege levels.
 - **`REG`**: registers -- the contents of the general purpose registers.
 
 (The remaining fields in the log record are system-level registers and that
-we'll learn about later when we look at system traps and device I/O.)
+we'll learn about later when we look at system traps and device I/O. We can
+ignore them for now.)
 
-Given the above, note the values for `PC`, `IR`, `PSR`, and 'R1':
+Considering the first two lines of our example program:
+
+```asm
+    .ORIG 0x3000
+    LD    R1,COUNT
+```
+
+The very first line is a directive, not an instruction. Directives instruct the
+assembler how translate our program, rather than instructions for the virtual
+machine. `.ORIG` tells the assembler the address in memory at which the next
+instruction is to be found. When the program is loaded into memory, value tells
+the loader where to put the code that follows. The value `0x3000` happens to be
+the address of first instruction executed by the CPU after starting. So, this
+line tells the assembler that the next instruction in the source code has the
+honour to be the first executed in our program.
+
+The second line of the program is the instruction that is executed: `LD
+R1,COUNT`. This the load instruction and it loads values from memory into CPU
+registers. After execution, the `R1` register will contain the contents of the
+memory address labeled `COUNT`. As a side effect, the `NZP` condition flags are
+set based on the loaded value is negative, zero, or positive. 
+
+Where can we find the `COUNT` label referenced in the source line? Further down
+the source file we can see:
+
+```asm
+COUNT .DW  5
+```
+
+Which, with a bit of hand waving by your author, is a directive that tells the
+assembler to store the value `5` in a memory address labeled count.
+
+Putting that all together and oting the values for `PC`, `IR`, `PSR`, and 'R1'
+registers from the log messages above:
 
 ```
  PC : 0x3001
@@ -270,34 +304,16 @@ PSR : 0x0301 (N:false Z:false P:true PR:System PL:3)
  R1 : 0x0005
 ```
 
-Also, consider the first two lines of our example program:
+We can see that after executing the first instruction:
 
-```asm
-      .ORIG 0x3000
-      LD   R1,COUNT
-```
+- `PC`, the address of the instruction to be executed, is `0x3001` -- one more
+  than then `.ORIG` value.
+- `IR`, the previously executed instruction is `LD` -- the first instruction in
+  the program.
+- `PSR`, the processor status, indicates the last value loaded was `P` -- the
+  loaded value was a positive number.
+- `R1`, the value loaded into the register is `5` -- the value of our count.
 
-The very first line is a directive, not an instruction. Directives instruct the
-assembler how translate our program, rather than instructions for the virtual
-machine. It tells the assembler the address in memory at which the next
-instruction is to be found.
-
-The second line of the program is the first instruction that is executed by our
-program at address `0x3000` in memory: `LD R1,COUNT`. After execution, the `R1`
-register should contain the contents of the memory address labeled `COUNT`.
-Indeed! Towards the end of our program we see the line:
-
-```asm
-COUNT .DW  5
-```
-Which, after a bit of hand waving, is a directive that tells the assembler to
-store the value `5` in a memory address labeled count. Putting these pieces
-together,we see that after executing the first instruction:
-
-- `PC`, the address of the instruction to be executed, is `0x3001`;
-- `IR`, the previously executed instruction is `LD`;
-- `PSR`, the processor status, indicates the last value loaded was `P`, or
-  positive;
-- `R1`, the value loaded into the register is `5`.
+A word of code has been executed. This is very whelming!
 
 <!-- -*- coding: utf-8-auto -*- -->
