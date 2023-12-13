@@ -236,8 +236,8 @@ func TestTrap_Puts(tt *testing.T) {
 		// TODO: the names out and displayed are inverted by meaning here.
 		vm.WithDisplayListener(func(out uint16) {
 			select {
-			case <-ctx.Done():
 			case displayed <- out:
+			case <-ctx.Done():
 			}
 		}),
 	)
