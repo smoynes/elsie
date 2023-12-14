@@ -67,14 +67,14 @@ enough to write programs. Our effort pays dividends in knowledge.
 is not good software. However, to the  author, the project is not intended to be
 useful to others, not in utilitarian terms, at least.
 
-Nor  𝔼𝕃𝕊𝕀𝔼 is  novel: simulators  already exist  for the  LC-3 architecture,  of
+Neither is 𝔼𝕃𝕊𝕀𝔼  novel: simulators already exist for the  LC-3 architecture, of
 course. The  textbook publishers provide  one and  there are many  others freely
 available online. This one is admittedly a mere reinvention of the wheel.
 
 That said, the  gift the design and  engineering process affords is  that it can
-reveal something  about either our  world or ourselves. It  is to be  hoped that
-building something useless and retreading  well worn paths will expose something
-essential and fundamental.
+reveal  something  about  either  our world  or  ourselves.  Hopefully  building
+something useless and retreading well worn paths will expose something essential
+and fundamental.
 
 Personally,  there remain  many  Computer  Things that  baffle  me. Despite  ten
 thousand hours of computing,  I still feel lost when it  comes to the rudiments:
@@ -83,7 +83,7 @@ is an artifact  of my learning process  and a trace of my  explorations into the
 field.
 
 It is  to be hoped  that by trying  my hand at the  old methods, by  holding the
-craftsman's tools and building something cute  and useless, I will gain a better
+craftsman's  tools and  building something  unnecessary,  I will  gain a  better
 understanding of the essence of computing.  And yet, if nothing else is achieved
 than reading a few  books, learning some ideas, and hearing  a few good stories,
 it will have been worth it in the end.
