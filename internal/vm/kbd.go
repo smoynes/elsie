@@ -47,7 +47,7 @@ func (k *Keyboard) Init(vm *LC3, _ []Word) {
 	vm.INT.Register(PriorityNormal, isr)
 
 	k.mut.Lock()
-	k.KBSR = ^KeyboardReady | KeyboardEnable // Enable interrupts, clear ready flag.
+	k.KBSR = KeyboardEnable & ^KeyboardReady // Enable interrupts, clear ready flag.
 	k.KBDR = Register(a[rand.Intn(len(a))])  //nolint:gosec
 	k.mut.Unlock()
 }
@@ -74,7 +74,7 @@ func (k *Keyboard) Read(addr Word) (Word, error) {
 	} else {
 		val = Word(k.KBDR)
 		k.KBDR = 0x0000
-		k.KBSR ^= KeyboardReady
+		k.KBSR = k.KBSR & ^KeyboardReady
 	}
 
 	return val, nil

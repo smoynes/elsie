@@ -40,11 +40,10 @@ func TestKeyboardDriver(tt *testing.T) {
 	kbd.KBDR = uninitialized
 	kbd.KBSR = uninitialized
 
-	t.Logf("cool 🕶️ %s", kbd)
-
 	driver.Init(vm, nil)
 
 	addr := KBSRAddr
+
 	if err := writer.Write(addr, Register(0xffff)); err != nil {
 		t.Error(err)
 	} else if got, err := reader.Read(addr); err != nil {
@@ -56,6 +55,7 @@ func TestKeyboardDriver(tt *testing.T) {
 	}
 
 	addr = KBDRAddr
+
 	if got, err := reader.Read(addr); err != nil {
 		t.Errorf("expected read error: %s", addr)
 	} else if got == Word(uninitialized) {
@@ -63,11 +63,14 @@ func TestKeyboardDriver(tt *testing.T) {
 	}
 
 	addr = KBSRAddr
+
 	if got, err := reader.Read(addr); err != nil {
 		t.Errorf("read error: %s: %s", addr, err)
-	} else if got != Word(KeyboardEnable|KeyboardReady) {
-		t.Errorf("expected status ready: want: %s, got: %s", KeyboardEnable|KeyboardReady, got)
+	} else if got & Word(KeyboardEnable|KeyboardReady) != Word(KeyboardEnable) {
+		t.Errorf("expected status ready: want: %s, got: %s", KeyboardEnable, got)
 	}
+
+	t.Logf("cool %s", kbd)
 }
 
 func TestDisplayDriver(tt *testing.T) {
