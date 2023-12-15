@@ -48,7 +48,7 @@ func TestTrap_Getc(tt *testing.T) {
 	image := SystemImage{
 		logger:  t.Logger(),
 		Symbols: nil,
-		Traps:   []Routine{TrapGetc},
+		Traps:   []Routine{TrapGetc, TrapHalt},
 	}
 
 	machine := vm.New(
@@ -68,7 +68,7 @@ func TestTrap_Getc(tt *testing.T) {
 
 	unsafeLoad(loader, code)
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 500*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.TODO(), 50*time.Millisecond)
 
 	go func() {
 		for {
