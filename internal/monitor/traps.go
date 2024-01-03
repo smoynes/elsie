@@ -168,7 +168,7 @@ var TrapHalt = Routine{
 		/* 0x0527 */ &asm.FILL{LITERAL: uint16(vm.MCRAddr)}, // I/O address of MCR.
 		/* 0x0528 */ &asm.FILL{LITERAL: 0x7fff}, // MASK to clear top bit.
 		/* 0x0529 */ &asm.STRINGZ{LITERAL: "\n\nMACHINE HALTED!\n\n"},
- 	},
+	},
 }
 
 // TrapOut is the system call to write a single character to the display.

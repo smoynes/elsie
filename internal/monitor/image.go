@@ -12,11 +12,24 @@ import (
 // WithSystemImage initializes the machine with a given image.
 func WithSystemImage(image *SystemImage) vm.OptionFn {
 	return func(machine *vm.LC3, late bool) {
-		if late {
-			loader := vm.NewLoader(machine)
+		if !late {
+			return
+		}
 
-			if _, err := image.LoadTo(loader); err != nil {
-				panic(err) // TODO: return error
+		loader := vm.NewLoader(machine)
+
+		for i := range image.Traps {
+			trap := image.Traps[i]
+			obj, err := Generate(trap)
+
+			if err != nil {
+				panic(err)
+			}
+
+			_, err = loader.Load(obj)
+
+			if err != nil {
+				panic(err)
 			}
 		}
 	}
@@ -26,13 +39,26 @@ func WithSystemImage(image *SystemImage) vm.OptionFn {
 // use this.
 func WithDefaultSystemImage() vm.OptionFn {
 	return func(machine *vm.LC3, late bool) {
-		if late {
-			logger := log.DefaultLogger()
-			image := NewSystemImage(logger)
-			loader := vm.NewLoader(machine)
+		if !late {
+			return
+		}
 
-			if _, err := image.LoadTo(loader); err != nil {
-				panic(err) // TODO: return error
+		logger := log.DefaultLogger()
+		image := NewSystemImage(logger)
+		loader := vm.NewLoader(machine)
+
+		for i := range image.Traps {
+			trap := image.Traps[i]
+			obj, err := Generate(trap)
+
+			if err != nil {
+				panic(err)
+			}
+
+			_, err = loader.Load(obj)
+
+			if err != nil {
+				panic(err)
 			}
 		}
 	}
@@ -128,7 +154,7 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 				obj.Code = append(obj.Code, encoded[i])
 			}
 
-			pc += 1
+			pc += vm.Word(len(encoded))
 		}
 
 		img.logger.Debug("Loading vector",

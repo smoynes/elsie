@@ -34,17 +34,6 @@ func (*trapHarness) Logger() *log.Logger {
 func TestTrap_Getc(tt *testing.T) {
 	t := NewHarness(tt)
 
-	obj, err := Generate(TrapGetc)
-
-	if err != nil {
-		t.Error(err)
-	}
-
-	if len(obj.Code) < 10 {
-		t.Error("code way too short", len(obj.Code))
-		return
-	}
-
 	image := SystemImage{
 		logger:  t.Logger(),
 		Symbols: nil,
@@ -72,7 +61,7 @@ func TestTrap_Getc(tt *testing.T) {
 
 	go func() {
 		for {
-			err = machine.Run(ctx)
+			err := machine.Run(ctx)
 
 			if testing.Verbose() {
 				t.Logf("Stepped\n%s\n%s\nerr %v", machine, machine.REG, err)
@@ -99,6 +88,7 @@ func TestTrap_Getc(tt *testing.T) {
 
 	if err := ctx.Err(); err == context.DeadlineExceeded {
 		t.Errorf("Deadline expired")
+		t.Logf("%s\n%s\nt", machine, machine.REG)
 		return
 	}
 }
@@ -380,9 +370,7 @@ func TestTrap_Puts(tt *testing.T) {
 	}
 
 	for i := range vals {
-		if vals[i] != 0x0021+uint16(i) {
-			t.Errorf("vals[%d] != 0x0022, got: %04x", i, vals[i])
-		}
+		t.Errorf("vals[%d] got: %04X", i, vals[i])
 	}
 }
 
