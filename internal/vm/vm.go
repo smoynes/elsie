@@ -287,7 +287,10 @@ func (rf RegisterFile) LogValue() log.Value {
 	)
 }
 
-// An OptionFn is modifies the machine during initialization. The function is called twice:
+// An OptionFn is modifies the machine during initialization. The function is
+// called twice -- once early and once late, with false and true values for the
+// late argument, respectively.
+// TODO: return error
 type OptionFn func(maching *LC3, late bool)
 
 // WithSystemContext initializes the machine to use system context, i.e. with system privileges and
