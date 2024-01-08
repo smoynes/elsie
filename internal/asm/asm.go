@@ -86,7 +86,7 @@ identchar    = \p{Letter}
 `)
 
 // SymbolTable maps a symbol reference to its location in object code.
-type SymbolTable map[string]uint16
+type SymbolTable map[string]vm.Word
 
 // Count returns the number of symbols in the table.
 func (s SymbolTable) Count() int {
@@ -94,7 +94,7 @@ func (s SymbolTable) Count() int {
 }
 
 // Add adds a symbol to the symbol table.
-func (s SymbolTable) Add(sym string, loc uint16) {
+func (s SymbolTable) Add(sym string, loc vm.Word) {
 	if sym == "" {
 		panic("empty symbol")
 	}
@@ -104,7 +104,7 @@ func (s SymbolTable) Add(sym string, loc uint16) {
 }
 
 // Offset computes a n-bit PC-relative offset.
-func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
+func (s SymbolTable) Offset(sym string, pc vm.Word, n int) (uint16, error) {
 	sym = strings.ToUpper(sym)
 
 	loc, ok := s[sym]
@@ -142,11 +142,11 @@ var (
 // are not known, they hold the zero value. For example, the filename is an empty string when the
 // source code is not a file.
 type SyntaxError struct {
-	File string // Source file name.
-	Loc  uint16 // Location counter.
-	Pos  uint16 // Line counter.
-	Line string // Source code line.
-	Err  error  // Error cause.
+	File string  // Source file name.
+	Loc  vm.Word // Location counter.
+	Pos  vm.Word // Line counter.
+	Line string  // Source code line.
+	Err  error   // Error cause.
 }
 
 func (se *SyntaxError) Error() string {
@@ -206,7 +206,7 @@ func (re *RegisterError) Error() string {
 
 // Symbol is a wrapped error returned when a symbol could not be found in the symbol table.
 type SymbolError struct {
-	Loc    uint16
+	Loc    vm.Word
 	Symbol string
 }
 
@@ -248,13 +248,13 @@ type Operation interface {
 
 	// Generate encodes an operation as machine code. Using the values from Parse, the operation is
 	// converted to one (or more) words.
-	Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error)
+	Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error)
 }
 
 // SourceInfo wraps an operation to annotate it with parser metadata.
 type SourceInfo struct {
 	Filename string
-	Pos      uint16
+	Pos      vm.Word
 	Line     string
 
 	Operation

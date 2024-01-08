@@ -22,12 +22,11 @@ type generateCase struct {
 }
 
 // Run tests a collection of generator tests cases.
-func (t *generatorHarness) Run(pc uint16, symbols SymbolTable, tcs []generateCase) {
+func (t *generatorHarness) Run(pc vm.Word, symbols SymbolTable, tcs []generateCase) {
 	t.Helper()
 
 	for i := range tcs {
 		oper, want, expErr := tcs[i].oper, tcs[i].want, tcs[i].wantErr
-
 		mc, err := oper.Generate(symbols, pc)
 
 		t.Logf("oper: %#v", oper)
@@ -136,7 +135,7 @@ func TestAND_Generate(tt *testing.T) {
 		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "FAR"}, wantErr: &OffsetRangeError{Offset: 0xffd0}},
 	}
 
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL": 0x3007,
 		"BACK":  0x2ffe,
@@ -156,7 +155,7 @@ func TestBR_Generate(tt *testing.T) {
 		{oper: &BR{NZP: 0x4, SYMBOL: "LONG"}, want: 0x061f, wantErr: &OffsetRangeError{Offset: 0xd000}},
 	}
 
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":  0x3005,
 		"BACK":   0x3000,
@@ -180,7 +179,7 @@ func TestLDR_Generate(tt *testing.T) {
 		{oper: &LDR{DR: "R8", SR: "R2", SYMBOL: "LABEL"}, want: 0, wantErr: &RegisterError{Reg: "R8"}},
 		{oper: &LDR{DR: "R0", SR: "DR", SYMBOL: "LABEL"}, want: 0, wantErr: &RegisterError{Reg: "DR"}},
 	}
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":  0x3005,
 		"BACK":   0x3000,
@@ -200,7 +199,7 @@ func TestLD_Generate(tt *testing.T) {
 		{oper: &LD{DR: "R7", SYMBOL: "LABEL"}, want: 0x2e05, wantErr: nil},
 	}
 
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":  0x3005,
 		"BACK":   0x3000,
@@ -212,7 +211,7 @@ func TestLD_Generate(tt *testing.T) {
 }
 
 func TestLEA_Generate(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":     0x2fff,
 		"THERE":     0x3080,
@@ -234,7 +233,7 @@ func TestLEA_Generate(tt *testing.T) {
 }
 
 func TestLDI_Generate(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":     0x31ff,
 		"THERE":     0x3080,
@@ -257,7 +256,7 @@ func TestLDI_Generate(tt *testing.T) {
 }
 
 func TestST_Generate(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":     0x2fff,
 		"THERE":     0x3080,
@@ -282,7 +281,7 @@ func TestST_Generate(tt *testing.T) {
 }
 
 func TestSTI_Generate(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":     0x2fff,
 		"THERE":     0x3080,
@@ -304,7 +303,7 @@ func TestSTI_Generate(tt *testing.T) {
 }
 
 func TestSTR_Generate(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":     0x2fff, // -1
 		"THERE":     0x301f, // 64
@@ -329,7 +328,7 @@ func TestSTR_Generate(tt *testing.T) {
 }
 
 func TestJMP_Generate(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{}
 
 	t := generatorHarness{tt}
@@ -343,7 +342,7 @@ func TestJMP_Generate(tt *testing.T) {
 }
 
 func TestRET_Generate(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{}
 
 	t := generatorHarness{tt}
@@ -367,14 +366,14 @@ func TestADD_Generate(tt *testing.T) {
 		{oper: &ADD{DR: "R1", SR1: "R1", LITERAL: 0}, want: 0x1260, wantErr: nil},
 	}
 
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{}
 
 	t.Run(pc, symbols, tcs)
 }
 
 func TestJSR_Generate(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":     0x2fff, // -1
 		"THERE":     0x31ff, // 64
@@ -398,7 +397,7 @@ func TestJSR_Generate(tt *testing.T) {
 }
 
 func TestJSRR_Generate(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{}
 
 	t := generatorHarness{tt}
@@ -418,7 +417,7 @@ func TestNOT_Generate(tt *testing.T) {
 		{oper: &NOT{DR: "R1", SR: "R1"}, want: 0x927f, wantErr: nil},
 	}
 
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{}
 
 	for tc := range tcs {
@@ -456,14 +455,14 @@ func TestTRAP_Generate(tt *testing.T) {
 		},
 	}
 
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{}
 
 	t.Run(pc, symbols, tcs)
 }
 
 func TestRTI_Generate(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{}
 
 	t := generatorHarness{tt}
@@ -501,7 +500,7 @@ func TestSTRINGZ_Generate(tt *testing.T) {
 		},
 	}
 
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{}
 
 	for tc := range tcs {
@@ -543,7 +542,7 @@ func TestSTRINGZ_Generate(tt *testing.T) {
 }
 
 func Test_CaseInsensitiveLabels(tt *testing.T) {
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":     0x2fff, // -1
 		"THERE":     0x31ff, // 64
@@ -580,7 +579,7 @@ func TestORIG_Generate(tt *testing.T) {
 		},
 	}
 
-	pc := uint16(0x3000)
+	pc := vm.Word(0x3000)
 	symbols := SymbolTable{}
 
 	for tc := range tcs {

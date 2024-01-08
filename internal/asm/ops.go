@@ -75,7 +75,7 @@ func (br *BR) Parse(opcode string, opers []string) error {
 	return nil
 }
 
-func (br BR) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (br BR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	code := vm.NewInstruction(vm.BR, uint16(br.NZP)<<9)
 
 	if br.SYMBOL != "" {
@@ -144,7 +144,7 @@ func (and *AND) Parse(oper string, opers []string) error {
 }
 
 // Generate returns the machine code for an AND instruction.
-func (and AND) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (and AND) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	dr := registerVal(and.DR)
 	sr1 := registerVal(and.SR1)
 
@@ -218,7 +218,7 @@ func (ld *LD) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (ld LD) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (ld LD) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	dr := registerVal(ld.DR)
 	if dr == badGPR {
 		return nil, &RegisterError{op: "ld", Reg: ld.DR}
@@ -282,7 +282,7 @@ func (ldr *LDR) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (ldr LDR) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (ldr LDR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	dr := registerVal(ldr.DR)
 	sr := registerVal(ldr.SR)
 
@@ -346,7 +346,7 @@ func (lea *LEA) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (lea LEA) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (lea LEA) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	dr := registerVal(lea.DR)
 
 	if dr == badGPR {
@@ -409,7 +409,7 @@ func (ldi *LDI) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (ldi LDI) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (ldi LDI) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	sr := registerVal(ldi.DR)
 
 	if sr == badGPR {
@@ -471,7 +471,7 @@ func (st *ST) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (st ST) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (st ST) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	dr := registerVal(st.SR)
 
 	if dr == badGPR {
@@ -534,7 +534,7 @@ func (sti *STI) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (sti STI) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (sti STI) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	dr := registerVal(sti.SR)
 
 	if dr == badGPR {
@@ -599,7 +599,7 @@ func (str *STR) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (str STR) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (str STR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	sr1 := registerVal(str.SR1)
 	sr2 := registerVal(str.SR2)
 
@@ -655,7 +655,7 @@ func (jmp *JMP) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (jmp JMP) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (jmp JMP) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	sr := registerVal(jmp.SR)
 
 	if sr == badGPR {
@@ -692,7 +692,7 @@ func (ret *RET) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (ret RET) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (ret RET) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	code := vm.NewInstruction(vm.RET, uint16(vm.RETP)<<6)
 
 	return []vm.Word{code.Encode()}, nil
@@ -750,7 +750,7 @@ func (add *ADD) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (add ADD) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (add ADD) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	dr := registerVal(add.DR)
 	sr1 := registerVal(add.SR1)
 
@@ -830,7 +830,7 @@ func (trap *TRAP) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (trap TRAP) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (trap TRAP) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	code := vm.NewInstruction(vm.TRAP, trap.LITERAL&0x00ff)
 	return []vm.Word{code.Encode()}, nil
 }
@@ -858,7 +858,7 @@ func (rti *RTI) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (rti RTI) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (rti RTI) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	code := vm.NewInstruction(vm.RTI, 0x000)
 	return []vm.Word{code.Encode()}, nil
 }
@@ -897,7 +897,7 @@ func (not *NOT) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (not NOT) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (not NOT) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	if not.DR == "" || not.SR == "" {
 		return nil, fmt.Errorf("not: bad operand")
 	}
@@ -951,7 +951,7 @@ func (jsr *JSR) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (jsr JSR) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (jsr JSR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	code := vm.NewInstruction(vm.JSR, 1<<11)
 
 	switch {
@@ -999,7 +999,7 @@ func (jsrr *JSRR) Parse(opcode string, operands []string) error {
 	return nil
 }
 
-func (jsrr JSRR) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (jsrr JSRR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	reg := registerVal(jsrr.SR)
 	if reg == badGPR {
 		return nil, &RegisterError{"jsrr", jsrr.SR}
@@ -1025,7 +1025,7 @@ func (fill *FILL) Parse(opcode string, operands []string) error {
 	return err
 }
 
-func (fill FILL) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (fill FILL) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	return []vm.Word{vm.Word(fill.LITERAL)}, nil
 }
 
@@ -1033,19 +1033,19 @@ func (fill FILL) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
 //
 //	.BLKW 1
 type BLKW struct {
-	ALLOC uint16 // Number of words allocated.
+	ALLOC vm.Word // Number of words allocated.
 }
 
 func (blkw *BLKW) Parse(opcode string, operands []string) error {
 	val, err := parseLiteral(operands[0], 16)
-	blkw.ALLOC = val
+	blkw.ALLOC = vm.Word(val)
 
 	return err
 }
 
-func (blkw BLKW) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (blkw BLKW) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	code := make([]vm.Word, blkw.ALLOC)
-	for i := uint16(0); i < blkw.ALLOC; i++ {
+	for i := vm.Word(0); i < blkw.ALLOC; i++ {
 		code[i] = 0x2361
 	}
 
@@ -1057,7 +1057,7 @@ func (blkw BLKW) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
 //	.ORIG x1234
 //	.ORIG 0
 type ORIG struct {
-	LITERAL uint16 // Literal constant.
+	LITERAL vm.Word // Literal constant.
 }
 
 func (orig *ORIG) Is(target Operation) bool {
@@ -1093,14 +1093,14 @@ func (orig *ORIG) Parse(opcode string, operands []string) error {
 		return errors.New("argument error")
 	}
 
-	orig.LITERAL = uint16(val)
+	orig.LITERAL = vm.Word(val)
 
 	return nil
 }
 
 // Generate encodes the origin as the entry point in machine code. It should only be called as the
 // first operation when generating code.
-func (orig ORIG) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (orig ORIG) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	return []vm.Word{vm.Word(orig.LITERAL)}, nil
 }
 
@@ -1120,7 +1120,7 @@ func (s *STRINGZ) ParseString(opcode string, val string) error {
 	return nil
 }
 
-func (s STRINGZ) Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error) {
+func (s STRINGZ) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	encoded := append(utf16.Encode([]rune(s.LITERAL)), 0)
 	code := make([]vm.Word, len(encoded))
 

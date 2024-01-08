@@ -84,7 +84,7 @@ func (fake *fakeInstruction) Parse(oper string, opers []string) error {
 	return nil
 }
 
-func (fake *fakeInstruction) Generate(sym SymbolTable, loc uint16) ([]vm.Word, error) {
+func (fake *fakeInstruction) Generate(sym SymbolTable, loc vm.Word) ([]vm.Word, error) {
 	return nil, nil
 }
 
@@ -478,7 +478,7 @@ func TestParser_STRINGZ(tt *testing.T) {
 	}
 }
 
-func assertSymbol(t ParserHarness, symbols SymbolTable, label string, want uint16) {
+func assertSymbol(t ParserHarness, symbols SymbolTable, label string, want vm.Word) {
 	t.Helper()
 
 	if got, ok := symbols[label]; !ok {

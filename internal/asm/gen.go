@@ -22,7 +22,7 @@ import (
 // are immediately returned. The errors are wrapped in SyntaxErrors and may be tested and retrieved
 // using the errors package.
 type Generator struct {
-	pc       uint16
+	pc       vm.Word
 	symbols  SymbolTable
 	syntax   SyntaxTable
 	encoding encoding.HexEncoding
@@ -81,7 +81,7 @@ func (gen *Generator) Encode() ([]byte, error) {
 
 		obj.Code = append(obj.Code, genWords...)
 
-		gen.pc += uint16(len(genWords))
+		gen.pc += vm.Word(len(genWords))
 		count += int64(len(genWords) * 2)
 	}
 
@@ -138,7 +138,7 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 			break
 		}
 
-		gen.pc += uint16(len(generated))
+		gen.pc += vm.Word(len(generated))
 		count += int64(len(generated) * 2)
 	}
 
