@@ -56,7 +56,7 @@ func TestTrap_Halt(tt *testing.T) {
 		Code: []asm.Operation{
 			&asm.RTI{},
 		},
-		Symbols: map[string]uint16{},
+		Symbols: asm.SymbolTable{},
 	}
 
 	image := SystemImage{logger: t.Logger(), Symbols: nil, Traps: []Routine{TrapHalt, putsRoutine}}

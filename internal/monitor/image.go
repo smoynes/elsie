@@ -123,7 +123,7 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 				continue
 			}
 
-			encoded, err := op.Generate(sym, uint16(pc))
+			encoded, err := op.Generate(sym, pc)
 			if err != nil {
 				return count, fmt.Errorf("pc: %v (%s): %w", pc, op, err)
 			}
@@ -154,25 +154,26 @@ func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
 
 // Generate takes a BIOS routine, i.e. a trap or exception handler, and generates the code for it.
 func Generate(routine Routine) (vm.ObjectCode, error) {
-	var pc uint16
-
 	obj := vm.ObjectCode{
 		Orig: routine.Orig,
 		Code: make([]vm.Word, 0, len(routine.Code)),
 	}
+
+	pc := routine.Orig
 
 	for _, oper := range routine.Code {
 		if oper == nil {
 			panic("operation is nil")
 		}
 
-		if encoded, err := oper.Generate(routine.Symbols, pc+uint16(routine.Orig)); err != nil {
+		encoded, err := oper.Generate(routine.Symbols, pc)
+
+		if err != nil {
 			return obj, fmt.Errorf("generate: %s: %w", oper, err)
-		} else {
-			for i := range encoded {
-				obj.Code = append(obj.Code, encoded[i])
-			}
 		}
+
+		obj.Code = append(obj.Code, encoded...)
+		pc += vm.Word(len(encoded))
 	}
 
 	return obj, nil
