@@ -626,7 +626,7 @@ func (str STR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	return []vm.Word{code.Encode()}, nil
 }
 
-// JMP: Unconditional branch.
+// JMP: Unconditional relative branch.
 //
 //	JMP SR
 //
@@ -1036,6 +1036,8 @@ type BLKW struct {
 	ALLOC vm.Word // Number of words allocated.
 }
 
+func (blkw *BLKW) String() string { return fmt.Sprintf("%#v", blkw) }
+
 func (blkw *BLKW) Parse(opcode string, operands []string) error {
 	val, err := parseLiteral(operands[0], 16)
 	blkw.ALLOC = vm.Word(val)
@@ -1052,7 +1054,7 @@ func (blkw BLKW) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	return code, nil
 }
 
-// .ORIG: Origin directive. Sets the location counter to the value.
+// .ORIG: Origin directive. Sets the location counter to a literal value.
 //
 //	.ORIG x1234
 //	.ORIG 0
