@@ -34,7 +34,7 @@ func (*trapHarness) Logger() *log.Logger {
 func TestTrap_Halt(tt *testing.T) {
 	t := NewHarness(tt)
 
-	obj, err := Generate(TrapHalt)
+	obj, err := GenerateRoutine(TrapHalt)
 
 	if err != nil {
 		t.Error(err)
@@ -107,7 +107,7 @@ func TestTrap_Out(tt *testing.T) {
 		log.LogLevel.Set(log.Debug)
 	}
 
-	obj, err := Generate(TrapOut)
+	obj, err := GenerateRoutine(TrapOut)
 
 	if err != nil {
 		t.Error(err)
@@ -205,7 +205,7 @@ func TestTrap_Puts(tt *testing.T) {
 		log.LogLevel.Set(log.Debug)
 	}
 
-	obj, err := Generate(TrapOut)
+	obj, err := GenerateRoutine(TrapOut)
 
 	if err != nil {
 		t.Error(err)

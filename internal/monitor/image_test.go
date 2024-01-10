@@ -5,6 +5,7 @@ import (
 
 	"github.com/smoynes/elsie/internal/asm"
 	"github.com/smoynes/elsie/internal/log"
+	"github.com/smoynes/elsie/internal/vm"
 )
 
 type testHarness struct{ *testing.T }
@@ -16,6 +17,12 @@ type testHarness struct{ *testing.T }
 func TestWithSystemImage(tt *testing.T) {
 	t := testHarness{tt}
 
+	if testing.Verbose() {
+		log.LogLevel.Set(log.Debug)
+	} else {
+		log.LogLevel.Set(log.Warn)
+	}
+
 	routine := Routine{
 		Name:   "TestRoutine",
 		Vector: 0x8000,
@@ -24,7 +31,7 @@ func TestWithSystemImage(tt *testing.T) {
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
-			&asm.BLKW{ALLOC: 0xf},
+			&asm.BLKW{ALLOC: 0x2},
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
 		},
 		Symbols: asm.SymbolTable{
@@ -32,7 +39,7 @@ func TestWithSystemImage(tt *testing.T) {
 		},
 	}
 
-	obj, err := Generate(routine)
+	obj, err := GenerateRoutine(routine)
 
 	if err != nil {
 		t.Error(err)
@@ -48,4 +55,10 @@ func TestWithSystemImage(tt *testing.T) {
 	image.Traps = []Routine{routine}
 
 	t.Errorf("%+v", image)
+
+	machine := vm.New()
+	loader := vm.NewLoader(machine)
+	err = loadImage(loader, image)
+
+	t.Errorf("%+v", err)
 }
