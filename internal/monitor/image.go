@@ -89,7 +89,7 @@ func NewSystemImage(logger *log.Logger) *SystemImage {
 
 // GenerateRoutine takes a monitor routine, i.e. a trap, interrupt, or exception handler, and
 // generates the code for it.
-func GenerateRoutine(routine Routine) (vm.ObjectCode,error) {
+func GenerateRoutine(routine Routine) (vm.ObjectCode, error) {
 	obj := vm.ObjectCode{
 		Orig: routine.Orig,
 		Code: make([]vm.Word, 0, len(routine.Code)),

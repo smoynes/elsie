@@ -80,8 +80,9 @@ func (br BR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 
 	if br.SYMBOL != "" {
 		offset, err := symbols.Offset(br.SYMBOL, pc, 9)
+
 		if err != nil {
-			return nil, fmt.Errorf("and: %w", err)
+			return nil, fmt.Errorf("br: %w", err)
 		}
 
 		code.Operand(offset)
