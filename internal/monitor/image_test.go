@@ -94,12 +94,12 @@ func TestWithSystemImage(tt *testing.T) {
 	routine = Routine{
 		Name:   "TestInterrupt",
 		Vector: 0x0102,
-		Orig:   0x0600,
+		Orig:   0x0400,
 		Code: []asm.Operation{
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
 		},
 		Symbols: asm.SymbolTable{
-			"LABEL": 0x1000,
+			"LABEL": 0x0800, // TODO: overflow
 		},
 	}
 	image.ISRs = []Routine{routine}

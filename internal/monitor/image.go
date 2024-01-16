@@ -122,15 +122,50 @@ func loadImage(loader *vm.Loader, image *SystemImage) error {
 
 		obj, err := GenerateRoutine(trap)
 		if err != nil {
-			return err
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
 		}
 
 		_, err = loader.LoadVector(trap.Vector, obj)
 		if err != nil {
-			return err
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
 		}
 	}
 
-	// TODO: load data, ISRs, exceptions
+	for _, isr := range image.ISRs {
+		image.logger.Debug("loading interrupt handler", "INT", isr.Name)
+
+		obj, err := GenerateRoutine(isr)
+		if err != nil {
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
+		}
+
+		_, err = loader.LoadVector(isr.Vector, obj)
+		if err != nil {
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
+		}
+	}
+
+	for _, exc := range image.Exceptions {
+		image.logger.Debug("loading exception handler", "EXC", exc.Name)
+
+		obj, err := GenerateRoutine(exc)
+		if err != nil {
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
+		}
+
+		_, err = loader.LoadVector(exc.Vector, obj)
+		if err != nil {
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
+		}
+	}
+
+	// TODO: load data
+
 	return nil
 }
