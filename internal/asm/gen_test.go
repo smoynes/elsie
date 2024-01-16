@@ -149,7 +149,8 @@ func TestBR_Generate(tt *testing.T) {
 	t := generatorHarness{tt}
 	tcs := []generateCase{
 		{oper: &BR{NZP: 0x7, OFFSET: 0x01}, want: 0x0e01, wantErr: nil},
-		{oper: &BR{NZP: 0x2, OFFSET: 0xfff0}, want: 0x05f0, wantErr: nil},
+		{oper: &BR{NZP: 0x2, OFFSET: 0x01f0}, want: 0x05f0, wantErr: nil},
+		{oper: &BR{NZP: 0x2, OFFSET: 0xfff0}, want: 0x05f0, wantErr: &OffsetRangeError{Offset: 0xfff0}},
 		{oper: &BR{NZP: 0x3, SYMBOL: "LABEL"}, want: 0x0605, wantErr: nil},
 		{oper: &BR{NZP: 0x3, SYMBOL: "BACK"}, want: 0x0600, wantErr: nil},
 		{oper: &BR{NZP: 0x4, SYMBOL: "LONG"}, want: 0x061f, wantErr: &OffsetRangeError{Offset: 0xd000}},
