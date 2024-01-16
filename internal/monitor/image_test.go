@@ -51,7 +51,13 @@ func TestWithSystemImage(tt *testing.T) {
 		t.Errorf("obj.Orig: want: %0#4x got: %v", 0x4000, obj.Orig)
 	}
 
-	t.Errorf("%+v", obj)
+	if obj.Code[0] != 0x0e01 {
+		t.Errorf("obj.Code[0]: want: %0#4x got: %v", 0x0e01, obj.Code[0])
+	}
+
+	if obj.Code[1] != 0x0e00 {
+		t.Errorf("obj.Code[1]: want: %0#4x got: %v", 0x0e00, obj.Code[1])
+	}
 
 	routine = Routine{
 		Name:   "TestTrap",
@@ -76,9 +82,11 @@ func TestWithSystemImage(tt *testing.T) {
 		Orig:   0x0500,
 		Code: []asm.Operation{
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
+			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL2"},
 		},
 		Symbols: asm.SymbolTable{
 			"LABEL": 0x0400,
+			"LABEL2": 0x0500,
 		},
 	}
 	image.Exceptions = []Routine{routine}
@@ -96,14 +104,21 @@ func TestWithSystemImage(tt *testing.T) {
 	}
 	image.ISRs = []Routine{routine}
 
-	t.Errorf("%+v", image)
+	t.Errorf("image: %+v", image)
 
 	machine := vm.New()
 	loader := vm.NewLoader(machine)
+
 	err = loadImage(loader, image)
+
+	if err != nil {
+		t.Errorf("load failed: %v", err)
+		return
+	}
+
 	view := machine.Mem.View()
 
-	t.Logf("%+v", view[0x0600:0x0601])
+	t.Logf("%+v", view[0x0500:0x050f])
 
 	for _, tc := range []struct {
 		addr, want vm.Word
@@ -112,7 +127,9 @@ func TestWithSystemImage(tt *testing.T) {
 		{0x0401, 0x0e00},
 		{0x0402, 0x0fff},
 		{0x0405, 0x0ffc},
+
 		{0x0500, 0x0f00},
+
 		{0x0600, 0x0fff}, // overflow
 	} {
 		want := vm.NewInstruction(vm.BR, uint16(tc.want))
