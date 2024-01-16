@@ -85,7 +85,7 @@ func TestWithSystemImage(tt *testing.T) {
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL2"},
 		},
 		Symbols: asm.SymbolTable{
-			"LABEL": 0x0400,
+			"LABEL":  0x0400,
 			"LABEL2": 0x0500,
 		},
 	}

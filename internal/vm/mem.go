@@ -104,6 +104,7 @@ func (mem *Memory) Store() error {
 // development tool and is quite expensive computationally.
 func (mem *Memory) View() PhysicalMemory {
 	var view PhysicalMemory
+
 	copy(view[:], mem.cell[:])
 
 	return view

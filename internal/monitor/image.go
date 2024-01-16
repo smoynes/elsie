@@ -112,7 +112,6 @@ func GenerateRoutine(routine Routine) (vm.ObjectCode, error) {
 		pc += vm.Word(len(encoded))
 	}
 
-
 	return obj, nil
 }
 

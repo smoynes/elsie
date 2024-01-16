@@ -67,7 +67,7 @@ func (gen *Generator) Encode() ([]byte, error) {
 			}
 
 			gen.pc = orig.LITERAL
-			obj = vm.ObjectCode{Orig: vm.Word(gen.pc)}
+			obj = vm.ObjectCode{Orig: gen.pc}
 
 			continue // We don't need to generate code.
 		}

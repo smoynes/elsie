@@ -89,8 +89,8 @@ func (br BR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	} else {
 		if br.OFFSET > 0x01ff {
 			return nil, &OffsetRangeError{
-				Range: 1<<9,
-				Offset:uint16(br.OFFSET),
+				Range:  1 << 9,
+				Offset: br.OFFSET,
 			}
 		}
 		code.Operand(br.OFFSET & 0x01ff)
@@ -1110,7 +1110,7 @@ func (orig *ORIG) Parse(opcode string, operands []string) error {
 // Generate encodes the origin as the entry point in machine code. It should only be called as the
 // first operation when generating code.
 func (orig ORIG) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
-	return []vm.Word{vm.Word(orig.LITERAL)}, nil
+	return []vm.Word{orig.LITERAL}, nil
 }
 
 // .STRINGZ: A directive to allocate a ASCII-encoded, zero-terminated string.
