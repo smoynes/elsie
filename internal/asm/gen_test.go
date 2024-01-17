@@ -1,4 +1,4 @@
-package asm_test
+package asm
 
 import (
 	"bytes"
@@ -6,7 +6,6 @@ import (
 	"errors"
 	"testing"
 
-	. "github.com/smoynes/elsie/internal/asm"
 	"github.com/smoynes/elsie/internal/vm"
 )
 
@@ -97,7 +96,7 @@ func TestGenerator(tt *testing.T) {
 	symbols.Add("LABEL", 0x2ff0)
 
 	gen := NewGenerator(symbols, syntax)
-	count, err := gen.WriteTo(&buf)
+	count, err := gen.writeTo(&buf)
 
 	if err != nil {
 		t.Error(err)

@@ -1,5 +1,5 @@
 //nolint:errorlint
-package asm_test
+package asm
 
 import (
 	"bufio"
@@ -13,7 +13,6 @@ import (
 	"testing"
 	"testing/iotest"
 
-	. "github.com/smoynes/elsie/internal/asm"
 	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/vm"
 )
@@ -356,7 +355,7 @@ func GenerateErrors(tc errorCase, t ParserHarness) {
 	syn := t.parser.Syntax()
 	gen := NewGenerator(sym, syn)
 
-	_, err := gen.WriteTo(bytes.NewBuffer(make([]byte, 0, 8192)))
+	_, err := gen.writeTo(bytes.NewBuffer(make([]byte, 0, 8192)))
 
 	if err != nil {
 		t.Log(err.Error())

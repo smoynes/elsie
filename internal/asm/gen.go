@@ -98,10 +98,10 @@ func (gen *Generator) Encode() ([]byte, error) {
 	}
 }
 
-// WriteTo writes generated binary machine-code to an output stream. It implements io.WriteTo.
-//
-// Unlinke Encode, WriteTo does not support writing more than a single section of code.
-func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
+// writeTo writes generated binary machine-code to an output stream. Unlike Encode, writeTo does not
+// support writing more than a single section of code. It exists for the sake of development and
+// debugging.
+func (gen *Generator) writeTo(out io.Writer) (int64, error) {
 	if len(gen.syntax) == 0 {
 		return 0, nil
 	}
@@ -127,7 +127,7 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 			break
 		}
 
-		generated, genErr := oper.Generate(gen.symbols, gen.pc) // TODO: should this be pc + 1
+		generated, genErr := oper.Generate(gen.symbols, gen.pc+1)
 
 		if err != nil {
 			err = gen.annotate(oper, genErr)
