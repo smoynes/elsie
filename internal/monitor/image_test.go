@@ -81,12 +81,12 @@ func TestWithSystemImage(tt *testing.T) {
 		Vector: 0x0101,
 		Orig:   0x0500,
 		Code: []asm.Operation{
-			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
-			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL2"},
+			&asm.BR{NZP: asm.CondNP, SYMBOL: "LABEL"},
+			&asm.BR{NZP: asm.CondNP, SYMBOL: "LABEL2"},
 		},
 		Symbols: asm.SymbolTable{
 			"LABEL":  0x0400,
-			"LABEL2": 0x0500,
+			"LABEL2": 0x0501,
 		},
 	}
 	image.Exceptions = []Routine{routine}
@@ -94,17 +94,19 @@ func TestWithSystemImage(tt *testing.T) {
 	routine = Routine{
 		Name:   "TestInterrupt",
 		Vector: 0x0102,
-		Orig:   0x0400,
+		Orig:   0x0600,
 		Code: []asm.Operation{
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
+			&asm.LD{DR: "R7", SYMBOL: "LABEL2"},
+			&asm.BR{NZP: 0, SYMBOL: "LABEL3"},
 		},
 		Symbols: asm.SymbolTable{
-			"LABEL": 0x0800, // TODO: overflow
+			"LABEL": 0x0700,
+			"LABEL2": 0x0700,
+			"LABEL3": 0x0402, // overflow?
 		},
 	}
 	image.ISRs = []Routine{routine}
-
-	t.Errorf("image: %+v", image)
 
 	machine := vm.New()
 	loader := vm.NewLoader(machine)
@@ -118,8 +120,6 @@ func TestWithSystemImage(tt *testing.T) {
 
 	view := machine.Mem.View()
 
-	t.Logf("%+v", view[0x0500:0x050f])
-
 	for _, tc := range []struct {
 		addr, want vm.Word
 	}{
@@ -128,15 +128,20 @@ func TestWithSystemImage(tt *testing.T) {
 		{0x0402, 0x0fff},
 		{0x0405, 0x0ffc},
 
-		{0x0500, 0x0f00},
+		{0x0500, 0x0b00},
+		{0x0501, 0x0a00},
 
-		{0x0600, 0x0fff}, // overflow
+		{0x0600, 0x0f00},
+		{0x0601, 0x2eff}, // 0x2eff + 0x0601
+		{0x0602, 0x00ff}, // 0x0602 + 0x00ff =
 	} {
-		want := vm.NewInstruction(vm.BR, uint16(tc.want))
+		want := vm.Instruction(tc.want)
 		got := view[tc.addr]
 
 		if vm.Word(want) != got {
-			t.Errorf("view[%v]: want: %v != got: %v", tc.addr, tc.want, got)
+			t.Errorf("view[%v]: want: %v != got: %v", tc.addr, want, got)
 		}
 	}
+
+	t.Logf("%+v", view[0x0600:0x060f])
 }
