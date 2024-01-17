@@ -29,10 +29,10 @@ var TrapHalt = Routine{
 
 		// Clear RUN flag in Machine Control Register.
 		/* 0x0522 */
-		&asm.LDI{DR: "R0", SYMBOL: "MCR"},        // R0 <- [MCR] ; Load MCR.
-		&asm.LD{DR: "R1", SYMBOL: "MASK"},        // R1 <- MASK ; Load bitmask.
-		&asm.AND{DR: "R0", SR1: "R0", SR2: "R1"}, // R1 <- R0 & R1 ; Clear top bit using bit mask
-		&asm.STI{SR: "R0", SYMBOL: "MCR"},        // [MCR]<- R0 ; Replace value in MCR.
+		&asm.LDI{DR: "R0", SYMBOL: "MCR"},        // R0 <- [MCR]   ; Load MCR.
+		&asm.LD{DR: "R1", SYMBOL: "MASK"},        // R1 <- MASK    ; Load bitmask.
+		&asm.AND{DR: "R0", SR1: "R0", SR2: "R1"}, // R0 <- R0 & R1 ; Clear top bit using bit mask
+		&asm.STI{SR: "R0", SYMBOL: "MCR"},        // [MCR]<- R0    ; Replace value in MCR.
 
 		// Halt again, if we reach here, forever.
 		/* 0x0526 */
