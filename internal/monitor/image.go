@@ -102,7 +102,7 @@ func GenerateRoutine(routine Routine) (vm.ObjectCode, error) {
 			return obj, fmt.Errorf("generate: operation is nil")
 		}
 
-		encoded, err := oper.Generate(routine.Symbols, pc)
+		encoded, err := oper.Generate(routine.Symbols, pc+1)
 
 		if err != nil {
 			return obj, fmt.Errorf("generate: %s: %w", oper, err)
