@@ -40,7 +40,7 @@ func NewGenerator(symbols SymbolTable, syntax SyntaxTable) *Generator {
 
 // Encode generates object code and encodes it as hex-encoded ASCII object code.
 //
-// Multiple sections are supported if the symbol table has multiple ORIG directives.
+// Multiple sections are supported if the syntax table has multiple ORIG directives.
 func (gen *Generator) Encode() ([]byte, error) {
 	if len(gen.syntax) == 0 {
 		return nil, nil
