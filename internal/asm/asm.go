@@ -104,7 +104,7 @@ func (s SymbolTable) Add(sym string, loc vm.Word) {
 }
 
 // Offset computes a n-bit PC-relative offset.
-func (s SymbolTable) Offset(sym string, pc vm.Word, n int) (uint16, error) {
+func (s SymbolTable) Offset(sym string, pc vm.Word, n uint8) (uint16, error) {
 	sym = strings.ToUpper(sym)
 
 	loc, ok := s[sym]
