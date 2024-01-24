@@ -81,7 +81,7 @@ func (br BR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 	if br.SYMBOL != "" {
 		offset, err := symbols.Offset(br.SYMBOL, pc, 9)
 
-		if err != nil || offset == badSymbol {
+		if err != nil {
 			return nil, fmt.Errorf("br: %w", err)
 		}
 
@@ -93,7 +93,8 @@ func (br BR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 				Offset: br.OFFSET,
 			}
 		}
-		code.Operand(br.OFFSET & 0x01ff)
+
+		code.Operand(vm.Word(br.OFFSET) & 0x01ff)
 	}
 
 	return []vm.Word{code.Encode()}, nil
@@ -170,7 +171,7 @@ func (and AND) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 			return nil, &RegisterError{"and", and.SR2}
 		}
 
-		code.Operand(sr2)
+		code.Operand(vm.Word(sr2))
 	case and.SYMBOL != "":
 		code.Operand(1 << 5)
 
@@ -179,10 +180,16 @@ func (and AND) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 			return nil, fmt.Errorf("and: %w", err)
 		}
 
-		code.Operand(offset)
+		code.Operand(offset & 0x001f)
 	default:
 		code.Operand(1 << 5)
-		code.Operand(and.LITERAL & 0x001f)
+
+		if and.LITERAL > 0x001f {
+			err := &OffsetRangeError{Offset: and.LITERAL, Range: 0x001f}
+			return nil, fmt.Errorf("and: %w", err)
+		}
+
+		code.Operand(vm.Word(and.LITERAL) & 0x001f)
 	}
 
 	return []vm.Word{code.Encode()}, nil
@@ -242,7 +249,7 @@ func (ld LD) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 
 		code.Operand(offset)
 	default:
-		code.Operand(ld.OFFSET & 0x0ff)
+		code.Operand(vm.Word(ld.OFFSET) & 0x0ff)
 	}
 
 	return []vm.Word{code.Encode()}, nil
@@ -310,7 +317,7 @@ func (ldr LDR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 
 		code.Operand(offset)
 	default:
-		code.Operand(ldr.OFFSET & 0x003f)
+		code.Operand(vm.Word(ldr.OFFSET) & 0x003f)
 	}
 
 	return []vm.Word{code.Encode()}, nil
@@ -371,7 +378,7 @@ func (lea LEA) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 
 		code.Operand(offset)
 	default:
-		code.Operand(lea.OFFSET & 0x01ff)
+		code.Operand(vm.Word(lea.OFFSET) & 0x01ff)
 	}
 
 	return []vm.Word{code.Encode()}, nil
@@ -434,7 +441,7 @@ func (ldi LDI) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 
 		code.Operand(offset)
 	default:
-		code.Operand(ldi.OFFSET & 0x01ff)
+		code.Operand(vm.Word(ldi.OFFSET) & 0x01ff)
 	}
 
 	return []vm.Word{code.Encode()}, nil
@@ -496,7 +503,7 @@ func (st ST) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 
 		code.Operand(offset)
 	default:
-		code.Operand(st.OFFSET & 0x01ff)
+		code.Operand(vm.Word(st.OFFSET) & 0x01ff)
 	}
 
 	return []vm.Word{code.Encode()}, nil
@@ -559,7 +566,7 @@ func (sti STI) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 
 		code.Operand(offset)
 	default:
-		code.Operand(sti.OFFSET & 0x01ff)
+		code.Operand(vm.Word(sti.OFFSET) & 0x01ff)
 	}
 
 	return []vm.Word{code.Encode()}, nil
@@ -627,7 +634,7 @@ func (str STR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 
 		code.Operand(offset)
 	default:
-		code.Operand(str.OFFSET & 0x003f)
+		code.Operand(vm.Word(str.OFFSET) & 0x003f)
 	}
 
 	return []vm.Word{code.Encode()}, nil
@@ -775,10 +782,10 @@ func (add ADD) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 			return nil, &RegisterError{"and", add.SR2}
 		}
 
-		code.Operand(sr2)
+		code.Operand(vm.Word(sr2))
 	} else {
 		code.Operand(1 << 5)
-		code.Operand(add.LITERAL & 0x001f)
+		code.Operand(vm.Word(add.LITERAL) & 0x001f)
 	}
 
 	return []vm.Word{code.Encode()}, nil
@@ -970,7 +977,7 @@ func (jsr JSR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 
 		code.Operand(offset)
 	default:
-		code.Operand(jsr.OFFSET & 0x03ff)
+		code.Operand(vm.Word(jsr.OFFSET) & 0x03ff)
 	}
 
 	return []vm.Word{code.Encode()}, nil

@@ -82,7 +82,7 @@ func (i Instruction) String() string {
 }
 
 // Operand applies
-func (i *Instruction) Operand(operand uint16) {
+func (i *Instruction) Operand(operand Word) {
 	*i |= Instruction(operand) & 0x0fff
 }
 

@@ -103,8 +103,9 @@ func (s SymbolTable) Add(sym string, loc vm.Word) {
 	s[sym] = loc
 }
 
-// Offset computes a n-bit PC-relative offset.
-func (s SymbolTable) Offset(sym string, pc vm.Word, n uint8) (uint16, error) {
+// Offset computes a n-bit PC-relative offset. TODO: should this return a signed integer? Or, a
+// word?
+func (s SymbolTable) Offset(sym string, pc vm.Word, n uint8) (vm.Word, error) {
 	sym = strings.ToUpper(sym)
 
 	loc, ok := s[sym]
@@ -112,20 +113,22 @@ func (s SymbolTable) Offset(sym string, pc vm.Word, n uint8) (uint16, error) {
 		return badSymbol, &SymbolError{Symbol: sym, Loc: pc}
 	}
 
-	delta := int16(loc - pc)
-	if delta >= (1<<n) || delta < -(1<<n) {
+	var (
+		delta  = int16(loc - pc)
+		bottom = int16(1 << (n - 1))
+	)
+
+	if delta > bottom {
 		return badSymbol, &OffsetRangeError{
-			Range:  1 << n,
 			Offset: uint16(delta),
+			Range:  uint16(bottom),
 		}
 	}
 
-	bottom := ^(-1 << n)
-
-	return uint16(delta) & uint16(bottom), nil
+	return vm.Word(delta), nil
 }
 
-const badSymbol uint16 = 0xffff
+const badSymbol vm.Word = 0xffff
 
 var (
 	// ErrOpcode causes a SyntaxError if an opcode is invalid or incorrect.
@@ -173,14 +176,23 @@ func (se *SyntaxError) Is(target error) bool {
 	}
 }
 
-// OffsetRangeError is a wrapped error returned when an offset value exceeds its range.
+// OffsetRangeError is a wrapped error returned when an offset value exceeds its range. Values
+// compare equal if their Offset and Range fields are identical.
 type OffsetRangeError struct {
 	Offset uint16
 	Range  uint16
 }
 
 func (oe *OffsetRangeError) Error() string {
-	return fmt.Sprintf("offset error: %0#4x", oe.Offset)
+	return fmt.Sprintf("offset error: %0#4x, range: %0#4x", oe.Offset, oe.Range)
+}
+
+func (oe OffsetRangeError) Is(err error) bool {
+	if err, ok := err.(*OffsetRangeError); ok {
+		return err.Offset == oe.Offset && err.Range == oe.Range
+	}
+
+	return false
 }
 
 // LiteralRangeError is a wrapped error returned when an offset value exceeds its range.

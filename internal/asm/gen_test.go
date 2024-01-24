@@ -37,21 +37,21 @@ func (t *generatorHarness) Run(pc vm.Word, symbols SymbolTable, tcs []generateCa
 			case *RegisterError:
 				if !errors.As(err, &wantErr) {
 					// 5 indents is 2 too many
-					t.Errorf("expected error: want: %#v, got: %#v", wantErr, err)
+					t.Errorf("expected error: want: %+v, got: %+v", wantErr, err)
 				}
 				if wantErr.Reg != expErr.(*RegisterError).Reg { //nolint:errorlint
-					t.Errorf("expected error: want: %#v, got: %#v", wantErr, expErr)
+					t.Errorf("expected error: want: %+v, got: %+v", wantErr, expErr)
 				}
 			case *OffsetRangeError:
 				if !errors.As(err, &wantErr) {
-					t.Errorf("expected error: want: %#v, got: %#v", expErr, err)
+					t.Errorf("expected error: want: %+v, got: %+v", expErr, err)
 				}
 				if wantErr.Offset != expErr.(*OffsetRangeError).Offset { //nolint:errorlint
-					t.Errorf("expected error: want: %#v, got: %#v", expErr, err)
+					t.Errorf("expected error: want: %+v, got: %+v", expErr, err)
 				}
 			case *SymbolError:
 				if !errors.As(err, &wantErr) {
-					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, err)
+					t.Errorf("unexpected error: want: %+v, got: %+v", expErr, err)
 				}
 				if wantErr.Symbol != expErr.(*SymbolError).Symbol { //nolint:errorlint
 					t.Errorf("unexpected error: want: %#v, got: %#v", expErr, err)
@@ -70,7 +70,7 @@ func (t *generatorHarness) Run(pc vm.Word, symbols SymbolTable, tcs []generateCa
 			}
 
 			if mc[0] != want {
-				t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", want, mc)
+				t.Errorf("incorrect machine code: want: %+v, got: %+v", want, mc)
 			}
 
 			if err != nil {
@@ -129,17 +129,26 @@ func TestAND_Generate(tt *testing.T) {
 		{oper: &AND{DR: "R1", SR1: "R2", LITERAL: 0x12}, want: 0x52b2},
 		{oper: &AND{DR: "BAD", SR1: "R0", LITERAL: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
 		{oper: &AND{DR: "R7", SR1: "BAD", LITERAL: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
+		{oper: &AND{DR: "R7", SR1: "R2", LITERAL: 0x20},
+			wantErr: &OffsetRangeError{Offset: 0x0020, Range: 0x0010}},
 		{oper: &AND{DR: "R0", SR1: "R0", SR2: "R9"}, wantErr: &RegisterError{Reg: "R9"}},
 		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "BACK"}, want: 0x503e},
-		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "FAR"}, wantErr: &OffsetRangeError{Offset: 0xffd0}},
+		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "FAR"},
+			wantErr: &OffsetRangeError{Offset: 0x0020, Range: 0x0010}},
+		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "WAYFAR"},
+			wantErr: &OffsetRangeError{Offset: 0x1000, Range: 0x0010}},
 	}
 
 	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
-		"LABEL": 0x3007,
-		"BACK":  0x2ffe,
-		"FAR":   0x2fd0,
+		"LABEL":   0x3007,
+		"BACK":    0x2ffe,
+		"FAR":     0x3020,
+		"WAYFAR":  0x4000, // overflow
+		"WAYBACK": 0x2000, // overflow
 	}
+
+	t.Logf("symbols: %+v", symbols)
 
 	t.Run(pc, symbols, tcs)
 }
@@ -149,10 +158,10 @@ func TestBR_Generate(tt *testing.T) {
 	tcs := []generateCase{
 		{oper: &BR{NZP: 0x7, OFFSET: 0x01}, want: 0x0e01, wantErr: nil},
 		{oper: &BR{NZP: 0x2, OFFSET: 0x01f0}, want: 0x05f0, wantErr: nil},
-		{oper: &BR{NZP: 0x2, OFFSET: 0xfff0}, want: 0x05f0, wantErr: &OffsetRangeError{Offset: 0xfff0}},
+		{oper: &BR{NZP: 0x1, OFFSET: 0xfff0}, want: 0x05f0, wantErr: &OffsetRangeError{Offset: 0xfff0}},
 		{oper: &BR{NZP: 0x3, SYMBOL: "LABEL"}, want: 0x0605, wantErr: nil},
 		{oper: &BR{NZP: 0x3, SYMBOL: "BACK"}, want: 0x0600, wantErr: nil},
-		{oper: &BR{NZP: 0x4, SYMBOL: "LONG"}, want: 0x061f, wantErr: &OffsetRangeError{Offset: 0xd000}},
+		{oper: &BR{NZP: 0x6, SYMBOL: "LONG"}, want: 0x061f, wantErr: &OffsetRangeError{Offset: 0xd000}},
 	}
 
 	pc := vm.Word(0x3000)
@@ -160,7 +169,7 @@ func TestBR_Generate(tt *testing.T) {
 		"LABEL":  0x3005,
 		"BACK":   0x3000,
 		"LONG":   0x0,
-		"YONDER": 0x4000,
+		"YONDER": 0xe000,
 	}
 
 	t.Run(pc, symbols, tcs)
@@ -437,7 +446,7 @@ func TestNOT_Generate(tt *testing.T) {
 		}
 
 		if mc[0] != exp {
-			t.Errorf("incorrect machine code: want: %0#4x, got: %0#4x", exp, mc)
+			t.Errorf("incorrect machine code: want: %+v, got: %+v", exp, mc)
 		}
 	}
 }
@@ -616,6 +625,64 @@ func TestORIG_Generate(tt *testing.T) {
 			t.Error("code differs")
 			t.Errorf("%s", codeBuffer.Bytes())
 			t.Errorf("%s", wantBytes.Bytes())
+		}
+	}
+}
+
+type symbolCase struct {
+	pc    vm.Word
+	label vm.Word
+	bits  uint8
+
+	val vm.Word
+	err error
+}
+
+func TestSymbolTable_Offset(tt *testing.T) {
+	t := generatorHarness{tt}
+	tcs := []symbolCase{
+		{pc: 0x0000, label: 0x0000, bits: 1, val: 0}, // TODO: Should bits=1 ALWAYS be a range error. That is: it is a signed value with only a sign bit.
+		{pc: 0x0000, label: 0x0001, bits: 1, val: 0x0001},
+		{pc: 0x0000, label: 0x0002, bits: 1, val: 0xffff,
+			err: &OffsetRangeError{Offset: 2, Range: 0x0001}},
+		{pc: 0x0001, label: 0x0002, bits: 1, val: 1},
+		{pc: 0x0001, label: 0x0000, bits: 1, val: 0xffff},
+
+		{pc: 0x0000, label: 0x0000, bits: 2, val: 0},
+		{pc: 0x0000, label: 0x0001, bits: 2, val: 1},
+		{pc: 0x0000, label: 0x0002, bits: 2, val: 2},
+		{pc: 0x0000, label: 0x0003, bits: 2, val: 0xffff,
+			err: &OffsetRangeError{Offset: 3, Range: 0x0002}},
+
+		{pc: 0x0001, label: 0x0000, bits: 2, val: 0xffff},
+		{pc: 0x0002, label: 0x0000, bits: 2, val: 0xfffe},
+		{pc: 0x0003, label: 0x0000, bits: 2, val: 0xfffd},
+		{pc: 0x0004, label: 0x0000, bits: 2, val: 0xfffc},
+		{pc: 0x0005, label: 0x0000, bits: 2, val: 0xfffb},
+
+		{pc: 0x3000, label: 0x8000, bits: 5, val: 0xffff,
+			err: &OffsetRangeError{Offset: 0x5000, Range: 0x0010},
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Logf("case: %+v", tc)
+
+		table := SymbolTable{}
+		table.Add("LABEL", tc.label)
+
+		val, err := table.Offset("LABEL", tc.pc, tc.bits)
+
+		if val != tc.val {
+			t.Errorf("value differs: want %v, got: %v", tc.val, val)
+		}
+
+		if err != nil && tc.err == nil {
+			t.Errorf("unexpected error: %+v", err)
+		} else if err != nil && tc.err != nil && !errors.Is(err, tc.err) {
+			t.Errorf("unexpected error: want: %+v, got: %+v", tc.err, err)
+		} else if err == nil && tc.err != nil {
+			t.Errorf("expected error: want: %v", tc.err)
 		}
 	}
 }
