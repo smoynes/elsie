@@ -30,14 +30,19 @@ func TestWithSystemImage(tt *testing.T) {
 		Vector: 0x8000,
 		Orig:   0x0400,
 		Code: []asm.Operation{
+			/* 0x0400 */
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
+			/* 0x0401 */
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
+			/* 0x0402 */
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
+			/* 0x0403 */
 			&asm.BLKW{ALLOC: 0x2},
+			/* 0x0405 */
 			&asm.BR{NZP: asm.CondNZP, SYMBOL: "LABEL"},
 		},
 		Symbols: asm.SymbolTable{
-			"LABEL": 0x0401,
+			"LABEL": 0x0402,
 		},
 	}
 
@@ -47,16 +52,10 @@ func TestWithSystemImage(tt *testing.T) {
 		t.Error(err)
 	}
 
-	if obj.Orig != 0x0400 {
-		t.Errorf("obj.Orig: want: %0#4x got: %v", 0x4000, obj.Orig)
-	}
-
-	if obj.Code[0] != 0x0e01 {
-		t.Errorf("obj.Code[0]: want: %0#4x got: %v", 0x0e01, obj.Code[0])
-	}
-
-	if obj.Code[1] != 0x0e00 {
-		t.Errorf("obj.Code[1]: want: %0#4x got: %v", 0x0e00, obj.Code[1])
+	for i, exp := range []vm.Word{0x0e01, 0x0e00, 0x0fff, 0x2361, 0x2361, 0x0ffc} {
+		if got := obj.Code[i]; got != exp {
+			t.Errorf("obj.Orig[%d]: want: %v got: %v", i, exp, got)
+		}
 	}
 
 	routine = Routine{
@@ -103,7 +102,7 @@ func TestWithSystemImage(tt *testing.T) {
 		Symbols: asm.SymbolTable{
 			"LABEL": 0x0700,
 			"LABEL2": 0x0700,
-			"LABEL3": 0x0402, // overflow?
+			"LABEL3": 0x0502,
 		},
 	}
 	image.ISRs = []Routine{routine}
@@ -123,17 +122,17 @@ func TestWithSystemImage(tt *testing.T) {
 	for _, tc := range []struct {
 		addr, want vm.Word
 	}{
-		{0x0400, 0x0e01},
-		{0x0401, 0x0e00},
-		{0x0402, 0x0fff},
-		{0x0405, 0x0ffc},
+		{0x0400, 0x0e00},
+		{0x0401, 0x0fff},
+		{0x0402, 0x0ffe},
+		{0x0405, 0x0ffb},
 
-		{0x0500, 0x0b00},
-		{0x0501, 0x0a00},
+		{0x0500, 0x0aff},
+		{0x0501, 0x0bff},
 
-		{0x0600, 0x0f00},
-		{0x0601, 0x2eff}, // 0x2eff + 0x0601
-		{0x0602, 0x00ff}, // 0x0602 + 0x00ff =
+		{0x0600, 0x0eff},
+		{0x0601, 0x2efe}, // 0x2eff + 0x0601 - 1
+		{0x0602, 0x00ff}, // 0x0602 + 0x00ff - 1
 	} {
 		want := vm.Instruction(tc.want)
 		got := view[tc.addr]

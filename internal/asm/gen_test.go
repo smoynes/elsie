@@ -395,9 +395,9 @@ func TestJSR_Generate(tt *testing.T) {
 	symbols := SymbolTable{
 		"LABEL":     0x2fff, // -1
 		"THERE":     0x33ff, // 64
-		"BACK":      0x2800, // -64
+		"BACK":      0x2f00, // -64
 		"WAYBACK":   0x0000,
-		"OVERTHERE": 0x3400,
+		"TOOFAR": 0x3800,
 	}
 
 	t := generatorHarness{tt}
@@ -406,9 +406,9 @@ func TestJSR_Generate(tt *testing.T) {
 		{oper: &JSR{OFFSET: 0xffff}, want: 0x4bff},
 		{oper: &JSR{SYMBOL: "LABEL"}, want: 0x4fff},
 		{oper: &JSR{SYMBOL: "THERE"}, want: 0x4bff},
-		{oper: &JSR{SYMBOL: "BACK"}, want: 0x4800},
-		{oper: &JSR{SYMBOL: "WAYBACK"}, wantErr: &OffsetRangeError{Offset: 0xf7ff}},
-		{oper: &JSR{SYMBOL: "OVERTHERE"}, wantErr: &OffsetRangeError{Offset: 0x0800}},
+		{oper: &JSR{SYMBOL: "BACK"}, want: 0x4f00},
+		{oper: &JSR{SYMBOL: "WAYBACK"}, wantErr: &OffsetRangeError{Offset: 0xd000}},
+		{oper: &JSR{SYMBOL: "TOOFAR"}, wantErr: &OffsetRangeError{Offset: 0x0800}},
 	}
 
 	t.Run(pc, symbols, tcs)
@@ -564,7 +564,7 @@ func Test_CaseInsensitiveLabels(tt *testing.T) {
 	symbols := SymbolTable{
 		"LABEL":     0x2fff, // -1
 		"THERE":     0x31ff, // 64
-		"BACK":      0x2800, // -64
+		"BACK":      0x2f00, // -64
 		"WAYBACK":   0x27ff,
 		"OVERTHERE": 0x3800,
 	}
@@ -575,7 +575,7 @@ func Test_CaseInsensitiveLabels(tt *testing.T) {
 		{oper: &JSR{OFFSET: 0xffff}, want: 0x4bff},
 		{oper: &JSR{SYMBOL: "lAbEl"}, want: 0x4fff},
 		{oper: &JSR{SYMBOL: "thErE"}, want: 0x49ff},
-		{oper: &JSR{SYMBOL: "bAck"}, want: 0x4800},
+		{oper: &JSR{SYMBOL: "bAck"}, want: 0x4f00},
 		{oper: &JSR{SYMBOL: "wAybAck"}, wantErr: &OffsetRangeError{Offset: 0xf7ff}},
 		{oper: &JSR{SYMBOL: "ovErthEre"}, wantErr: &OffsetRangeError{Offset: 0x0800}},
 	}
