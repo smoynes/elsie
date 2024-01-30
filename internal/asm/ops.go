@@ -85,7 +85,7 @@ func (br BR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 			return nil, fmt.Errorf("br: %w", err)
 		}
 
-		code.Operand(offset)
+		code.Operand(offset & 0x01ff)
 	} else {
 		if br.OFFSET > 0x01ff {
 			return nil, &OffsetRangeError{
@@ -985,7 +985,6 @@ func (jsr JSR) Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error) {
 
 // JSRR: Jump to subroutine, register mode.
 //
-//	JSRR SR
 //	JSRR SR
 //
 //	| 0100 |  0 | 00 | SR | 0 0000 |

@@ -127,11 +127,14 @@ func TestAND_Generate(tt *testing.T) {
 		{oper: &AND{DR: "R3", SR1: "R4", SR2: "R6"}, want: 0x5706},
 		{oper: &AND{DR: "R0", SR1: "R7", SYMBOL: "LABEL"}, want: 0x51e7},
 		{oper: &AND{DR: "R1", SR1: "R2", LITERAL: 0x12}, want: 0x52b2},
-		{oper: &AND{DR: "BAD", SR1: "R0", LITERAL: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
-		{oper: &AND{DR: "R7", SR1: "BAD", LITERAL: 0x12}, wantErr: &RegisterError{Reg: "BAD"}},
+		{oper: &AND{DR: "BAD", SR1: "R0", LITERAL: 0x12},
+			wantErr: &RegisterError{Reg: "BAD"}},
+		{oper: &AND{DR: "R7", SR1: "BAD", LITERAL: 0x12},
+			wantErr: &RegisterError{Reg: "BAD"}},
 		{oper: &AND{DR: "R7", SR1: "R2", LITERAL: 0x20},
 			wantErr: &OffsetRangeError{Offset: 0x0020, Range: 0x0010}},
-		{oper: &AND{DR: "R0", SR1: "R0", SR2: "R9"}, wantErr: &RegisterError{Reg: "R9"}},
+		{oper: &AND{DR: "R0", SR1: "R0", SR2: "R9"},
+			wantErr: &RegisterError{Reg: "R9"}},
 		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "BACK"}, want: 0x503e},
 		{oper: &AND{DR: "R0", SR1: "R0", SYMBOL: "FAR"},
 			wantErr: &OffsetRangeError{Offset: 0x0020, Range: 0x0010}},
@@ -158,10 +161,13 @@ func TestBR_Generate(tt *testing.T) {
 	tcs := []generateCase{
 		{oper: &BR{NZP: 0x7, OFFSET: 0x01}, want: 0x0e01, wantErr: nil},
 		{oper: &BR{NZP: 0x2, OFFSET: 0x01f0}, want: 0x05f0, wantErr: nil},
-		{oper: &BR{NZP: 0x1, OFFSET: 0xfff0}, want: 0x05f0, wantErr: &OffsetRangeError{Offset: 0xfff0}},
+		{oper: &BR{NZP: 0x1, OFFSET: 0xfff0}, want: 0x05f0,
+			wantErr: &OffsetRangeError{Offset: 0xfff0}},
+
 		{oper: &BR{NZP: 0x3, SYMBOL: "LABEL"}, want: 0x0605, wantErr: nil},
 		{oper: &BR{NZP: 0x3, SYMBOL: "BACK"}, want: 0x0600, wantErr: nil},
-		{oper: &BR{NZP: 0x6, SYMBOL: "LONG"}, want: 0x061f, wantErr: &OffsetRangeError{Offset: 0xd000}},
+		{oper: &BR{NZP: 0x6, SYMBOL: "LONG"}, want: 0x061f,
+			wantErr: &OffsetRangeError{Offset: 0xd000}},
 	}
 
 	pc := vm.Word(0x3000)
@@ -171,6 +177,9 @@ func TestBR_Generate(tt *testing.T) {
 		"LONG":   0x0,
 		"YONDER": 0xe000,
 	}
+
+	offset, err := symbols.Offset("LONG", pc, 9)
+	t.Logf("offset: %v, err: %v", offset, err)
 
 	t.Run(pc, symbols, tcs)
 }
@@ -385,10 +394,10 @@ func TestJSR_Generate(tt *testing.T) {
 	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
 		"LABEL":     0x2fff, // -1
-		"THERE":     0x31ff, // 64
+		"THERE":     0x33ff, // 64
 		"BACK":      0x2800, // -64
-		"WAYBACK":   0x27ff,
-		"OVERTHERE": 0x3800,
+		"WAYBACK":   0x0000,
+		"OVERTHERE": 0x3400,
 	}
 
 	t := generatorHarness{tt}
@@ -396,7 +405,7 @@ func TestJSR_Generate(tt *testing.T) {
 		{oper: &JSR{OFFSET: 0x00ff}, want: 0x48ff},
 		{oper: &JSR{OFFSET: 0xffff}, want: 0x4bff},
 		{oper: &JSR{SYMBOL: "LABEL"}, want: 0x4fff},
-		{oper: &JSR{SYMBOL: "THERE"}, want: 0x49ff},
+		{oper: &JSR{SYMBOL: "THERE"}, want: 0x4bff},
 		{oper: &JSR{SYMBOL: "BACK"}, want: 0x4800},
 		{oper: &JSR{SYMBOL: "WAYBACK"}, wantErr: &OffsetRangeError{Offset: 0xf7ff}},
 		{oper: &JSR{SYMBOL: "OVERTHERE"}, wantErr: &OffsetRangeError{Offset: 0x0800}},
@@ -646,22 +655,30 @@ func TestSymbolTable_Offset(tt *testing.T) {
 		{pc: 0x0000, label: 0x0002, bits: 1, val: 0xffff,
 			err: &OffsetRangeError{Offset: 2, Range: 0x0001}},
 		{pc: 0x0001, label: 0x0002, bits: 1, val: 1},
-		{pc: 0x0001, label: 0x0000, bits: 1, val: 0xffff},
+		{pc: 0x0001, label: 0x0001, bits: 1, val: 0},
+		{pc: 0x0001, label: 0x0000, bits: 1, val: 0xffff,
+			err: &OffsetRangeError{Offset: 0xffff, Range: 0x0001}},
 
 		{pc: 0x0000, label: 0x0000, bits: 2, val: 0},
 		{pc: 0x0000, label: 0x0001, bits: 2, val: 1},
 		{pc: 0x0000, label: 0x0002, bits: 2, val: 2},
-		{pc: 0x0000, label: 0x0003, bits: 2, val: 0xffff,
-			err: &OffsetRangeError{Offset: 3, Range: 0x0002}},
+		{pc: 0x0000, label: 0x0003, bits: 2, val: 0x0003},
+		{pc: 0x0000, label: 0x0004, bits: 2, val: 0xffff,
+			err: &OffsetRangeError{Offset: 0x0004, Range: 0x0003}},
 
-		{pc: 0x0001, label: 0x0000, bits: 2, val: 0xffff},
-		{pc: 0x0002, label: 0x0000, bits: 2, val: 0xfffe},
-		{pc: 0x0003, label: 0x0000, bits: 2, val: 0xfffd},
-		{pc: 0x0004, label: 0x0000, bits: 2, val: 0xfffc},
-		{pc: 0x0005, label: 0x0000, bits: 2, val: 0xfffb},
+		{pc: 0x0001, label: 0x0000, bits: 2, val: 0x0003},
+		{pc: 0x0002, label: 0x0000, bits: 2, val: 0x0002},
+		{pc: 0x0003, label: 0x0000, bits: 2, val: 0xffff,
+			err: &OffsetRangeError{Offset: 0x0fffd, Range: 0x0003}},
+		{pc: 0x0004, label: 0x0000, bits: 2, val: 0xffff,
+			err: &OffsetRangeError{Offset: 0xfffc, Range: 0x0003}},
 
 		{pc: 0x3000, label: 0x8000, bits: 5, val: 0xffff,
-			err: &OffsetRangeError{Offset: 0x5000, Range: 0x0010},
+			err: &OffsetRangeError{Offset: 0x5000, Range: 0x001f},
+		},
+
+		{pc: 0x3000, label: 0x0000, bits: 6, val: 0xffff,
+			err: &OffsetRangeError{Offset: 0xd000, Range: 0x003f},
 		},
 	}
 

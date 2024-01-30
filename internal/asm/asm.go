@@ -115,17 +115,23 @@ func (s SymbolTable) Offset(sym string, pc vm.Word, n uint8) (vm.Word, error) {
 
 	var (
 		delta  = int16(loc - pc)
-		bottom = int16(1 << (n - 1))
+		range_ = int16(1<<n - 1)
+		bottom = vm.Word(1<<n - 1)
 	)
 
-	if delta > bottom {
+	if delta > range_ {
 		return badSymbol, &OffsetRangeError{
 			Offset: uint16(delta),
-			Range:  uint16(bottom),
+			Range:  uint16(range_),
+		}
+	} else if delta <= -range_ {
+		return badSymbol, &OffsetRangeError{
+			Offset: uint16(delta),
+			Range: uint16(range_),
 		}
 	}
 
-	return vm.Word(delta), nil
+	return vm.Word(delta) & bottom, nil
 }
 
 const badSymbol vm.Word = 0xffff
