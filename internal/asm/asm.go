@@ -103,8 +103,11 @@ func (s SymbolTable) Add(sym string, loc vm.Word) {
 	s[sym] = loc
 }
 
-// Offset computes a n-bit PC-relative offset. TODO: should this return a signed integer? Or, a
-// word?
+// Offset computes a n-bit program-counter relative offset. If the offset can be
+// represented in n bits, the value is returned. Otherwise, badSymbol is
+// returned with an error; the error is either a SymbolError, if the symbol is
+// not found in the symbol table, or a OffsetRangeError, when the offset exceeds
+// the range of n bits.
 func (s SymbolTable) Offset(sym string, pc vm.Word, n uint8) (vm.Word, error) {
 	sym = strings.ToUpper(sym)
 
@@ -114,24 +117,26 @@ func (s SymbolTable) Offset(sym string, pc vm.Word, n uint8) (vm.Word, error) {
 	}
 
 	var (
-		delta  = int16(loc - pc)
-		range_ = int16(1<<n - 1)
-		bottom = vm.Word(1<<n - 1)
+		delta = int16(loc - pc)
+
+		// The bottom n bits are set to 1, eg. if n ==
+		// 9 then bottom == 0x01ff.
+		bottom = int16(1<<n - 1)
 	)
 
-	if delta > range_ {
+	if delta > bottom {
 		return badSymbol, &OffsetRangeError{
 			Offset: uint16(delta),
-			Range:  uint16(range_),
+			Range:  uint16(bottom),
 		}
-	} else if delta <= -range_ {
+	} else if delta <= -bottom {
 		return badSymbol, &OffsetRangeError{
 			Offset: uint16(delta),
-			Range:  uint16(range_),
+			Range:  uint16(bottom),
 		}
 	}
 
-	return vm.Word(delta) & bottom, nil
+	return vm.Word(delta) & vm.Word(bottom), nil
 }
 
 const badSymbol vm.Word = 0xffff
