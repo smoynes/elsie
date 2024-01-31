@@ -393,11 +393,11 @@ func TestADD_Generate(tt *testing.T) {
 func TestJSR_Generate(tt *testing.T) {
 	pc := vm.Word(0x3000)
 	symbols := SymbolTable{
-		"LABEL":     0x2fff, // -1
-		"THERE":     0x33ff, // 64
-		"BACK":      0x2f00, // -64
-		"WAYBACK":   0x0000,
-		"TOOFAR": 0x3800,
+		"LABEL":   0x2fff, // -1
+		"THERE":   0x33ff, // 64
+		"BACK":    0x2f00, // -64
+		"WAYBACK": 0x0000,
+		"TOOFAR":  0x3800,
 	}
 
 	t := generatorHarness{tt}

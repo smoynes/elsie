@@ -127,7 +127,7 @@ func (s SymbolTable) Offset(sym string, pc vm.Word, n uint8) (vm.Word, error) {
 	} else if delta <= -range_ {
 		return badSymbol, &OffsetRangeError{
 			Offset: uint16(delta),
-			Range: uint16(range_),
+			Range:  uint16(range_),
 		}
 	}
 
