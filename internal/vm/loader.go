@@ -56,13 +56,22 @@ func (l *Loader) Load(obj ObjectCode) (uint16, error) {
 func (l *Loader) LoadVector(vector Word, obj ObjectCode) (uint16, error) {
 	l.log.Debug("Loading vector", "vec", vector, "obj", obj)
 
-	if count, err := l.Load(obj); err != nil {
+	var (
+		count uint16
+		err   error
+	)
+
+	// Load the object into memory to its origin address.
+	if count, err = l.Load(obj); err != nil {
 		return count, err
-	} else if err = l.vm.Mem.store(vector, obj.Orig); err != nil {
-		return count, fmt.Errorf("%w: %w", ErrObjectLoader, err)
-	} else {
-		return count, nil
 	}
+
+	// Store the object's origin address in the vector table.
+	if err = l.vm.Mem.store(vector, obj.Orig); err != nil {
+		return count, fmt.Errorf("%w: %w", ErrObjectLoader, err)
+	}
+
+	return count, nil
 }
 
 // ObjectCode is a data structure that holds code and its origin offset in memory. Code may be

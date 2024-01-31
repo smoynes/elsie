@@ -82,10 +82,11 @@ func (i Instruction) String() string {
 }
 
 // Operand applies
-func (i *Instruction) Operand(operand uint16) {
+func (i *Instruction) Operand(operand Word) {
 	*i |= Instruction(operand) & 0x0fff
 }
 
+// Encode returns the instruction as a word.
 func (i Instruction) Encode() Word {
 	return Word(i)
 }
@@ -153,34 +154,6 @@ func (i Instruction) Vector(n vector) Word {
 
 	return w
 }
-
-// An Opcode identifies the instruction to be executed by the CPU. The ISA has 15 distinct opcodes,
-// plus one reserved value that is undefined.
-type Opcode uint16
-
-// Opcode constants.
-const (
-	BR = Opcode(iota)
-	ADD
-	LD
-	ST
-	JSR
-	AND
-	LDR
-	STR
-	RTI
-	NOT
-	LDI
-	STI
-	JMP
-	RESV
-	LEA
-	TRAP
-
-	// Two synthetic opcodes used for printing special cases of the above.
-	JSRR = JSR | 0x0f00
-	RET  = JMP | 0x0f00
-)
 
 // Priority represents the priority level of a task.
 type Priority uint8

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/smoynes/elsie/internal/log"
+	"github.com/smoynes/elsie/internal/vm"
 )
 
 // Parser reads source code and produces a symbol table, a syntax table and a collection of errors,
@@ -28,8 +29,8 @@ import (
 //
 // .
 type Parser struct {
-	loc      uint16      // Location counter.
-	pos      uint16      // Line number in source file.
+	loc      vm.Word     // Location counter.
+	pos      vm.Word     // Line number in source file.
 	filename string      // Current filename being parsed.
 	line     string      // Line being parsed.
 	symbols  SymbolTable // Symbolic references.
@@ -354,7 +355,7 @@ func (p *Parser) parseDirective(ident string, arg string) error {
 		}
 
 		p.AddSyntax(&strz)
-		p.loc += uint16(len(strz.LITERAL) + 1)
+		p.loc += vm.Word(len(strz.LITERAL) + 1)
 	case ".END":
 		// TODO: add to syntax table
 	case ".EXTERNAL":

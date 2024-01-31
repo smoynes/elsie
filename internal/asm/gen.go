@@ -22,7 +22,7 @@ import (
 // are immediately returned. The errors are wrapped in SyntaxErrors and may be tested and retrieved
 // using the errors package.
 type Generator struct {
-	pc       uint16
+	pc       vm.Word
 	symbols  SymbolTable
 	syntax   SyntaxTable
 	encoding encoding.HexEncoding
@@ -40,7 +40,7 @@ func NewGenerator(symbols SymbolTable, syntax SyntaxTable) *Generator {
 
 // Encode generates object code and encodes it as hex-encoded ASCII object code.
 //
-// Multiple sections are supported if the symbol table has multiple ORIG directives.
+// Multiple sections are supported if the syntax table has multiple ORIG directives.
 func (gen *Generator) Encode() ([]byte, error) {
 	if len(gen.syntax) == 0 {
 		return nil, nil
@@ -67,7 +67,7 @@ func (gen *Generator) Encode() ([]byte, error) {
 			}
 
 			gen.pc = orig.LITERAL
-			obj = vm.ObjectCode{Orig: vm.Word(gen.pc)}
+			obj = vm.ObjectCode{Orig: gen.pc}
 
 			continue // We don't need to generate code.
 		}
@@ -81,7 +81,7 @@ func (gen *Generator) Encode() ([]byte, error) {
 
 		obj.Code = append(obj.Code, genWords...)
 
-		gen.pc += uint16(len(genWords))
+		gen.pc += vm.Word(len(genWords))
 		count += int64(len(genWords) * 2)
 	}
 
@@ -98,10 +98,10 @@ func (gen *Generator) Encode() ([]byte, error) {
 	}
 }
 
-// WriteTo writes generated binary machine-code to an output stream. It implements io.WriteTo.
-//
-// Unlinke Encode, WriteTo does not support writing more than a single section of code.
-func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
+// writeTo writes generated binary machine-code to an output stream. Unlike Encode, writeTo does not
+// support writing more than a single section of code. It exists for the sake of development and
+// debugging.
+func (gen *Generator) writeTo(out io.Writer) (int64, error) {
 	if len(gen.syntax) == 0 {
 		return 0, nil
 	}
@@ -127,7 +127,7 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 			break
 		}
 
-		generated, genErr := oper.Generate(gen.symbols, gen.pc) // TODO: should this be pc + 1
+		generated, genErr := oper.Generate(gen.symbols, gen.pc+1)
 
 		if err != nil {
 			err = gen.annotate(oper, genErr)
@@ -138,7 +138,7 @@ func (gen *Generator) WriteTo(out io.Writer) (int64, error) {
 			break
 		}
 
-		gen.pc += uint16(len(generated))
+		gen.pc += vm.Word(len(generated))
 		count += int64(len(generated) * 2)
 	}
 
