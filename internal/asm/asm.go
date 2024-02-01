@@ -86,7 +86,7 @@ identchar    = \p{Letter}
 `)
 
 // SymbolTable maps a symbol reference to its location in object code.
-type SymbolTable map[string]uint16
+type SymbolTable map[string]vm.Word
 
 // Count returns the number of symbols in the table.
 func (s SymbolTable) Count() int {
@@ -94,7 +94,7 @@ func (s SymbolTable) Count() int {
 }
 
 // Add adds a symbol to the symbol table.
-func (s SymbolTable) Add(sym string, loc uint16) {
+func (s SymbolTable) Add(sym string, loc vm.Word) {
 	if sym == "" {
 		panic("empty symbol")
 	}
@@ -103,8 +103,12 @@ func (s SymbolTable) Add(sym string, loc uint16) {
 	s[sym] = loc
 }
 
-// Offset computes a n-bit PC-relative offset.
-func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
+// Offset computes a n-bit program-counter relative offset. If the offset can be
+// represented in n bits, the value is returned. Otherwise, badSymbol is
+// returned with an error; the error is either a SymbolError, if the symbol is
+// not found in the symbol table, or a OffsetRangeError, when the offset exceeds
+// the range of n bits.
+func (s SymbolTable) Offset(sym string, pc vm.Word, n uint8) (vm.Word, error) {
 	sym = strings.ToUpper(sym)
 
 	loc, ok := s[sym]
@@ -112,20 +116,30 @@ func (s SymbolTable) Offset(sym string, pc uint16, n int) (uint16, error) {
 		return badSymbol, &SymbolError{Symbol: sym, Loc: pc}
 	}
 
-	delta := int16(loc - pc)
-	if delta >= (1<<n) || delta < -(1<<n) {
+	var (
+		delta = int16(loc - pc)
+
+		// The bottom n bits are set to 1, eg. if n ==
+		// 9 then bottom == 0x01ff.
+		bottom = int16(1<<n - 1)
+	)
+
+	if delta > bottom {
 		return badSymbol, &OffsetRangeError{
-			Range:  1 << n,
 			Offset: uint16(delta),
+			Range:  uint16(bottom),
+		}
+	} else if delta <= -bottom {
+		return badSymbol, &OffsetRangeError{
+			Offset: uint16(delta),
+			Range:  uint16(bottom),
 		}
 	}
 
-	bottom := ^(-1 << n)
-
-	return uint16(delta) & uint16(bottom), nil
+	return vm.Word(delta) & vm.Word(bottom), nil
 }
 
-const badSymbol uint16 = 0xffff
+const badSymbol vm.Word = 0xffff
 
 var (
 	// ErrOpcode causes a SyntaxError if an opcode is invalid or incorrect.
@@ -142,11 +156,11 @@ var (
 // are not known, they hold the zero value. For example, the filename is an empty string when the
 // source code is not a file.
 type SyntaxError struct {
-	File string // Source file name.
-	Loc  uint16 // Location counter.
-	Pos  uint16 // Line counter.
-	Line string // Source code line.
-	Err  error  // Error cause.
+	File string  // Source file name.
+	Loc  vm.Word // Location counter.
+	Pos  vm.Word // Line counter.
+	Line string  // Source code line.
+	Err  error   // Error cause.
 }
 
 func (se *SyntaxError) Error() string {
@@ -173,14 +187,23 @@ func (se *SyntaxError) Is(target error) bool {
 	}
 }
 
-// OffsetRangeError is a wrapped error returned when an offset value exceeds its range.
+// OffsetRangeError is a wrapped error returned when an offset value exceeds its range. Values
+// compare equal if their Offset and Range fields are identical.
 type OffsetRangeError struct {
 	Offset uint16
 	Range  uint16
 }
 
 func (oe *OffsetRangeError) Error() string {
-	return fmt.Sprintf("offset error: %0#4x", oe.Offset)
+	return fmt.Sprintf("offset error: %0#4x, range: %0#4x", oe.Offset, oe.Range)
+}
+
+func (oe OffsetRangeError) Is(err error) bool {
+	if err, ok := err.(*OffsetRangeError); ok {
+		return err.Offset == oe.Offset && err.Range == oe.Range
+	}
+
+	return false
 }
 
 // LiteralRangeError is a wrapped error returned when an offset value exceeds its range.
@@ -206,7 +229,7 @@ func (re *RegisterError) Error() string {
 
 // Symbol is a wrapped error returned when a symbol could not be found in the symbol table.
 type SymbolError struct {
-	Loc    uint16
+	Loc    vm.Word
 	Symbol string
 }
 
@@ -248,13 +271,13 @@ type Operation interface {
 
 	// Generate encodes an operation as machine code. Using the values from Parse, the operation is
 	// converted to one (or more) words.
-	Generate(symbols SymbolTable, pc uint16) ([]vm.Word, error)
+	Generate(symbols SymbolTable, pc vm.Word) ([]vm.Word, error)
 }
 
 // SourceInfo wraps an operation to annotate it with parser metadata.
 type SourceInfo struct {
 	Filename string
-	Pos      uint16
+	Pos      vm.Word
 	Line     string
 
 	Operation

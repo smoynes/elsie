@@ -139,10 +139,10 @@ var TrapHalt = Routine{
 	Vector: vm.TrapTable + vm.Word(vm.TrapHALT),
 	Orig:   0x0520,
 	Symbols: asm.SymbolTable{
-		"RETRY":       0x0521,
-		"MCR":         0x0526,
-		"MASK":        0x0527,
-		"HALTMESSAGE": 0x0528,
+		"RETRY":       0x0522,
+		"MCR":         0x0527,
+		"MASK":        0x0528,
+		"HALTMESSAGE": 0x0529,
 	},
 	Code: []asm.Operation{
 		// Print a message. Alert the media.
@@ -152,10 +152,10 @@ var TrapHalt = Routine{
 
 		// Clear RUN flag in Machine Control Register.
 		/* 0x0522 */
-		&asm.LDI{DR: "R0", SYMBOL: "MCR"},        // R0 <- [MCR] ; Load MCR.
-		&asm.LD{DR: "R1", SYMBOL: "MASK"},        // R1 <- MASK ; Load bitmask.
-		&asm.AND{DR: "R0", SR1: "R0", SR2: "R1"}, // R1 <- R0 & R1 ; Clear top bit using bit mask
-		&asm.STI{SR: "R0", SYMBOL: "MCR"},        // [MCR]<- R0 ; Replace value in MCR.
+		&asm.LDI{DR: "R0", SYMBOL: "MCR"},        // R0 <- [MCR]   ; Load MCR.
+		&asm.LD{DR: "R1", SYMBOL: "MASK"},        // R1 <- MASK    ; Load bitmask.
+		&asm.AND{DR: "R0", SR1: "R0", SR2: "R1"}, // R0 <- R0 & R1 ; Clear top bit using bit mask
+		&asm.STI{SR: "R0", SYMBOL: "MCR"},        // [MCR]<- R0    ; Replace value in MCR.
 
 		// Halt again, if we reach here, forever.
 		/* 0x0526 */
@@ -185,10 +185,10 @@ var TrapOut = Routine{
 	Orig:   0x0420,
 	Symbols: asm.SymbolTable{
 		"POLL":    0x0429,
-		"INTMASK": 0x0435,
-		"PSR":     0x0436,
-		"DSR":     0x0437,
-		"DDR":     0x0438,
+		"INTMASK": 0x0436,
+		"PSR":     0x0437,
+		"DSR":     0x0438,
+		"DDR":     0x0439,
 	},
 	Code: []asm.Operation{
 		// Push R1,R2,R3 onto the stack.
@@ -265,10 +265,10 @@ var TrapPuts = Routine{
 	Vector: vm.TrapTable + vm.Word(vm.TrapPUTS),
 	Orig:   0x0460,
 	Symbols: asm.SymbolTable{
-		"LOOP":   0x0464,
+		"LOOP":   0x0465,
 		"RETURN": 0x046a,
-		"DSR":    0x0429,
-		"DDR":    0x0435,
+		"DSR":    0x046f,
+		"DDR":    0x0470,
 	},
 	Code: []asm.Operation{
 		// Push R0, R1 onto the stack.

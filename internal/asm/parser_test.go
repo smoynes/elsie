@@ -1,5 +1,5 @@
 //nolint:errorlint
-package asm_test
+package asm
 
 import (
 	"bufio"
@@ -13,7 +13,6 @@ import (
 	"testing"
 	"testing/iotest"
 
-	. "github.com/smoynes/elsie/internal/asm"
 	"github.com/smoynes/elsie/internal/log"
 	"github.com/smoynes/elsie/internal/vm"
 )
@@ -84,7 +83,7 @@ func (fake *fakeInstruction) Parse(oper string, opers []string) error {
 	return nil
 }
 
-func (fake *fakeInstruction) Generate(sym SymbolTable, loc uint16) ([]vm.Word, error) {
+func (fake *fakeInstruction) Generate(sym SymbolTable, loc vm.Word) ([]vm.Word, error) {
 	return nil, nil
 }
 
@@ -356,7 +355,7 @@ func GenerateErrors(tc errorCase, t ParserHarness) {
 	syn := t.parser.Syntax()
 	gen := NewGenerator(sym, syn)
 
-	_, err := gen.WriteTo(bytes.NewBuffer(make([]byte, 0, 8192)))
+	_, err := gen.writeTo(bytes.NewBuffer(make([]byte, 0, 8192)))
 
 	if err != nil {
 		t.Log(err.Error())
@@ -478,7 +477,7 @@ func TestParser_STRINGZ(tt *testing.T) {
 	}
 }
 
-func assertSymbol(t ParserHarness, symbols SymbolTable, label string, want uint16) {
+func assertSymbol(t ParserHarness, symbols SymbolTable, label string, want vm.Word) {
 	t.Helper()
 
 	if got, ok := symbols[label]; !ok {

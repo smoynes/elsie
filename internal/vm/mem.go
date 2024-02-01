@@ -100,6 +100,16 @@ func (mem *Memory) Store() error {
 	return nil
 }
 
+// View returns a copy of the memory cells. It is intended as a debugging and
+// development tool and is quite expensive computationally.
+func (mem *Memory) View() PhysicalMemory {
+	var view PhysicalMemory
+
+	copy(view[:], mem.cell[:])
+
+	return view
+}
+
 // Loads a word directly, without using the address and data registers.
 func (mem *Memory) load(addr Word, reg *Register) error {
 	if addr >= IOPageAddr {

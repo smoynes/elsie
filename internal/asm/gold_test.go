@@ -1,4 +1,4 @@
-package asm_test
+package asm
 
 import (
 	"bufio"
@@ -10,7 +10,6 @@ import (
 	"path"
 	"testing"
 
-	"github.com/smoynes/elsie/internal/asm"
 	"github.com/smoynes/elsie/internal/log"
 )
 
@@ -99,7 +98,7 @@ func TestAssembler_Gold(tt *testing.T) {
 
 		t.Run(name, func(tt *testing.T) {
 			t := assemblerHarness{tt}
-			parser := asm.NewParser(t.logger())
+			parser := NewParser(t.logger())
 			parser.Parse(tc.input)
 
 			if parser.Err() != nil {
@@ -109,7 +108,7 @@ func TestAssembler_Gold(tt *testing.T) {
 			syntax := parser.Syntax()
 			symbols := parser.Symbols()
 
-			generator := asm.NewGenerator(symbols, syntax)
+			generator := NewGenerator(symbols, syntax)
 
 			var (
 				out   bytes.Buffer
@@ -118,7 +117,7 @@ func TestAssembler_Gold(tt *testing.T) {
 			)
 
 			if tc.expectedHex == nil {
-				count, err = generator.WriteTo(&out)
+				count, err = generator.writeTo(&out)
 			} else {
 				bs, err := generator.Encode()
 				if err != nil {

@@ -17,20 +17,10 @@ func WithSystemImage(image *SystemImage) vm.OptionFn {
 		}
 
 		loader := vm.NewLoader(machine)
+		err := loadImage(loader, image)
 
-		for i := range image.Traps {
-			trap := image.Traps[i]
-			obj, err := Generate(trap)
-
-			if err != nil {
-				panic(err)
-			}
-
-			_, err = loader.Load(obj)
-
-			if err != nil {
-				panic(err)
-			}
+		if err != nil {
+			panic(err)
 		}
 	}
 }
@@ -39,25 +29,12 @@ func WithSystemImage(image *SystemImage) vm.OptionFn {
 // use this.
 func WithDefaultSystemImage() vm.OptionFn {
 	return func(machine *vm.LC3, late bool) {
-		if !late {
-			return
-		}
+		if late {
+			logger := log.DefaultLogger()
+			image := NewSystemImage(logger)
+			loader := vm.NewLoader(machine)
 
-		logger := log.DefaultLogger()
-		image := NewSystemImage(logger)
-		loader := vm.NewLoader(machine)
-
-		for i := range image.Traps {
-			trap := image.Traps[i]
-			obj, err := Generate(trap)
-
-			if err != nil {
-				panic(err)
-			}
-
-			_, err = loader.Load(obj)
-
-			if err != nil {
+			if err := loadImage(loader, image); err != nil {
 				panic(err)
 			}
 		}
@@ -97,105 +74,97 @@ func NewSystemImage(logger *log.Logger) *SystemImage {
 	sym := asm.SymbolTable{} // TODO: No global symbols.
 
 	return &SystemImage{
-		Symbols:    sym,
-		Data:       data,
-		Traps:      defaultImageTraps,
+		Symbols: sym,
+		Data:    data,
+		Traps: []Routine{
+			TrapHalt,
+			TrapOut,
+			TrapPuts,
+		},
 		ISRs:       []Routine{},
 		Exceptions: []Routine{},
 		logger:     logger,
 	}
 }
 
-// LoadTo uses a loader to initialize the machine with the system image.
-func (img *SystemImage) LoadTo(loader *vm.Loader) (uint16, error) {
-	img.logger.Debug("Loading trap handlers")
-
-	count := uint16(0)
-
-	for _, trap := range img.Traps {
-		img.logger.Debug("Loading trap",
-			"trap", trap.Name,
-			"orig", trap.Orig,
-			"symbols", len(trap.Symbols),
-			"size", len(trap.Code),
-		)
-
-		pc := trap.Orig
-		obj := vm.ObjectCode{
-			Orig: trap.Orig,
-			Code: make([]vm.Word, 0, len(trap.Code)),
-		}
-
-		// This is wild.
-		sym := asm.SymbolTable{}
-
-		for label, addr := range img.Symbols {
-			sym[label] = addr
-		}
-
-		for label, addr := range trap.Symbols {
-			sym[label] = addr
-		}
-
-		// TODO: This is eerily similar to Generator.WriteTo. The difference are:
-		//   - here, errors are not wrapped/unwrapped
-		//   - instead of writing bytes to a Writer, vm.Word are appended to a buffer
-		for _, op := range trap.Code {
-			if op == nil {
-				continue
-			}
-
-			encoded, err := op.Generate(sym, uint16(pc))
-			if err != nil {
-				return count, fmt.Errorf("pc: %v (%s): %w", pc, op, err)
-			}
-
-			for i := range encoded {
-				obj.Code = append(obj.Code, encoded[i])
-			}
-
-			pc += vm.Word(len(encoded))
-		}
-
-		img.logger.Debug("Loading vector",
-			"trap", trap.Name,
-			"orig", trap.Orig,
-			"symbols", len(trap.Symbols),
-			"size", len(trap.Code),
-		)
-
-		if c, err := loader.LoadVector(trap.Vector, obj); err != nil {
-			return count, err
-		} else {
-			count += c
-		}
-	}
-
-	return count, nil
-}
-
-// Generate takes a BIOS routine, i.e. a trap or exception handler, and generates the code for it.
-func Generate(routine Routine) (vm.ObjectCode, error) {
-	var pc uint16
-
+// GenerateRoutine takes a monitor routine, i.e. a trap, interrupt, or exception handler, and
+// generates the code for it.
+func GenerateRoutine(routine Routine) (vm.ObjectCode, error) {
 	obj := vm.ObjectCode{
 		Orig: routine.Orig,
 		Code: make([]vm.Word, 0, len(routine.Code)),
 	}
 
+	pc := routine.Orig
+
 	for _, oper := range routine.Code {
 		if oper == nil {
-			panic("operation is nil")
+			return obj, fmt.Errorf("generate: operation is nil")
 		}
 
-		if encoded, err := oper.Generate(routine.Symbols, pc+uint16(routine.Orig)); err != nil {
+		encoded, err := oper.Generate(routine.Symbols, pc+1)
+
+		if err != nil {
 			return obj, fmt.Errorf("generate: %s: %w", oper, err)
-		} else {
-			for i := range encoded {
-				obj.Code = append(obj.Code, encoded[i])
-			}
 		}
+
+		obj.Code = append(obj.Code, encoded...)
+		pc += vm.Word(len(encoded))
 	}
 
 	return obj, nil
+}
+
+func loadImage(loader *vm.Loader, image *SystemImage) error {
+	for _, trap := range image.Traps {
+		image.logger.Debug("loading trap", "TRAP", trap.Name)
+
+		obj, err := GenerateRoutine(trap)
+		if err != nil {
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
+		}
+
+		_, err = loader.LoadVector(trap.Vector, obj)
+		if err != nil {
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
+		}
+	}
+
+	for _, isr := range image.ISRs {
+		image.logger.Debug("loading interrupt handler", "INT", isr.Name)
+
+		obj, err := GenerateRoutine(isr)
+		if err != nil {
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
+		}
+
+		_, err = loader.LoadVector(isr.Vector, obj)
+		if err != nil {
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
+		}
+	}
+
+	for _, exc := range image.Exceptions {
+		image.logger.Debug("loading exception handler", "EXC", exc.Name)
+
+		obj, err := GenerateRoutine(exc)
+		if err != nil {
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
+		}
+
+		_, err = loader.LoadVector(exc.Vector, obj)
+		if err != nil {
+			image.logger.Error("load failed", "ERR", err)
+			return fmt.Errorf("load: %w", err)
+		}
+	}
+
+	// TODO: load data
+
+	return nil
 }

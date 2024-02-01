@@ -28,7 +28,7 @@ for your platform to install a compatible Go version.
 With Go installed, you can now download, build, and install 𝔼𝕃𝕊𝕀𝔼. Run:
 
 ```console
-$ go install github.com/smoynes/elsie@latset
+$ go install github.com/smoynes/elsie@latest
 ```
 
 Go will store the program in its `bin` directory. By default, the location is
