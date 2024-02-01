@@ -13,7 +13,7 @@ import (
 // models, a device should implement the [Driver] interface, instead. See [DisplayDriver] for an
 // example.
 type Device interface {
-	device() string
+	Device() string
 }
 
 // RegisterDevice represents a device that has a single, lonely register for I/O. In contrast to

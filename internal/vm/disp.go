@@ -39,7 +39,7 @@ const (
 	DisplayEnabled = Register(1 << 14) // IE
 )
 
-func (disp Display) device() string { return "CRT(PHOSPHOR)" }
+func (disp Display) Device() string { return "CRT(PHOSPHOR)" }
 
 // Init initializes the device.
 func (disp *Display) Init(_ *LC3, _ []Word) {
@@ -206,12 +206,12 @@ func (driver *DisplayDriver) String() string {
 	return fmt.Sprintf("DisplayDriver(display:%s)", driver.handle.device)
 }
 
-func (driver *DisplayDriver) device() string {
+func (driver *DisplayDriver) Device() string {
 	driver.mut.Lock()
 	defer driver.mut.Unlock()
 
 	if driver.handle.device != nil {
-		return driver.handle.device.device()
+		return driver.handle.device.Device()
 	}
 
 	return "DISP(DRIVER)"

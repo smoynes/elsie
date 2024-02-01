@@ -117,7 +117,7 @@ func (k *Keyboard) String() string {
 	return fmt.Sprintf("Keyboard(status:%s,data:%s)", k.KBSR, k.KBDR)
 }
 
-func (*Keyboard) device() string { return "Keyboard(ModelM)" } // Simply the best.
+func (*Keyboard) Device() string { return "Keyboard(ModelM)" } // Simply the best.
 
 var a = []rune{
 	0x2361, 0x2362, 0x2363, 0x2364, 0x2365, 0x2368, 0x2369,

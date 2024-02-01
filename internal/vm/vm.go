@@ -257,7 +257,7 @@ func (ps ProcessorStatus) Privilege() Privilege {
 	return Privilege(ps & StatusPrivilege >> 15)
 }
 
-func (ps *ProcessorStatus) device() string {
+func (ps *ProcessorStatus) Device() string {
 	return Register(*ps).String()
 }
 
@@ -291,7 +291,7 @@ func (rf RegisterFile) LogValue() log.Value {
 // called twice -- once early and once late, with false and true values for the
 // late argument, respectively.
 // TODO: return error
-type OptionFn func(maching *LC3, late bool)
+type OptionFn func(machine *LC3, late bool)
 
 // WithSystemContext initializes the machine to use system context, i.e. with system privileges and
 // stack.
