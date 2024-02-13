@@ -5,7 +5,7 @@ import (
 	"github.com/smoynes/elsie/internal/vm"
 )
 
-var DefaultImageRoutines = []Routine{
+var defaultImageTraps = []Routine{
 	TrapHalt,
 	TrapOut,
 	TrapPuts,

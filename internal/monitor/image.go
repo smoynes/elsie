@@ -74,13 +74,9 @@ func NewSystemImage(logger *log.Logger) *SystemImage {
 	sym := asm.SymbolTable{} // TODO: No global symbols.
 
 	return &SystemImage{
-		Symbols: sym,
-		Data:    data,
-		Traps: []Routine{
-			TrapHalt,
-			TrapOut,
-			TrapPuts,
-		},
+		Symbols:    sym,
+		Data:       data,
+		Traps:      defaultImageTraps,
 		ISRs:       []Routine{},
 		Exceptions: []Routine{},
 		logger:     logger,
