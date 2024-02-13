@@ -407,7 +407,7 @@ func TestTrap_Puts(tt *testing.T) {
 	}
 
 	for i := range vals {
-		t.Errorf("vals[%d] got: %04X", i, vals[i])
+		t.Logf("vals[%d] got: 0x%04X", i, vals[i])
 	}
 }
 
