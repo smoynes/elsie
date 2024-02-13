@@ -31,6 +31,40 @@ func (*trapHarness) Logger() *log.Logger {
 	return log.DefaultLogger()
 }
 
+type fakeKeyboard struct {
+	key rune
+}
+
+func (*fakeKeyboard) Device() string                       { return "FakeKey()" }
+func (*fakeKeyboard) Init(machine *vm.LC3, args []vm.Word) {}
+func (*fakeKeyboard) InterruptRequested() bool             { return true }
+func (fakeKeyboard) String() string                        { return "FakeKEY" }
+
+func (k *fakeKeyboard) Read(addr vm.Word) (vm.Word, error) {
+	switch addr {
+	case vm.KBSRAddr:
+		return 0x8000, nil
+	case vm.KBDRAddr:
+		return vm.Word(k.key), nil
+	default:
+		return 0, errors.New("unexpected addr")
+	}
+}
+
+func WithTestKeyboardDriver(key rune) vm.OptionFn {
+	var dev vm.ReadDriver = &fakeKeyboard{key}
+
+	return func(machine *vm.LC3, late bool) {
+		if !late {
+			deviceMap := map[vm.Word]any{
+				vm.KBDRAddr: dev,
+				vm.KBSRAddr: dev,
+			}
+			machine.Mem.Devices.Map(deviceMap)
+		}
+	}
+}
+
 func TestTrap_Getc(tt *testing.T) {
 	t := NewHarness(tt)
 
@@ -42,6 +76,7 @@ func TestTrap_Getc(tt *testing.T) {
 
 	machine := vm.New(
 		WithSystemImage(&image),
+		WithTestKeyboardDriver('?'),
 	)
 
 	// Now, we create code to execute the trap under test.
@@ -87,8 +122,9 @@ func TestTrap_Getc(tt *testing.T) {
 	cancel()
 
 	if err := ctx.Err(); err == context.DeadlineExceeded {
-		t.Errorf("Deadline expired")
-		t.Logf("%s\n%s\nt", machine, machine.REG)
+		t.Error("Deadline exceeded")
+		t.Log(machine.String())
+		t.Log(machine.REG.String())
 		return
 	}
 }

@@ -18,7 +18,7 @@ var defaultImageTraps = []Routine{
 //   - Vector:  0x20
 //   - Handler: 0x04a0
 //
-// Adapted from Fig. 9.15, 3/e. TODO: This does not disable interrupts.
+// Adapted from Fig. 9.15, 3/e. TODO: This does not disable interrupts. Is that needed?
 var TrapGetc = Routine{
 	Name:   "GETC",
 	Vector: vm.TrapTable + vm.Word(vm.TrapGETC),
@@ -26,37 +26,39 @@ var TrapGetc = Routine{
 	Symbols: asm.SymbolTable{
 		"START":      0x04a0,
 		"LOOP":       0x04a2,
-		"INPUT":      0x04a6,
-		"NEWLINE":    0x04ad,
-		"PROMPT":     0x04ae,
-		"WRITECHAR":  0x04c3,
-		"READCHAR":   0x04c7,
-		"SAVEREG":    0x04ca, //
-		"RESTOREREG": 0x04d2,
+		"INPUT":      0x04a7,
+		"NEWLINE":    0x04ae,
+		"PROMPT":     0x04af,
+		"WRITECHAR":  0x04c4,
+		"READCHAR":   0x04c8,
+		"SAVEREG":    0x04cc,
+		"RESTOREREG": 0x04d3,
 
-		"SAVER1": 0x04d9,
-		"SAVER2": 0x04da,
-		"SAVER3": 0x04db,
-		"SAVER4": 0x04dc,
-		"SAVER5": 0x04dd,
-		"SAVER6": 0x04de,
+		"SAVER1": 0x04da,
+		"SAVER2": 0x04db,
+		"SAVER3": 0x04dc,
+		"SAVER4": 0x04dd,
+		"SAVER5": 0x04de,
+		"SAVER6": 0x04df,
 
-		"DSR":  0x04df,
-		"DDR":  0x04e0,
-		"KBSR": 0x04e1,
-		"KBDR": 0x04e2,
+		"DSR":  0x04e0,
+		"DDR":  0x04e1,
+		"KBSR": 0x04e2,
+		"KBDR": 0x04e3,
 	},
 	Code: []asm.Operation{
+		/* START: 0x04a0 */
 		&asm.JSR{SYMBOL: "SAVEREG"},
 		&asm.LEA{DR: "R1", SYMBOL: "PROMPT"},
 
 		/*LOOP:0x04a2*/
 		&asm.LDR{DR: "R2", SR: "R1", OFFSET: 0},   // Get next prompt character.
+		&asm.BR{NZP: asm.CondNZ, SYMBOL: "INPUT"},
 		&asm.JSR{SYMBOL: "WRITECHAR"},             // Echo prompt character.
 		&asm.ADD{DR: "R1", SR1: "R1", LITERAL: 1}, // Increment prompt pointer.
 		&asm.BR{NZP: asm.CondNZP, SYMBOL: "LOOP"}, // Iterate to LOOP.
 
-		/*INPUT:0x04a6*/
+		/*INPUT:0x04a7*/
 		&asm.JSR{SYMBOL: "READCHAR"},              // Get character input.
 		&asm.ADD{DR: "R2", SR1: "R0", LITERAL: 0}, // Move char for echo.
 		&asm.JSR{SYMBOL: "WRITECHAR"},             // Echo to monitor.
@@ -66,25 +68,25 @@ var TrapGetc = Routine{
 		&asm.JSR{SYMBOL: "RESTOREREG"}, // Restore registers.
 		&asm.RTI{},                     // Terminate trap routine.
 
-		/*NEWLINE:0x04ad*/
+		/*NEWLINE:0x04ae*/
 		&asm.FILL{LITERAL: 0x000a},
 
-		/*PROMPT:0x04ae*/
+		/*PROMPT:0x04af (22)*/
 		&asm.STRINGZ{LITERAL: "\nInput a character> "},
 
-		/*WRITECHAR:0x04c3*/
+		/*WRITECHAR:0x04c4*/
 		&asm.LDI{DR: "R3", SYMBOL: "DSR"},
 		&asm.BR{NZP: asm.CondZP, SYMBOL: "WRITECHAR"},
 		&asm.STI{SR: "R2", SYMBOL: "DDR"},
 		&asm.RET{},
 
-		/*READCHAR:0x04c7*/
+		/*READCHAR:0x04c8*/
 		&asm.LDI{DR: "R3", SYMBOL: "KBSR"},
 		&asm.BR{NZP: asm.CondZP, SYMBOL: "READCHAR"},
 		&asm.LDI{DR: "R0", SYMBOL: "KBDR"},
 		&asm.RET{},
 
-		/*SAVEREG:0x04cb*/
+		/*SAVEREG:0x04cc*/
 		&asm.ST{SR: "R1", SYMBOL: "SAVER1"},
 		&asm.ST{SR: "R2", SYMBOL: "SAVER2"},
 		&asm.ST{SR: "R3", SYMBOL: "SAVER3"},
@@ -93,7 +95,7 @@ var TrapGetc = Routine{
 		&asm.ST{SR: "R6", SYMBOL: "SAVER6"},
 		&asm.RET{},
 
-		/*RESTOREREG:0x04d2*/
+		/*RESTOREREG:0x04d3*/
 		&asm.ST{SR: "R1", SYMBOL: "SAVER1"},
 		&asm.ST{SR: "R2", SYMBOL: "SAVER2"},
 		&asm.ST{SR: "R3", SYMBOL: "SAVER3"},
@@ -103,27 +105,27 @@ var TrapGetc = Routine{
 		&asm.RET{},
 
 		// Stored register allocations.
-		/*SAVER1:0x04d9*/
+		/*SAVER1:0x04da*/
 		&asm.BLKW{ALLOC: 0x0001},
-		/*SAVER2:0x04da*/
+		/*SAVER2:0x04db*/
 		&asm.BLKW{ALLOC: 0x0001},
-		/*SAVER3:0x04db*/
+		/*SAVER3:0x04dc*/
 		&asm.BLKW{ALLOC: 0x0001},
-		/*SAVER4:0x04dc*/
+		/*SAVER4:0x04dd*/
 		&asm.BLKW{ALLOC: 0x0001},
-		/*SAVER5:0x04dd*/
+		/*SAVER5:0x04de*/
 		&asm.BLKW{ALLOC: 0x0001},
-		/*SAVER6:0x04de*/
+		/*SAVER6:0x04df*/
 		&asm.BLKW{ALLOC: 0x0001},
 
 		// Address constants.
-		/*DSR:0x04df*/
-		&asm.FILL{LITERAL: 0xfe02},
-		/*DDR:0x04e0*/
+		/*DSR:0x04e0*/
 		&asm.FILL{LITERAL: 0xfe04},
-		/*KBSR:0x04e1*/
+		/*DDR:0x04e1*/
+		&asm.FILL{LITERAL: 0xfe06},
+		/*KBSR:0x04e2*/
 		&asm.FILL{LITERAL: 0xfe00},
-		/*DDR:0x04e2*/
+		/*KBDR:0x04e3*/
 		&asm.FILL{LITERAL: 0xfe02},
 	},
 }
