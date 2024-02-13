@@ -89,7 +89,7 @@ func (mmio MMIO) Load(addr Word) (Register, error) {
 			return Register(0xffff), fmt.Errorf("mmio: write: %s:%s: %w", addr, dev, err)
 		}
 	} else {
-		mmio.log.Error("%s: addr: %s: %T", ErrNoDevice, addr, dev)
+		mmio.log.Error("no device", "addr", addr, "device", dev)
 		panic(ErrNoDevice)
 	}
 
