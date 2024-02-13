@@ -288,7 +288,7 @@ func (p *Parser) parseOperator(opcode string) Operation {
 		return &STI{}
 	case "TRAP":
 		return &TRAP{}
-	case "HALT":
+	case "HALT", "OUT", "GETC":
 		return &TRAP{}
 	case "RTI":
 		return &RTI{}

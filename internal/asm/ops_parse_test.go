@@ -814,6 +814,30 @@ func TestTRAP_Parse(t *testing.T) {
 			want:    &TRAP{LITERAL: 0x00ff},
 			wantErr: &SyntaxError{},
 		},
+		{
+			name:   "GETC with arg",
+			opcode: "GETC", operands: []string{"x00"},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "GETC",
+			opcode: "GETC", operands: []string{},
+			want:    &TRAP{LITERAL: 0x20},
+			wantErr: nil,
+		},
+		{
+			name:   "OUT with arg",
+			opcode: "OUT", operands: []string{"x00"},
+			want:    nil,
+			wantErr: &SyntaxError{},
+		},
+		{
+			name:   "OUT",
+			opcode: "OUT", operands: []string{},
+			want:    &TRAP{LITERAL: 0x21},
+			wantErr: nil,
+		},
 	}
 
 	for _, tt := range tests {
@@ -823,7 +847,6 @@ func TestTRAP_Parse(t *testing.T) {
 
 			if (tt.wantErr != nil && err == nil) || err != nil && tt.wantErr == nil {
 				t.Fatalf("not expected: %#v, want: %#v", err, tt.wantErr)
-				return
 			}
 
 			if tt.wantErr != nil && errors.Is(err, tt.wantErr) {
@@ -831,7 +854,7 @@ func TestTRAP_Parse(t *testing.T) {
 			}
 
 			if (err == nil) && !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NOT.Parse() = %#v, want %#v", got, tt.want)
+				t.Errorf("Parse() = %#v, want %#v", got, tt.want)
 			}
 		})
 	}
