@@ -12,7 +12,8 @@ var defaultImageTraps = []Routine{
 	TrapGetc,
 }
 
-// TrapGetc is the system call to prompt the user and wait for a character of input.
+// TrapGetc is the system call to prompt the user and wait for a character of input. After
+// returning, R0 contains the typed character.
 //
 //   - Table:   0x0000
 //   - Vector:  0x20
@@ -131,6 +132,7 @@ var TrapGetc = Routine{
 }
 
 // TrapHalt is the system call to stop the machine.
+//
 //   - Table:   0x0000
 //   - Vector:  0x25
 //   - Handler: 0x0520

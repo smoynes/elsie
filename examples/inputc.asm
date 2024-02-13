@@ -1,7 +1,6 @@
-;;; Example Keyboard Input Echo Program
+;;; Example program using trap GETC.
 ;;;
-;;; Adapted from 3e. Fig 9.7
-
+;;; Prompt for a character using trap 0x20.
     .ORIG 0x3000
     LD R1,0x0000
     BR START
@@ -10,5 +9,5 @@ NEXT_TASK:
     HALT
 
 START:
-    TRAP x20
+    GETC                        ; TRAP x20 ; Result is in R0
     BR NEXT_TASK
