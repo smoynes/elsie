@@ -9,5 +9,5 @@ NEXT_TASK:
     HALT
 
 START:
-    GETC                        ; TRAP x20 ; Result is in R0
+    TRAP x20 ; Result is in R0
     BR NEXT_TASK
