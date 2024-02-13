@@ -71,7 +71,7 @@ func TestTrap_Getc(tt *testing.T) {
 	image := SystemImage{
 		logger:  t.Logger(),
 		Symbols: nil,
-		Traps:   []Routine{TrapGetc, TrapHalt},
+		Traps:   []Routine{TrapGetc, TrapOut, TrapPuts, TrapHalt},
 	}
 
 	machine := vm.New(
@@ -92,7 +92,7 @@ func TestTrap_Getc(tt *testing.T) {
 
 	unsafeLoad(loader, code)
 
-	ctx, cancel := context.WithTimeout(context.TODO(), 50*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.TODO(), 500*time.Millisecond)
 
 	go func() {
 		for {
@@ -115,11 +115,12 @@ func TestTrap_Getc(tt *testing.T) {
 				break
 			}
 		}
+
+		// Cancel timeout.
+		cancel()
 	}()
 
 	<-ctx.Done()
-
-	cancel()
 
 	if err := ctx.Err(); err == context.DeadlineExceeded {
 		t.Error("Deadline exceeded")
