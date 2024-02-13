@@ -66,7 +66,7 @@ func TestKeyboardDriver(tt *testing.T) {
 
 	if got, err := reader.Read(addr); err != nil {
 		t.Errorf("read error: %s: %s", addr, err)
-	} else if got & Word(KeyboardEnable|KeyboardReady) != Word(KeyboardEnable) {
+	} else if got&Word(KeyboardEnable|KeyboardReady) != Word(KeyboardEnable) {
 		t.Errorf("expected status ready: want: %s, got: %s", KeyboardEnable, got)
 	}
 

@@ -167,8 +167,10 @@ func (mmio MMIO) KBDR() Word {
 	kbdr := Word('⍝')
 
 	if dev := mmio.devs[KBDRAddr]; dev != nil {
-		val := dev.(*Keyboard)
-		kbdr = Word(val.KBDR)
+		switch dev := dev.(type) {
+		case *Keyboard:
+			kbdr = Word(dev.KBDR)
+		}
 	}
 
 	return kbdr
@@ -179,8 +181,10 @@ func (mmio MMIO) KBSR() Word {
 	kbsr := Word('⍝')
 
 	if dev := mmio.devs[KBSRAddr]; dev != nil {
-		val := dev.(*Keyboard)
-		kbsr = Word(val.KBSR)
+		switch dev := dev.(type) {
+		case *Keyboard:
+			kbsr = Word(dev.KBSR)
+		}
 	}
 
 	return kbsr
