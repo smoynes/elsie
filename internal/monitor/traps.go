@@ -5,7 +5,7 @@ import (
 	"github.com/smoynes/elsie/internal/vm"
 )
 
-var defaultImageTraps = []Routine{
+var DefaultImageRoutines = []Routine{
 	TrapHalt,
 	TrapOut,
 	TrapPuts,
@@ -52,7 +52,7 @@ var TrapGetc = Routine{
 		&asm.LEA{DR: "R1", SYMBOL: "PROMPT"},
 
 		/*LOOP:0x04a2*/
-		&asm.LDR{DR: "R2", SR: "R1", OFFSET: 0},   // Get next prompt character.
+		&asm.LDR{DR: "R2", SR: "R1", OFFSET: 0}, // Get next prompt character.
 		&asm.BR{NZP: asm.CondNZ, SYMBOL: "INPUT"},
 		&asm.JSR{SYMBOL: "WRITECHAR"},             // Echo prompt character.
 		&asm.ADD{DR: "R1", SR1: "R1", LITERAL: 1}, // Increment prompt pointer.

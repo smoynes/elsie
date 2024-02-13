@@ -41,7 +41,7 @@ func (*fakeKeyboard) InterruptRequested() bool             { return true }
 func (fakeKeyboard) String() string                        { return "FakeKEY" }
 
 func (k *fakeKeyboard) Read(addr vm.Word) (vm.Word, error) {
-	switch addr {
+	switch addr { //nolint:exhaustive
 	case vm.KBSRAddr:
 		return 0x8000, nil
 	case vm.KBDRAddr:
@@ -60,7 +60,7 @@ func WithTestKeyboardDriver(key rune) vm.OptionFn {
 				vm.KBDRAddr: dev,
 				vm.KBSRAddr: dev,
 			}
-			machine.Mem.Devices.Map(deviceMap)
+			_ = machine.Mem.Devices.Map(deviceMap)
 		}
 	}
 }
@@ -106,9 +106,9 @@ func TestTrap_Getc(tt *testing.T) {
 				break
 			} else if !machine.MCR.Running() {
 				break
-			} else if err == context.DeadlineExceeded {
+			} else if errors.Is(err, context.DeadlineExceeded) {
 				break
-			} else if err == context.Canceled {
+			} else if errors.Is(err, context.Canceled) {
 				break
 			} else if err != nil {
 				t.Error(err)
@@ -122,10 +122,11 @@ func TestTrap_Getc(tt *testing.T) {
 
 	<-ctx.Done()
 
-	if err := ctx.Err(); err == context.DeadlineExceeded {
+	if err := ctx.Err(); errors.Is(err, context.DeadlineExceeded) {
 		t.Error("Deadline exceeded")
 		t.Log(machine.String())
 		t.Log(machine.REG.String())
+
 		return
 	}
 }
